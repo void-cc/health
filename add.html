@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Add New Blood Test</h2>
+<form method="POST">
+    <label for="test_name">Test Name:</label>
+    <select name="test_name" id="test_name">
+        {% for test in test_info %}
+        <option value="{{ test }}">{{ test }}</option>
+        {% endfor %}
+    </select><br><br>
+
+    <label for="value">Value:</label>
+    <input type="number" step="any" name="value" id="value" required><br><br>
+
+    <label for="date">Date:</label>
+    <input type="date" name="date" id="date" required><br><br>
+
+    <input type="submit" value="Add Test">
+</form>
+{% endblock %}

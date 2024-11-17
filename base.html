@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Blood Values Tracker</title>
+</head>
+<body>
+    <header>
+        <h1>Blood Values Tracker</h1>
+        <nav>
+            <a href="{{ url_for('index') }}">Home</a> |
+            <a href="{{ url_for('add_test') }}">Add New Test</a>
+        </nav>
+    </header>
+    <hr>
+    {% block content %}{% endblock %}
+</body>
+</html>
