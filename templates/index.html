@@ -1,28 +1,36 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Your Blood Tests</h2>
-<table border="1">
-    <tr>
+<h2 class="mb-4">Your Blood Tests</h2>
+{% if tests %}
+  <table class="table table-striped table-hover">
+    <thead class="thead-dark">
+      <tr>
         <th>Date</th>
         <th>Test Name</th>
         <th>Value</th>
         <th>Normal Range</th>
         <th>Status</th>
-    </tr>
-    {% for test in tests %}
-    <tr>
+      </tr>
+    </thead>
+    <tbody>
+      {% for test in tests %}
+      <tr>
         <td>{{ test.date.strftime('%Y-%m-%d') }}</td>
         <td>{{ test.test_name }}</td>
         <td>{{ test.value }} {{ test.unit }}</td>
         <td>{{ test.normal_min }} - {{ test.normal_max }} {{ test.unit }}</td>
         <td>
-            {% if test.normal_min <= test.value <= test.normal_max %}
-                Normal
-            {% else %}
-                Out of Range
-            {% endif %}
+          {% if test.normal_min <= test.value <= test.normal_max %}
+            <span class="badge badge-success">Normal</span>
+          {% else %}
+            <span class="badge badge-danger">Out of Range</span>
+          {% endif %}
         </td>
-    </tr>
-    {% endfor %}
-</table>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No tests available. <a href="{{ url_for('add_test') }}">Add a new test</a>.</p>
+{% endif %}
 {% endblock %}
