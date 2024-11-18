@@ -3,6 +3,7 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from models import db, BloodTest, BloodTestInfo
 from datetime import datetime
+from flask_wtf.csrf import CSRFProtect
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -132,20 +133,25 @@ def delete_test(test_id):
 @app.route('/edit/<int:test_id>', methods=['GET', 'POST'])
 def edit_test(test_id):
     test = BloodTest.query.get_or_404(test_id)
+
     if request.method == 'POST':
-        # Update test fields from form data
-        test.value = request.form['value']
-        test.date = datetime.strptime(request.form['date'], '%Y-%m-%d')
-        # Add any other fields that can be edited
+        # Get updated values from the form
+        value = request.form['value']
+        date_str = request.form['date']
+
         try:
+            # Update test fields
+            test.value = value
+            test.date = datetime.strptime(date_str, '%Y-%m-%d')
             db.session.commit()
             flash('Blood test updated successfully!', 'success')
             return redirect(url_for('index'))
-        except:
+        except Exception as e:
             db.session.rollback()
             flash('Error updating blood test. Please try again.', 'danger')
             return redirect(url_for('edit_test', test_id=test.id))
-    return render_template('edit.html', test=test)
+    else:
+        return render_template('edit.html', test=test)
 
 
 

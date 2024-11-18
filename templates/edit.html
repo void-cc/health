@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="mb-4">Edit Blood Test</h2>
+<form method="POST">
+  <div class="form-group">
+    <label for="test_name">Test Name:</label>
+    <input
+      type="text"
+      class="form-control"
+      name="test_name"
+      id="test_name"
+      value="{{ test.test_name }}"
+      readonly
+    />
+  </div>
+
+  <div class="form-group">
+    <label for="value">Value ({{ test.unit }}):</label>
+    <input
+      type="text"
+      class="form-control"
+      name="value"
+      id="value"
+      value="{{ test.value }}"
+      required
+    />
+  </div>
+
+  <div class="form-group">
+    <label for="date">Date:</label>
+    <input
+      type="date"
+      class="form-control"
+      name="date"
+      id="date"
+      value="{{ test.date.strftime('%Y-%m-%d') }}"
+      required
+    />
+  </div>
+
+  <button type="submit" class="btn btn-primary">Update Test</button>
+  <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
