@@ -1,0 +1,196 @@
+test_name,unit,normal_min,normal_max
+Hemoglobine (Hb),mmol/L,8.5,11.0
+Hematocriet (Ht),L/L,0.41,0.51
+Erytrocyten (RBC),x10^12/L,4.5,5.9
+Leukocyten (WBC),x10^9/L,4.0,11.0
+Trombocyten (PLT),x10^9/L,150,400
+MCV (Mean Corpuscular Volume),fL,80,100
+MCH (Mean Corpuscular Hemoglobin),fmol,1.7,2.2
+MCHC (Mean Corpuscular Hemoglobin Concentration),mmol/L,19,23
+Reticulocyten,x10^9/L,25,100
+BSE (Bezinkingssnelheid Erytrocyten),mm/u,0,20
+Natrium (Na),mmol/L,135,145
+Kalium (K),mmol/L,3.5,5.0
+Chloride (Cl),mmol/L,98,107
+Calcium (Ca),mmol/L,2.20,2.65
+Fosfaat (P),mmol/L,0.8,1.5
+Magnesium (Mg),mmol/L,0.7,1.0
+Glucose,mmol/L,4.0,6.0
+Ureum,mmol/L,2.5,7.5
+Creatinine,µmol/L,60,110
+Urinezuur,µmol/L,150,400
+Bilirubine totaal,µmol/L,0,17
+Alkalische fosfatase (AF),U/L,40,120
+Gamma-GT,U/L,5,55
+ALAT (Alanine-aminotransferase),U/L,10,45
+ASAT (Aspartaat-aminotransferase),U/L,10,35
+LDH (Lactaatdehydrogenase),U/L,120,250
+Albumine,g/L,35,50
+Totaal eiwit,g/L,60,80
+Lipase,U/L,13,60
+Amylase,U/L,28,100
+Cholesterol totaal,mmol/L,0,5.0
+HDL-cholesterol,mmol/L,1.0,2.0
+LDL-cholesterol,mmol/L,0,3.0
+Triglyceriden,mmol/L,0.5,2.0
+Apolipoproteïne A1,g/L,1.0,2.0
+Apolipoproteïne B,g/L,0.6,1.4
+Lipoproteïne (a),mg/dL,0,30
+Ferritine,µg/L,30,400
+Serumijzer,µmol/L,14,28
+Transferrine,g/L,2.0,3.6
+Transferrineverzadiging,%,20,50
+Vitamine B12,pmol/L,140,650
+Foliumzuur (Folaat),nmol/L,7,45
+Vitamine D (25-OH),nmol/L,50,150
+Parathormoon (PTH),pmol/L,1.6,6.9
+TSH (Thyreoïdstimulerend hormoon),mU/L,0.4,4.0
+Vrij thyroxine (fT4),pmol/L,9,24
+Vrij trijodothyronine (fT3),pmol/L,3.5,7.8
+Anti-TPO antistoffen,IE/mL,0,35
+Antithyroglobuline antistoffen,IE/mL,0,115
+Cortisol,nmol/L,150,700
+ACTH,ng/L,10,60
+Troponine I,ng/L,0,0.045
+Creatinekinase (CK),U/L,40,320
+CK-MB,U/L,0,25
+BNP (B-type natriuretisch peptide),ng/L,0,100
+D-dimeer,mg/L FEU,0,0.5
+CRP (C-reactief proteïne),mg/L,0,10
+Procalcitonine,µg/L,0,0.05
+PSA (Prostaat Specifiek Antigeen),µg/L,0,4.0
+Vrij PSA,µg/L,0,0.9
+Estradiol,pmol/L,40,160
+Progesteron,nmol/L,0,80
+Testosteron,nmol/L,8,30
+LH (Luteïniserend hormoon),U/L,1,9
+FSH (Follikelstimulerend hormoon),U/L,1,12
+Prolactine,mU/L,50,400
+hCG (Humaan Choriongonadotrofine),IE/L,0,5
+Insuline,mU/L,2,25
+C-peptide,nmol/L,0.2,0.8
+HbA1c (Geglyceerd hemoglobine),mmol/mol,20,42
+ACE (Angiotensine-converting enzyme),U/L,20,70
+Ammoniak,µmol/L,11,35
+ANA (Antinucleaire antistoffen),titer,0,1:80
+Reumafactor,IE/mL,0,14
+Anti-CCP antistoffen,U/mL,0,7
+Complement C3,g/L,0.9,1.8
+Complement C4,g/L,0.1,0.4
+IgG,g/L,7,16
+IgA,g/L,0.7,4.0
+IgM,g/L,0.4,2.3
+IgE,IE/mL,0,100
+Beta-2 microglobuline,mg/L,0.7,1.8
+CEA (Carcino-embryonaal antigeen),µg/L,0,5
+AFP (Alfa-foetoproteïne),µg/L,0,7
+CA 125,kU/L,0,35
+CA 15-3,kU/L,0,30
+CA 19-9,kU/L,0,37
+CYFRA 21-1,ng/mL,0,3.3
+NSE (Neuron-specifieke enolase),µg/L,0,12.5
+S-100 proteïne,µg/L,0,0.15
+Chromogranine A,µg/L,0,100
+Homocysteïne,µmol/L,5,15
+Lactaat,mmol/L,0.5,2.2
+Osmolaliteit serum,mOsmol/kg,275,295
+Osmolaliteit urine,mOsmol/kg,50,1200
+pH bloed,,7.35,7.45
+pCO2,kPa,4.7,6.4
+pO2,kPa,10,13
+Bicarbonaat (HCO3-),mmol/L,22,26
+Base excess (BE),mmol/L,-2,3
+Anion gap,mmol/L,8,16
+Fibrinogeen,g/L,2.0,4.0
+Antitrombine III,%,80,120
+Proteïne C,%,70,130
+Proteïne S,%,65,140
+INR,,0.8,1.2
+APTT,seconden,26,36
+Trombinetijd,seconden,14,21
+O2 Saturatie (sO2),%,94,100
+Carboxyhemoglobine (COHb),%,0,2
+Methemoglobine (MetHb),%,0,1.5
+Vitamine A (Retinol),µmol/L,1.2,2.8
+Vitamine E (Tocoferol),µmol/L,12,46
+Vitamine K1,µg/L,0.15,1.5
+Lood (Pb),µmol/L,0,0.5
+Kwik (Hg),µmol/L,0,0.1
+Cadmium (Cd),µmol/L,0,0.01
+Paracetamol,mg/L,0,20
+Salicylaten,mg/L,0,30
+Digoxine,µg/L,0.8,2.0
+Lithium,mmol/L,0.6,1.2
+Carbamazepine,mg/L,4,12
+Valproaat,mg/L,50,100
+Fenytoïne,mg/L,10,20
+ASLO (Anti-streptolysine O),IE/mL,0,200
+Anti-DNase B,IE/mL,0,300
+Hepatitis A IgM,Positief/Negatief,,
+Hepatitis B oppervlakte-antigeen (HBsAg),Positief/Negatief,,
+Hepatitis C antistoffen,Positief/Negatief,,
+HIV antistoffen,Positief/Negatief,,
+Syfilis serologie (VDRL/RPR),Positief/Negatief,,
+Anti-dsDNA,IE/mL,0,20
+Anti-ENA antistoffen,Positief/Negatief,,
+ACPA (Anti-citrullinated peptide antibodies),U/mL,0,7
+Factor VIII,%,50,150
+Factor IX,%,60,140
+Von Willebrand factor antigen,%,50,150
+Cholinesterase,U/L,5300,12900
+Alpha-amylase,U/L,28,100
+GGT (Gamma-glutamyltransferase),U/L,5,55
+Oplosbare transferrinereceptor (sTfR),mg/L,2.2,5.0
+Haptoglobine,g/L,0.3,2.0
+Hepcidine,µg/L,0,20
+Interleukine-6 (IL-6),pg/mL,0,7
+TNF-alfa,pg/mL,0,8
+Aldosteron,pmol/L,100,500
+Renine activiteit,mU/L,4,50
+Groeihormoon (GH),µg/L,0,10
+IGF-1 (Insulin-like growth factor 1),µg/L,10,350
+Myoglobine,µg/L,0,85
+NT-proBNP,ng/L,0,125
+Koper,µmol/L,12,25
+Ceruloplasmine,g/L,0.2,0.6
+Totaal CO2,mmol/L,22,29
+Specifiek IgE,kU/L,0,0.35
+Alfa-foetoproteïne (zwangerschap),IE/mL,0,15
+Ongeconjugeerd oestriol,nmol/L,0,40
+Inhibine A,pg/mL,0,500
+Karyotypering,Analyse,,
+FISH analyse,Analyse,,
+C3 complement,g/L,0.9,1.8
+C4 complement,g/L,0.1,0.4
+CH50 (Complement hemolytische activiteit),U/mL,30,50
+Kleine dichte LDL,mg/dL,0,100
+Lp-PLA2,ng/mL,120,342
+Beta-hydroxybutyraat,mmol/L,0,0.4
+Ketonen,mmol/L,0,0.6
+Osmol-gap,mOsmol/kg,-10,10
+Eiwit elektroforese,Patroon,,
+Immunofixatie elektroforese,Patroon,,
+Anti-mitochondriale antistoffen (AMA),titer,0,1:20
+Anti-gladde spier antistoffen (ASMA),titer,0,1:20
+Anti-LKM antistoffen,titer,0,1:10
+Lupus anticoagulans,Positief/Negatief,,
+Anti-cardiolipine antistoffen,GPL/MPL eenheden,0,15
+Anti-beta2 glycoproteïne I antistoffen,U/mL,0,20
+Osteocalcine,µg/L,11,43
+Bot-specifieke alkalische fosfatase,U/L,6.5,20
+Crosslaps (CTX),ng/L,0.1,0.6
+Natrium urine,mmol/24h,40,220
+Kalium urine,mmol/24h,25,125
+Calcium urine,mmol/24h,2.5,7.5
+Catecholaminen urine,µmol/24h,0,0.5
+Metanefrines urine,µmol/24h,0,1.3
+Cortisol urine,nmol/24h,55,250
+Porfobilinogeen,µmol/24h,0,4
+Uroporfyrine,µmol/24h,0,2
+Coproporfyrine,µmol/24h,0,1.5
+Selenium,µmol/L,0.9,1.9
+Zink,µmol/L,10,18
+CSF Lactaat,mmol/L,1.2,2.1
+CSF Glucose,mmol/L,2.2,4.4
+CSF Eiwit,g/L,0.15,0.45
+Oligoklonale banden CSF,Positief/Negatief,,

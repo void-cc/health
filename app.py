@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for
+import csv
+import os
+from flask import Flask, render_template, request, redirect, url_for, flash
 from models import db, BloodTest
 from datetime import datetime
 
@@ -9,13 +11,25 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blood_tracker.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
-# Predefined Test Information
-TEST_INFO = {
-    'Hemoglobin': {'unit': 'g/dL', 'normal_min': 13.5, 'normal_max': 17.5},
-    'Glucose': {'unit': 'mg/dL', 'normal_min': 70, 'normal_max': 99},
-    'Cholesterol': {'unit': 'mg/dL', 'normal_min': 125, 'normal_max': 200},
-    # Add more tests as needed
-}
+def load_test_info():
+    test_info = {}
+    with open('blood_tests.csv', mode='r') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            # Skip comments or empty lines
+            if row['test_name'].startswith('#') or not row['test_name']:
+                continue
+            test_name = row['test_name']
+            test_info[test_name] = {
+                'unit': row['unit'],
+                'normal_min': float(row['normal_min']),
+                'normal_max': float(row['normal_max'])
+            }
+    return test_info
+
+# Initialize TEST_INFO
+TEST_INFO = load_test_info()
+
 
 @app.route('/')
 def index():
@@ -43,7 +57,8 @@ def add_test():
         # Get test info
         test_info = TEST_INFO.get(test_name)
         if not test_info:
-            return "Test not found.", 400
+            flash('Test not found.', 'danger')
+            return redirect(url_for('add_test'))
 
         new_test = BloodTest(
             test_name=test_name,
@@ -56,9 +71,39 @@ def add_test():
 
         db.session.add(new_test)
         db.session.commit()
+        flash('Blood test added successfully!', 'success')
         return redirect(url_for('index'))
 
     return render_template('add.html', test_info=TEST_INFO)
+
+
+@app.route('/add_test_info', methods=['GET', 'POST'])
+def add_test_info():
+    if request.method == 'POST':
+        test_name = request.form['test_name']
+        unit = request.form['unit']
+        normal_min = request.form['normal_min']
+        normal_max = request.form['normal_max']
+
+        # Validate inputs
+        if not test_name or not unit or not normal_min or not normal_max:
+            flash('Please fill out all fields.', 'danger')
+            return redirect(url_for('add_test_info'))
+
+        # Append the new test to the CSV file
+        with open('blood_tests.csv', mode='a', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow([test_name, unit, normal_min, normal_max])
+
+        # Reload TEST_INFO
+        global TEST_INFO
+        TEST_INFO = load_test_info()
+
+        flash('New blood test added successfully!', 'success')
+        return redirect(url_for('add_test'))
+
+    return render_template('add_test_info.html')
+
 
 if __name__ == '__main__':
     with app.app_context():

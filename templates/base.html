@@ -31,6 +31,10 @@
         <li class="nav-item {% if request.endpoint == 'add_test' %}active{% endif %}">
           <a class="nav-link" href="{{ url_for('add_test') }}">Add New Test</a>
         </li>
+      <li class="nav-item {% if request.endpoint == 'add_test_info' %}active{% endif %}">
+  <a class="nav-link" href="{{ url_for('add_test_info') }}">Add New Test Info</a>
+</li>
+
       </ul>
     </div>
   </nav>
