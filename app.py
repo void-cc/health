@@ -58,35 +58,65 @@ def chart(test_name):
     values = [test.value for test in tests]
     return render_template('chart.html', dates=dates, values=values, test_name=test_name)
 
-
 @app.route('/add', methods=['GET', 'POST'])
 def add_test():
     if request.method == 'POST':
-        test_name = request.form['test_name']
-        value = float(request.form['value'])
-        date = datetime.strptime(request.form['date'], '%Y-%m-%d')
+        date_str = request.form.get('date')
+        test_names = request.form.getlist('test_names')
 
-        # Get test info
-        test_info = TEST_INFO.get(test_name)
-        if not test_info:
-            flash('Test not found.', 'danger')
+        if not date_str or not test_names:
+            flash('Please select a date and at least one blood test.', 'danger')
             return redirect(url_for('add_test'))
 
-        new_test = BloodTest(
-            test_name=test_name,
-            value=value,
-            unit=test_info['unit'],
-            date=date,
-            normal_min=test_info['normal_min'],
-            normal_max=test_info['normal_max']
-        )
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+        tests_added = 0
 
-        db.session.add(new_test)
-        db.session.commit()
-        flash('Blood test added successfully!', 'success')
-        return redirect(url_for('index'))
+        values_dict = request.form.to_dict(flat=False)
+        for test_name in test_names:
+            value = request.form.get('values[{}]'.format(test_name))
+            if not value:
+                flash(f'No value provided for {test_name}.', 'warning')
+                continue  # Skip if value is missing
 
-    return render_template('add.html', test_info=TEST_INFO)
+            # Convert value to float if applicable
+            try:
+                value = float(value)
+            except ValueError:
+                flash(f'Invalid value for {test_name}. Please enter a numeric value.', 'danger')
+                continue  # Skip this test
+
+            # Get test info
+            test_info = TEST_INFO.get(test_name)
+            if not test_info:
+                flash(f'Test "{test_name}" not found.', 'danger')
+                continue  # Skip invalid test
+
+            # Create new BloodTest entry
+            new_test = BloodTest(
+                test_name=test_name,
+                value=value,
+                unit=test_info['unit'],
+                date=date,
+                normal_min=test_info['normal_min'],
+                normal_max=test_info['normal_max']
+            )
+            db.session.add(new_test)
+            tests_added += 1
+
+        try:
+            db.session.commit()
+            if tests_added > 0:
+                flash(f'{tests_added} blood test(s) added successfully!', 'success')
+            else:
+                flash('No tests were added. Please provide valid values for the selected tests.', 'warning')
+            return redirect(url_for('index'))
+        except Exception as e:
+            db.session.rollback()
+            flash('Error adding blood tests. Please try again.', 'danger')
+            return redirect(url_for('add_test'))
+
+    else:
+        return render_template('add.html', test_info=TEST_INFO)
 
 
 @app.route('/add_test_info', methods=['GET', 'POST'])
