@@ -13,19 +13,29 @@ db.init_app(app)
 
 def load_test_info():
     test_info = {}
-    with open('blood_tests.csv', mode='r') as csvfile:
+    with open('blood_tests.csv', mode='r', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            # Skip comments or empty lines
-            if row['test_name'].startswith('#') or not row['test_name']:
-                continue
             test_name = row['test_name']
+            unit = row['unit']
+            normal_min = row['normal_min']
+            normal_max = row['normal_max']
+
+            # Handle tests without numerical normal ranges
+            try:
+                normal_min = float(normal_min) if normal_min else None
+                normal_max = float(normal_max) if normal_max else None
+            except ValueError:
+                normal_min = None
+                normal_max = None
+
             test_info[test_name] = {
-                'unit': row['unit'],
-                'normal_min': float(row['normal_min']),
-                'normal_max': float(row['normal_max'])
+                'unit': unit,
+                'normal_min': normal_min,
+                'normal_max': normal_max
             }
     return test_info
+
 
 # Initialize TEST_INFO
 TEST_INFO = load_test_info()
