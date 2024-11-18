@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="mb-4">Blood Test Trends</h2>
+<canvas id="bloodChart"></canvas>
+
+<script>
+  var ctx = document.getElementById('bloodChart').getContext('2d');
+  var bloodChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: {{ dates|tojson }},
+      datasets: [
+        {
+          label: '{{ test_name }} Levels',
+          data: {{ values|tojson }},
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      scales: {
+        xAxes: [{ type: 'time', time: { unit: 'month' } }],
+        yAxes: [{ ticks: { beginAtZero: false } }],
+      },
+    },
+  });
+</script>
+{% endblock %}

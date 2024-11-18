@@ -20,7 +20,18 @@ TEST_INFO = {
 @app.route('/')
 def index():
     tests = BloodTest.query.order_by(BloodTest.date.desc()).all()
-    return render_template('index.html', tests=tests)
+    test_types = set(test.test_name for test in tests)
+    return render_template('index.html', tests=tests, test_types=test_types)
+
+
+
+@app.route('/chart/<test_name>')
+def chart(test_name):
+    tests = BloodTest.query.filter_by(test_name=test_name).order_by(BloodTest.date).all()
+    dates = [test.date.strftime('%Y-%m-%d') for test in tests]
+    values = [test.value for test in tests]
+    return render_template('chart.html', dates=dates, values=values, test_name=test_name)
+
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_test():

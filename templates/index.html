@@ -30,6 +30,16 @@
       {% endfor %}
     </tbody>
   </table>
+    <!-- Below the existing table or wherever appropriate -->
+<h3 class="mt-5">View Trends</h3>
+<ul>
+  {% for test in test_types %}
+  <li>
+    <a href="{{ url_for('chart', test_name=test) }}">{{ test }} Trends</a>
+  </li>
+  {% endfor %}
+</ul>
+
 {% else %}
   <p>No tests available. <a href="{{ url_for('add_test') }}">Add a new test</a>.</p>
 {% endif %}
