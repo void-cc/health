@@ -5,17 +5,18 @@
   <div class="form-group">
     <label for="test_name">Test Name:</label>
     <select class="form-control" name="test_name" id="test_name">
+      <option></option> <!-- For placeholder -->
       {% for test in test_info %}
       <option value="{{ test }}">{{ test }}</option>
       {% endfor %}
     </select>
   </div>
 
+  <!-- Value field -->
   <div class="form-group">
     <label for="value">Value:</label>
     <input
-      type="number"
-      step="any"
+      type="text"
       class="form-control"
       name="value"
       id="value"
@@ -23,6 +24,7 @@
     />
   </div>
 
+  <!-- Date field -->
   <div class="form-group">
     <label for="date">Date:</label>
     <input
@@ -36,4 +38,15 @@
 
   <button type="submit" class="btn btn-primary">Add Test</button>
 </form>
+
+<!-- Initialize Select2 -->
+<script type="text/javascript">
+  $(document).ready(function() {
+    $('#test_name').select2({
+      theme: 'bootstrap4',
+      placeholder: 'Select a blood test',
+      allowClear: true
+    });
+  });
+</script>
 {% endblock %}

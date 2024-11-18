@@ -10,6 +10,7 @@
         <th>Value</th>
         <th>Normal Range</th>
         <th>Status</th>
+        <th>Actions</th> <!-- New column for actions -->
       </tr>
     </thead>
     <tbody>
@@ -18,28 +19,40 @@
         <td>{{ test.date.strftime('%Y-%m-%d') }}</td>
         <td>{{ test.test_name }}</td>
         <td>{{ test.value }} {{ test.unit }}</td>
-        <td>{{ test.normal_min }} - {{ test.normal_max }} {{ test.unit }}</td>
         <td>
-          {% if test.normal_min <= test.value <= test.normal_max %}
-            <span class="badge badge-success">Normal</span>
+          {% if test.normal_min is not none and test.normal_max is not none %}
+            {{ test.normal_min }} - {{ test.normal_max }} {{ test.unit }}
           {% else %}
-            <span class="badge badge-danger">Out of Range</span>
+            {{ test.unit }}
           {% endif %}
+        </td>
+        <td>
+          {% if test.normal_min is not none and test.normal_max is not none %}
+            {% if test.normal_min <= test.value <= test.normal_max %}
+              <span class="badge badge-success">Normal</span>
+            {% else %}
+              <span class="badge badge-danger">Out of Range</span>
+            {% endif %}
+          {% else %}
+            N/A
+          {% endif %}
+        </td>
+        <td class="row">
+          <!-- Delete Button -->
+          <form style="display: inline-block; vertical-align: top" class="" action="{{ url_for('delete_test', test_id=test.id) }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this test?');">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </form>
+            <a style="display: inline-block; vertical-align: top" href="{{ url_for('edit_test', test_id=test.id) }}" class="btn btn-secondary btn-sm">
+  <i class="fas fa-edit"></i>
+</a>
+
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-    <!-- Below the existing table or wherever appropriate -->
-<h3 class="mt-5">View Trends</h3>
-<ul>
-  {% for test in test_types %}
-  <li>
-    <a href="{{ url_for('chart', test_name=test) }}">{{ test }} Trends</a>
-  </li>
-  {% endfor %}
-</ul>
-
 {% else %}
   <p>No tests available. <a href="{{ url_for('add_test') }}">Add a new test</a>.</p>
 {% endif %}

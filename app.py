@@ -1,15 +1,17 @@
 import csv
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
-from models import db, BloodTest
+from models import db, BloodTest, BloodTestInfo
 from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key_here'
 
 # Configure Database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blood_tracker.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+
 
 def load_test_info():
     test_info = {}
@@ -46,7 +48,6 @@ def index():
     tests = BloodTest.query.order_by(BloodTest.date.desc()).all()
     test_types = set(test.test_name for test in tests)
     return render_template('index.html', tests=tests, test_types=test_types)
-
 
 
 @app.route('/chart/<test_name>')
@@ -113,6 +114,39 @@ def add_test_info():
         return redirect(url_for('add_test'))
 
     return render_template('add_test_info.html')
+
+
+@app.route('/delete/<int:test_id>', methods=['POST'])
+def delete_test(test_id):
+    test = BloodTest.query.get_or_404(test_id)
+    try:
+        db.session.delete(test)
+        db.session.commit()
+        flash('Blood test deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error deleting blood test. Please try again.', 'danger')
+    return redirect(url_for('index'))
+
+
+@app.route('/edit/<int:test_id>', methods=['GET', 'POST'])
+def edit_test(test_id):
+    test = BloodTest.query.get_or_404(test_id)
+    if request.method == 'POST':
+        # Update test fields from form data
+        test.value = request.form['value']
+        test.date = datetime.strptime(request.form['date'], '%Y-%m-%d')
+        # Add any other fields that can be edited
+        try:
+            db.session.commit()
+            flash('Blood test updated successfully!', 'success')
+            return redirect(url_for('index'))
+        except:
+            db.session.rollback()
+            flash('Error updating blood test. Please try again.', 'danger')
+            return redirect(url_for('edit_test', test_id=test.id))
+    return render_template('edit.html', test=test)
+
 
 
 if __name__ == '__main__':
