@@ -6,13 +6,15 @@ from datetime import datetime
 from flask_wtf.csrf import CSRFProtect
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
-
+test_url = os.getenv('DATABASE_URL')
+print(DATABASE_URL)
+print(test_url)
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
 # Configure Database
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_DATABASE_URI'] = test_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 

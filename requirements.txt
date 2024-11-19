@@ -2,3 +2,4 @@ flask
 flask_sqlalchemy
 gunicorn
 Flask-WTF
+psycopg2-binary>=2.9.0
