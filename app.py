@@ -5,16 +5,19 @@ from models import db, BloodTest, BloodTestInfo
 from datetime import datetime
 from flask_wtf.csrf import CSRFProtect
 
-DATABASE_URL = os.environ.get('DATABASE_URL')
 test_url = os.getenv('DATABASE_URL')
-print(DATABASE_URL)
 print(test_url)
+
+database_url = os.getenv("DATABASE_URL")
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+print(database_url)
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
 # Configure Database
-app.config['SQLALCHEMY_DATABASE_URI'] = test_url
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
