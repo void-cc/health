@@ -5,11 +5,14 @@ from models import db, BloodTest, BloodTestInfo
 from datetime import datetime
 from flask_wtf.csrf import CSRFProtect
 
+DATABASE_URL = os.environ['DATABASE_URL']
+
+
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
 # Configure Database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blood_tracker.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
@@ -48,7 +51,49 @@ TEST_INFO = load_test_info()
 def index():
     tests = BloodTest.query.order_by(BloodTest.date.desc()).all()
     test_types = set(test.test_name for test in tests)
-    return render_template('index.html', tests=tests, test_types=test_types)
+
+    # Create a dictionary to store the normal ranges for each test so that
+    # we can display them as progress bars in the template. But adjust the
+    # length of the progress bar based on the value of the test.
+    bars = {}
+    for test in tests:
+        if test.normal_min is not None and test.normal_max is not None:
+            normal_range = test.normal_max - test.normal_min
+            value_percentage = min(100, max(0, (
+                        (test.value - test.normal_min) / normal_range) * 100))
+            normal_min_percentage = 0
+            normal_max_percentage = 100
+
+            if test.value < test.normal_min:
+                left_percentage = value_percentage
+                middle_percentage = (test.normal_min / test.normal_max) * 100
+                right_percentage = 100 - middle_percentage
+            elif test.value > test.normal_max:
+                left_percentage = (test.normal_min / test.normal_max) * 100
+                middle_percentage = (test.normal_max / test.normal_max) * 100
+                right_percentage = value_percentage - middle_percentage
+            else:
+                left_percentage = (
+                                              test.value - test.normal_min) / normal_range * 100
+                middle_percentage = (
+                                                test.normal_max - test.value) / normal_range * 100
+                right_percentage = 100 - left_percentage - middle_percentage
+
+            bars[test.id] = {
+                'left_percentage': left_percentage,
+                'middle_percentage': middle_percentage,
+                'right_percentage': right_percentage,
+                'value': test.value,
+                'unit': test.unit
+            }
+
+    bars = None
+
+
+
+
+
+    return render_template('index.html', tests=tests, test_types=test_types, bars=bars)
 
 
 @app.route('/chart/<test_name>')
