@@ -5,7 +5,7 @@ from models import db, BloodTest, BloodTestInfo
 from datetime import datetime
 from flask_wtf.csrf import CSRFProtect
 
-DATABASE_URL = os.environ['DATABASE_URL']
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 
 app = Flask(__name__)
