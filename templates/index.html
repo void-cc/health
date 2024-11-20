@@ -39,7 +39,6 @@
     {{ bars[test.id]['value'] }} {{ bars[test.id]['unit'] }}
   </div>
         {% endif %}
-    </div>
       <div class="card-footer">
           <a href="{{ url_for('chart', test_name=test.test_name) }}" class="btn btn-primary btn-sm">
             <i class="fas fa-chart-line"></i> Graph
