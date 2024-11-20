@@ -20,7 +20,9 @@ app.secret_key = 'your_secret_key_here'
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
-db.create_all()
+
+with app.app_context():
+    db.create_all()
 def load_test_info():
     test_info = {}
     with open('blood_tests.csv', mode='r', encoding='utf-8') as csvfile:
