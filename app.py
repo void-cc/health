@@ -8,6 +8,8 @@ from flask_wtf.csrf import CSRFProtect
 test_url = os.getenv('DATABASE_URL')
 print(test_url)
 
+
+# Configure Database, If not using Heroku, then use SQLite
 database_url = os.getenv("DATABASE_URL")
 if database_url is None:
     database_url = "sqlite:///blood_tests.db"
