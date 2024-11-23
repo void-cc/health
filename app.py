@@ -172,7 +172,7 @@ def add_test():
             return redirect(url_for('add_test'))
 
     else:
-        return render_template('add.html', test_info=TEST_INFO)
+        return render_template('add.html', test_info=TEST_INFO, date=datetime.now().strftime('%Y-%m-%d'))
 
 
 @app.route('/add_test_info', methods=['GET', 'POST'])
