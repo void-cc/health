@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2 class="mb-4">Your Blood Tests</h2>
+<h2 class="mb-4">Your Blood Results</h2>
 {% if tests %}
 
     <div class="row row-cols-1 row-cols-md-2 g-4">
@@ -54,9 +54,11 @@
   </div>
   {% endfor %}
 </div>
-
-  </table>
+    </div>
 {% else %}
-  <p>No tests available. <a href="{{ url_for('add_test') }}">Add a new test</a>.</p>
+    <div id="no-tests" class="alert alert-info">
+    <p>No tests available.</p>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('add_test') }}">Add a new test</a>
+    </div>
 {% endif %}
 {% endblock %}
