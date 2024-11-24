@@ -2,7 +2,12 @@
 {% block content %}
     <h2 class="mb-4">Your Blood Results</h2>
     {% if tests %}
-
+        <form id="viewtoggle" method="post">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="view" value="table" id="view" {% if view == 'table' %}checked{% endif %}>
+                <label class="form-check-label" for="view">Table View</label>
+            </div>
+        </form>
 
 
                 {% if view == "cards" %}
@@ -192,4 +197,11 @@
                 a new test</a>
         </div>
     {% endif %}
+    <script>
+    $(document).ready(function(){
+    $("#viewtoggle").on("change", "input:checkbox", function(){
+        $("#viewtoggle").submit();
+    });
+});
+    </script>
 {% endblock %}

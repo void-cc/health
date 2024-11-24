@@ -65,6 +65,10 @@ def index():
 
     # check for args in the URL for table or cards view
     view = request.args.get('view')
+    if request.method == 'POST':
+        view = request.form.get('view')
+        print('view', view)
+    print(view)
     if view is None:
         view = 'cards'
 
