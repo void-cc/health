@@ -31,14 +31,6 @@
           {% endif %}
         </p>
       </div>
-    {% if bars is not none %}
-    <div class="progress">
-  <div class="progress-bar" role="progressbar" style="width: {{ bars[test.id]['left_percentage'] }}%;" aria-valuenow="{{ bars[test.id]['left_percentage'] }}" aria-valuemin="0" aria-valuemax="100"></div>
-  <div class="progress-bar bg-success" role="progressbar" style="width: {{ bars[test.id]['middle_percentage'] }}%;" aria-valuenow="{{ bars[test.id]['middle_percentage'] }}" aria-valuemin="0" aria-valuemax="100"></div>
-  <div class="progress-bar bg-info" role="progressbar" style="width: {{ bars[test.id]['right_percentage'] }}%;" aria-valuenow="{{ bars[test.id]['right_percentage'] }}" aria-valuemin="0" aria-valuemax="100">
-    {{ bars[test.id]['value'] }} {{ bars[test.id]['unit'] }}
-  </div>
-        {% endif %}
       <div class="card-footer">
           <a href="{{ url_for('chart', test_name=test.test_name) }}" class="btn btn-primary btn-sm">
             <i class="fas fa-chart-line"></i> Graph
