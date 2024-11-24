@@ -58,12 +58,20 @@ def load_test_info():
 TEST_INFO = load_test_info()
 
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
     tests = BloodTest.query.order_by(BloodTest.date.desc()).all()
     test_types = set(test.test_name for test in tests)
 
-    return render_template('index.html', tests=tests, test_types=test_types)
+    # check for args in the URL for table or cards view
+    view = request.args.get('view')
+    if view is None:
+        view = 'cards'
+
+    # check for args in the URL for filters and sorting
+
+
+    return render_template('index.html', tests=tests, test_types=test_types, view=view)
 
 
 @app.route('/chart/<test_name>')
