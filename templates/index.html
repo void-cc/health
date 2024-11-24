@@ -3,9 +3,12 @@
     <h2 class="mb-4">Your Blood Results</h2>
     {% if tests %}
 
-        <div class="row row-cols-1 row-cols-md-2 g-4">
-            {% for test in tests %}
+
+
                 {% if view == "cards" %}
+                    <div class="row row-cols-1 row-cols-md-2 g-4">
+                    {% for test in tests %}
+
                     <div class="col">
                         <div class="card h-100">
                             <div class="card-header d-flex justify-content-between ">
@@ -90,8 +93,11 @@
                             </div>
                         </div>
                     </div>
+                    {% endfor %}
+                    </div>
+
                 {% elif view == "table" %}
-                    <div class="col">
+                    <div class="">
                         <table class="table table-striped">
                             <thead>
                             <tr>
@@ -103,6 +109,7 @@
                             </tr>
                             </thead>
                             <tbody>
+                            {% for test in tests %}
                             <tr>
                                 <td>{{ test.test_name }}</td>
                                 <td>{{ test.date.strftime('%Y-%m-%d') }}</td>
@@ -170,13 +177,14 @@
                                     </div>
                                 </td>
                             </tr>
+                            {% endfor %}
                             </tbody>
                         </table>
                     </div>
                 {% endif %}
 
-            {% endfor %}
-        </div>
+
+
     {% else %}
         <div id="no-tests" class="alert alert-info">
             <p>No tests available.</p>
