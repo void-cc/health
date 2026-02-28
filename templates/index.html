@@ -31,14 +31,30 @@
           {% endif %}
         </p>
       </div>
-    {% if bars is not none %}
-    <div class="progress">
-  <div class="progress-bar" role="progressbar" style="width: {{ bars[test.id]['left_percentage'] }}%;" aria-valuenow="{{ bars[test.id]['left_percentage'] }}" aria-valuemin="0" aria-valuemax="100"></div>
-  <div class="progress-bar bg-success" role="progressbar" style="width: {{ bars[test.id]['middle_percentage'] }}%;" aria-valuenow="{{ bars[test.id]['middle_percentage'] }}" aria-valuemin="0" aria-valuemax="100"></div>
-  <div class="progress-bar bg-info" role="progressbar" style="width: {{ bars[test.id]['right_percentage'] }}%;" aria-valuenow="{{ bars[test.id]['right_percentage'] }}" aria-valuemin="0" aria-valuemax="100">
-    {{ bars[test.id]['value'] }} {{ bars[test.id]['unit'] }}
-  </div>
-        {% endif %}
+    {% if bars is not none and test.id in bars %}
+    <div style="position: relative; margin-bottom: 25px; margin-top: 25px; height: 20px;">
+        <div class="progress" style="height: 10px; position: absolute; top: 5px; width: 100%; border-radius: 0;">
+          <!-- Low Zone -->
+          <div class="progress-bar bg-danger" role="progressbar" style="width: {{ bars[test.id]['low_width'] }}%; opacity: 0.8;" aria-valuenow="{{ bars[test.id]['low_width'] }}" aria-valuemin="0" aria-valuemax="100"></div>
+
+          <!-- Normal Zone -->
+          <div class="progress-bar bg-success" role="progressbar" style="width: {{ bars[test.id]['normal_width'] }}%; opacity: 0.8;" aria-valuenow="{{ bars[test.id]['normal_width'] }}" aria-valuemin="0" aria-valuemax="100"></div>
+
+          <!-- High Zone -->
+          <div class="progress-bar bg-warning" role="progressbar" style="width: {{ bars[test.id]['high_width'] }}%; opacity: 0.8;" aria-valuenow="{{ bars[test.id]['high_width'] }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+
+        <!-- The Value Indicator -->
+        <div style="position: absolute; left: {{ bars[test.id]['value_pos'] }}%; top: 0; bottom: 0; width: 4px; background-color: #000; z-index: 10; transform: translateX(-50%);"></div>
+
+        <!-- The Value Bubble -->
+        <div style="position: absolute; left: {{ bars[test.id]['value_pos'] }}%; top: -20px; transform: translateX(-50%); background: black; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; line-height: 1; z-index: 11; white-space: nowrap;">
+            {{ bars[test.id]['value'] }} {{ bars[test.id]['unit'] }}
+            <!-- Little arrow pointing down -->
+            <div style="position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid black;"></div>
+        </div>
+    </div>
+    {% endif %}
       <div class="card-footer">
           <a href="{{ url_for('chart', test_name=test.test_name) }}" class="btn btn-primary btn-sm">
             <i class="fas fa-chart-line"></i> Graph
