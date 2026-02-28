@@ -69,40 +69,44 @@ def index():
     bars = {}
     for test in tests:
         if test.normal_min is not None and test.normal_max is not None:
+            # Prevent division by zero if normal_min == normal_max
             normal_range = test.normal_max - test.normal_min
-            value_percentage = min(100, max(0, (
-                        (test.value - test.normal_min) / normal_range) * 100))
-            normal_min_percentage = 0
-            normal_max_percentage = 100
+            if normal_range == 0:
+                normal_range = 1.0
 
-            if test.value < test.normal_min:
-                left_percentage = value_percentage
-                middle_percentage = (test.normal_min / test.normal_max) * 100
-                right_percentage = 100 - middle_percentage
-            elif test.value > test.normal_max:
-                left_percentage = (test.normal_min / test.normal_max) * 100
-                middle_percentage = (test.normal_max / test.normal_max) * 100
-                right_percentage = value_percentage - middle_percentage
-            else:
-                left_percentage = (
-                                              test.value - test.normal_min) / normal_range * 100
-                middle_percentage = (
-                                                test.normal_max - test.value) / normal_range * 100
-                right_percentage = 100 - left_percentage - middle_percentage
+            # Establish an absolute scale that comfortably fits the value and the normal range
+            abs_min = min(test.normal_min - normal_range, test.value - normal_range * 0.2)
+            if abs_min < 0 and test.normal_min >= 0:
+                abs_min = 0
+
+            abs_max = max(test.normal_max + normal_range, test.value + normal_range * 0.2)
+            total_range = abs_max - abs_min
+            if total_range == 0:
+                total_range = 1.0
+
+            # Calculate percentages for the THREE zones: Low, Normal, High
+            low_width = max(0, ((test.normal_min - abs_min) / total_range) * 100)
+            normal_width = max(0, ((test.normal_max - test.normal_min) / total_range) * 100)
+            high_width = max(0, ((abs_max - test.normal_max) / total_range) * 100)
+
+            # Ensure widths add up to exactly 100 to avoid wrapping
+            total_width = low_width + normal_width + high_width
+            if total_width > 0:
+                low_width = (low_width / total_width) * 100
+                normal_width = (normal_width / total_width) * 100
+                high_width = (high_width / total_width) * 100
+
+            # Map value to percentage on this absolute scale
+            value_pos = max(0, min(100, ((test.value - abs_min) / total_range) * 100))
 
             bars[test.id] = {
-                'left_percentage': left_percentage,
-                'middle_percentage': middle_percentage,
-                'right_percentage': right_percentage,
+                'low_width': low_width,
+                'normal_width': normal_width,
+                'high_width': high_width,
+                'value_pos': value_pos,
                 'value': test.value,
                 'unit': test.unit
             }
-
-    bars = None
-
-
-
-
 
     return render_template('index.html', tests=tests, test_types=test_types, bars=bars)
 
