@@ -20,4 +20,12 @@ urlpatterns = [
     path('scatter/', views.scatter_plots, name='scatter_plots'),
     path('import/', views.import_data, name='import_data'),
     path('export/', views.export_data, name='export_data'),
+    # Data Point Annotations
+    path('annotations/add/<str:model_type>/<int:object_id>/', views.add_annotation, name='add_annotation'),
+    path('annotations/delete/<int:annotation_id>/', views.delete_annotation, name='delete_annotation'),
+    # Bulk Data Editing
+    path('bulk_edit/', views.bulk_edit, name='bulk_edit'),
+    # Customizable Dashboard
+    path('dashboard/customize/', views.customize_dashboard, name='customize_dashboard'),
+    path('dashboard/update_widgets/', views.update_widgets, name='update_widgets'),
 ]

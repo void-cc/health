@@ -1,9 +1,28 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<h2 class="mb-4">Dashboard</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Dashboard</h2>
+  <div>
+    <button class="btn btn-outline-dark me-2" onclick="exportDashboardPDF()">
+      <i class="fas fa-file-pdf"></i> Export PDF
+    </button>
+    <a href="{% url 'bulk_edit' %}" class="btn btn-outline-secondary me-2">
+      <i class="fas fa-table"></i> Bulk Edit
+    </a>
+    <a href="{% url 'customize_dashboard' %}" class="btn btn-outline-primary">
+      <i class="fas fa-cog"></i> Customize
+    </a>
+  </div>
+</div>
 
-<!-- Summary Cards -->
+<div id="dashboard-content">
+{% for widget in widgets %}
+{% if widget.visible %}
+
+{% if widget.widget_type == 'summary_cards' %}
+<!-- Summary Cards Widget -->
+<div class="dashboard-widget" data-widget="{{ widget.widget_type }}">
 <div class="row mb-5">
   <div class="col-md-4">
     <div class="card text-white bg-primary mb-3">
@@ -36,7 +55,12 @@
     </div>
   </div>
 </div>
+</div>
+{% endif %}
 
+{% if widget.widget_type == 'recent_results' %}
+<!-- Recent Results Widget -->
+<div class="dashboard-widget" data-widget="{{ widget.widget_type }}">
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h3 class="mb-0">Recent Blood Results</h3>
   <div>
@@ -82,6 +106,25 @@
                 {{ test.unit }}
               {% endif %}
             </p>
+            <!-- Annotations -->
+            {% for annotation in test.annotations.all %}
+              <div class="alert alert-info py-1 px-2 mb-1 d-flex justify-content-between align-items-center">
+                <small><i class="fas fa-sticky-note"></i> {{ annotation.note }}</small>
+                <form action="{% url 'delete_annotation' annotation_id=annotation.id %}" method="post" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{% url 'index' %}">
+                  <button type="submit" class="btn btn-sm btn-link text-danger p-0"><i class="fas fa-times"></i></button>
+                </form>
+              </div>
+            {% endfor %}
+            <form action="{% url 'add_annotation' model_type='blood_test' object_id=test.id %}" method="post" class="mt-2">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'index' %}">
+              <div class="input-group input-group-sm">
+                <input type="text" name="note" class="form-control" placeholder="Add a note...">
+                <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fas fa-plus"></i></button>
+              </div>
+            </form>
           </div>
         {% with test_bar=bars|lookup:test.id %}
         {% if test_bar %}
@@ -151,4 +194,37 @@
     <a class="btn btn-primary btn-lg" href="{% url 'add_test' %}">Add a new test</a>
     </div>
 {% endif %}
+</div>
+{% endif %}
+
+{% endif %}
+{% endfor %}
+</div>
+
+<!-- html2canvas and jsPDF for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+function exportDashboardPDF() {
+  var element = document.getElementById('dashboard-content');
+  html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
+    var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+    var imgWidth = 210;
+    var imgHeight = canvas.height * imgWidth / canvas.width;
+    var pageHeight = 297;
+    var position = 0;
+    var imgData = canvas.toDataURL('image/png');
+
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    var heightLeft = imgHeight - pageHeight;
+    while (heightLeft > 0) {
+      position = position - pageHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    pdf.save('dashboard.pdf');
+  });
+}
+</script>
 {% endblock %}

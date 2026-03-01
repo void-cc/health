@@ -3,7 +3,12 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2>Blood Test Boxplots</h2>
-  <a href="{% url 'index' %}" class="btn btn-secondary">Back to Dashboard</a>
+  <div>
+    <button class="btn btn-outline-dark me-2" onclick="exportChartsPDF()">
+      <i class="fas fa-file-pdf"></i> Export PDF
+    </button>
+    <a href="{% url 'index' %}" class="btn btn-secondary">Back to Dashboard</a>
+  </div>
 </div>
 
 {% if boxplots_data %}
@@ -60,5 +65,32 @@
     }
   });
   {% endfor %}
+</script>
+
+<!-- PDF Export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+function exportChartsPDF() {
+  var element = document.querySelector('.row');
+  if (!element) return;
+  html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
+    var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+    var imgWidth = 210;
+    var imgHeight = canvas.height * imgWidth / canvas.width;
+    var pageHeight = 297;
+    var position = 0;
+    var imgData = canvas.toDataURL('image/png');
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    var heightLeft = imgHeight - pageHeight;
+    while (heightLeft > 0) {
+      position = position - pageHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    pdf.save('boxplots.pdf');
+  });
+}
 </script>
 {% endblock %}

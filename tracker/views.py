@@ -1,14 +1,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.urls import reverse
-from .models import BloodTest, BloodTestInfo, VitalSign
+from django.utils.http import url_has_allowed_host_and_scheme
+from .models import BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget
 from datetime import datetime
 import csv
 import os
 import io
 import json
 import re
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 def index(request):
     tests = BloodTest.objects.all().order_by('-date')
@@ -71,6 +72,7 @@ def index(request):
         'out_of_range': out_of_range,
         'latest_vitals': latest_vitals,
         'tests_by_category': tests_by_category,
+        'widgets': _get_dashboard_widgets(),
     }
     return render(request, 'index.html', context)
 
@@ -300,7 +302,17 @@ def chart(request, test_name):
     tests = BloodTest.objects.filter(test_name=test_name).order_by('date')
     dates = [test.date.strftime('%Y-%m-%d') for test in tests]
     values = [test.value for test in tests]
-    return render(request, 'chart.html', {'dates': dates, 'values': values, 'test_name': test_name})
+    annotations_map = {}
+    for test in tests:
+        annots = list(test.annotations.all().values('id', 'note', 'created_at'))
+        if annots:
+            annotations_map[test.date.strftime('%Y-%m-%d')] = [
+                {'id': a['id'], 'note': a['note']} for a in annots
+            ]
+    return render(request, 'chart.html', {
+        'dates': dates, 'values': values, 'test_name': test_name,
+        'tests': tests, 'annotations_map': annotations_map,
+    })
 
 def blood_tests_charts(request):
     tests = BloodTest.objects.all().order_by('date')
@@ -793,3 +805,136 @@ def export_data(request):
     response = HttpResponse(output.getvalue(), content_type="text/csv")
     response['Content-Disposition'] = 'attachment; filename=medical_history.csv'
     return response
+
+
+# --- Data Point Annotation views ---
+
+def _safe_redirect(request, default='index'):
+    next_url = request.POST.get('next', '')
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return redirect(next_url)
+    return redirect(default)
+
+
+def add_annotation(request, model_type, object_id):
+    if request.method == 'POST':
+        note = request.POST.get('note', '').strip()
+        if not note:
+            messages.error(request, 'Please enter a note.')
+        elif model_type == 'blood_test':
+            obj = get_object_or_404(BloodTest, id=object_id)
+            DataPointAnnotation.objects.create(blood_test=obj, note=note)
+            messages.success(request, 'Annotation added successfully!')
+        elif model_type == 'vital_sign':
+            obj = get_object_or_404(VitalSign, id=object_id)
+            DataPointAnnotation.objects.create(vital_sign=obj, note=note)
+            messages.success(request, 'Annotation added successfully!')
+        else:
+            messages.error(request, 'Invalid data type.')
+
+    return _safe_redirect(request)
+
+
+def delete_annotation(request, annotation_id):
+    if request.method == 'POST':
+        annotation = get_object_or_404(DataPointAnnotation, id=annotation_id)
+        annotation.delete()
+        messages.success(request, 'Annotation deleted successfully!')
+    return _safe_redirect(request)
+
+
+# --- Bulk Data Editing Interface ---
+
+def bulk_edit(request):
+    if request.method == 'POST':
+        updated = 0
+        deleted_ids = request.POST.getlist('delete_ids')
+
+        if deleted_ids:
+            BloodTest.objects.filter(id__in=deleted_ids).delete()
+
+        test_ids = request.POST.getlist('test_ids')
+        remaining_ids = [tid for tid in test_ids if tid not in deleted_ids]
+
+        if remaining_ids:
+            tests_map = {str(t.id): t for t in BloodTest.objects.filter(id__in=remaining_ids)}
+            to_update = []
+            for test_id in remaining_ids:
+                test = tests_map.get(test_id)
+                if not test:
+                    continue
+                try:
+                    new_value = request.POST.get(f'value_{test_id}')
+                    new_date = request.POST.get(f'date_{test_id}')
+                    if new_value is not None and new_date:
+                        test.value = float(new_value)
+                        test.date = datetime.strptime(new_date, '%Y-%m-%d').date()
+                        to_update.append(test)
+                        updated += 1
+                except (ValueError, TypeError):
+                    continue
+            if to_update:
+                BloodTest.objects.bulk_update(to_update, ['value', 'date'])
+
+        deleted_count = len(deleted_ids)
+        parts = []
+        if updated:
+            parts.append(f'{updated} record(s) updated')
+        if deleted_count:
+            parts.append(f'{deleted_count} record(s) deleted')
+        if parts:
+            messages.success(request, '. '.join(parts) + '.')
+        return redirect('bulk_edit')
+
+    tests = BloodTest.objects.all().order_by('-date', 'test_name')
+    return render(request, 'bulk_edit.html', {'tests': tests})
+
+
+# --- Customizable Dashboard helpers and views ---
+
+DEFAULT_WIDGETS = [
+    ('summary_cards', 0),
+    ('recent_results', 1),
+    ('vital_signs', 2),
+    ('blood_charts', 3),
+    ('vitals_charts', 4),
+    ('comparative_bars', 5),
+    ('boxplots', 6),
+]
+
+def _get_dashboard_widgets():
+    widgets = list(DashboardWidget.objects.all())
+    if not widgets:
+        for wtype, pos in DEFAULT_WIDGETS:
+            DashboardWidget.objects.create(widget_type=wtype, position=pos, visible=True)
+        widgets = list(DashboardWidget.objects.all())
+    return widgets
+
+
+def customize_dashboard(request):
+    widgets = _get_dashboard_widgets()
+    return render(request, 'customize_dashboard.html', {'widgets': widgets})
+
+
+def update_widgets(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            for item in data.get('widgets', []):
+                widget_id = item.get('id')
+                position = item.get('position')
+                visible = item.get('visible')
+                if widget_id is not None:
+                    try:
+                        w = DashboardWidget.objects.get(id=int(widget_id))
+                        if position is not None:
+                            w.position = int(position)
+                        if visible is not None:
+                            w.visible = bool(visible)
+                        w.save()
+                    except DashboardWidget.DoesNotExist:
+                        pass
+            return JsonResponse({'status': 'ok'})
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'status': 'error', 'message': 'Invalid data'}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'POST required'}, status=405)

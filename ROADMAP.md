@@ -14,10 +14,10 @@ This document outlines the strategic roadmap for the development of the comprehe
 - [x] **Moving Average Overlays:** Statistical trend lines overlaid on vital sign charts to clarify long-term trajectories.
 - [x] **Correlative Scatter Plots:** Visual tools to plot two different health metrics against each other (e.g., weight versus blood pressure) to identify trends.
 - [x] **Automated Anomaly Detection:** Visual highlighting of statistically significant abnormal spikes or drops in test results directly on charts.
-- [ ] **PDF Visualization Export:** High-resolution export of charts and dashboards for offline viewing or printing.
-- [ ] **Data Point Annotation:** The ability to attach qualitative personal notes to specific quantitative data points on charts.
-- [ ] **Bulk Data Editing Interface:** A spreadsheet-like interface for rapidly correcting or adjusting imported datasets.
-- [ ] **Customizable Dashboards:** Modular widget-based dashboards allowing users to prioritize their most important visualizations.
+- [x] **PDF Visualization Export:** High-resolution export of charts and dashboards for offline viewing or printing.
+- [x] **Data Point Annotation:** The ability to attach qualitative personal notes to specific quantitative data points on charts.
+- [x] **Bulk Data Editing Interface:** A spreadsheet-like interface for rapidly correcting or adjusting imported datasets.
+- [x] **Customizable Dashboards:** Modular widget-based dashboards allowing users to prioritize their most important visualizations.
 
 ## Phase 2: Vital Signs and Body Metrics
 - [ ] **Basal Body Temperature (BBT) Tracking:** Specialized module for precise temperature tracking.
