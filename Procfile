@@ -1,1 +1,1 @@
-web: gunicorn app:app
+web: gunicorn health_tracker.wsgi:application
