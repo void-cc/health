@@ -1,40 +1,40 @@
-from app import app, db
-from models import BloodTest
-from datetime import datetime
+import os
+import django
 
-with app.app_context():
-    # Insert a dummy test record
-    test = BloodTest(
-        test_name="Hemoglobin",
-        value=15.0,
-        unit="g/dL",
-        date=datetime.now(),
-        normal_min=13.8,
-        normal_max=17.2,
-    )
-    db.session.add(test)
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "health_tracker.settings")
+django.setup()
 
-    # Below normal range
-    test2 = BloodTest(
-        test_name="Hemoglobin",
-        value=12.0,
-        unit="g/dL",
-        date=datetime.now(),
-        normal_min=13.8,
-        normal_max=17.2,
-    )
-    db.session.add(test2)
+from tracker.models import BloodTest
+from datetime import date
 
-    # Above normal range
-    test3 = BloodTest(
-        test_name="Hemoglobin",
-        value=18.0,
-        unit="g/dL",
-        date=datetime.now(),
-        normal_min=13.8,
-        normal_max=17.2,
-    )
-    db.session.add(test3)
+# Insert a dummy test record
+BloodTest.objects.create(
+    test_name="Hemoglobin",
+    value=15.0,
+    unit="g/dL",
+    date=date.today(),
+    normal_min=13.8,
+    normal_max=17.2,
+)
 
-    db.session.commit()
-    print("Database seeded with test values.")
+# Below normal range
+BloodTest.objects.create(
+    test_name="Hemoglobin",
+    value=12.0,
+    unit="g/dL",
+    date=date.today(),
+    normal_min=13.8,
+    normal_max=17.2,
+)
+
+# Above normal range
+BloodTest.objects.create(
+    test_name="Hemoglobin",
+    value=18.0,
+    unit="g/dL",
+    date=date.today(),
+    normal_min=13.8,
+    normal_max=17.2,
+)
+
+print("Database seeded with test values.")

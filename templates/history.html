@@ -20,7 +20,7 @@
     <tbody>
       {% for item in history %}
       <tr>
-        <td>{{ item.date.strftime('%Y-%m-%d') }}</td>
+        <td>{{ item.date|date:"Y-m-d" }}</td>
         <td>
             {% if item.type == 'Blood Test' %}
                 <span class="badge bg-info text-dark">Blood Test</span>

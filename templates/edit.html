@@ -2,6 +2,7 @@
 {% block content %}
 <h2 class="mb-4">Edit Blood Test</h2>
 <form method="POST">
+  {% csrf_token %}
   <div class="form-group">
     <label for="test_name">Test Name:</label>
     <input
@@ -33,7 +34,7 @@
       class="form-control"
       name="date"
       id="date"
-      value="{{ test.date.strftime('%Y-%m-%d') }}"
+      value="{{ test.date|date:"Y-m-d" }}"
       required
     />
   </div>

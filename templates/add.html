@@ -1,8 +1,10 @@
 {% extends 'base.html' %}
+{% load json_filters %}
 {% block content %}
 <div class="container my-5">
   <h2 class="mb-4 text-center">Add Multiple Blood Tests</h2>
   <form method="POST" id="add-tests-form">
+    {% csrf_token %}
     <div class="mb-3">
       <label for="date" class="form-label">Date:</label>
       <input
@@ -35,7 +37,7 @@
 
     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
       <button type="submit" class="btn btn-primary me-md-2">Add Tests</button>
-      <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+      <a href="{% url 'index' %}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
 </div>
