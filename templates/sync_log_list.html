@@ -23,7 +23,7 @@
         <td>{% if entry.device %}{{ entry.device }}{% else %}-{% endif %}</td>
         <td>{% if entry.status %}{{ entry.status }}{% else %}-{% endif %}</td>
         <td>{% if entry.records_synced is not None %}{{ entry.records_synced }}{% else %}-{% endif %}</td>
-        <td>{% if entry.error %}{{ entry.error }}{% else %}-{% endif %}</td>
+        <td>{% if entry.error_message %}{{ entry.error_message }}{% else %}-{% endif %}</td>
         <td>{% if entry.started_at %}{{ entry.started_at }}{% else %}-{% endif %}</td>
         <td>{% if entry.completed_at %}{{ entry.completed_at }}{% else %}-{% endif %}</td>
       </tr>

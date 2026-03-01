@@ -30,7 +30,7 @@
         <td>{% if entry.fat_grams is not None %}{{ entry.fat_grams }}{% else %}-{% endif %}</td>
         <td>{% if entry.calories is not None %}{{ entry.calories }}{% else %}-{% endif %}</td>
         <td>{% if entry.fiber_grams is not None %}{{ entry.fiber_grams }}{% else %}-{% endif %}</td>
-        <td>{% if entry.total_macros is not None %}{{ entry.total_macros }}{% else %}-{% endif %}</td>
+        <td>{% if entry.total_macros_grams is not None %}{{ entry.total_macros_grams }}{% else %}-{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'macro_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
