@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Customize Dashboard</h2>
+  <a href="{% url 'index' %}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<p class="text-muted">Drag widgets to reorder them. Toggle visibility using the checkboxes. Changes are saved automatically.</p>
+
+<div id="widget-list" class="list-group">
+  {% for widget in widgets %}
+  <div class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ widget.id }}" draggable="true">
+    <div class="d-flex align-items-center">
+      <i class="fas fa-grip-vertical me-3 text-muted" style="cursor: grab;"></i>
+      <span>{{ widget.get_widget_type_display }}</span>
+    </div>
+    <div class="form-check form-switch">
+      <input class="form-check-input widget-visible" type="checkbox" {% if widget.visible %}checked{% endif %} data-id="{{ widget.id }}">
+      <label class="form-check-label">Visible</label>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div id="save-status" class="mt-3 text-muted" style="display: none;">
+  <i class="fas fa-check-circle text-success"></i> Changes saved.
+</div>
+
+<script>
+(function() {
+  var list = document.getElementById('widget-list');
+  var dragSrc = null;
+
+  function handleDragStart(e) {
+    dragSrc = this;
+    e.dataTransfer.effectAllowed = 'move';
+    this.classList.add('bg-light');
+  }
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+  }
+  function handleDrop(e) {
+    e.stopPropagation();
+    if (dragSrc !== this) {
+      var items = Array.from(list.children);
+      var srcIdx = items.indexOf(dragSrc);
+      var tgtIdx = items.indexOf(this);
+      if (srcIdx < tgtIdx) {
+        list.insertBefore(dragSrc, this.nextSibling);
+      } else {
+        list.insertBefore(dragSrc, this);
+      }
+      saveWidgets();
+    }
+    return false;
+  }
+  function handleDragEnd() {
+    this.classList.remove('bg-light');
+  }
+
+  var items = list.querySelectorAll('.list-group-item');
+  items.forEach(function(item) {
+    item.addEventListener('dragstart', handleDragStart);
+    item.addEventListener('dragover', handleDragOver);
+    item.addEventListener('drop', handleDrop);
+    item.addEventListener('dragend', handleDragEnd);
+  });
+
+  document.querySelectorAll('.widget-visible').forEach(function(cb) {
+    cb.addEventListener('change', function() { saveWidgets(); });
+  });
+
+  function saveWidgets() {
+    var widgetItems = list.querySelectorAll('.list-group-item');
+    var data = [];
+    widgetItems.forEach(function(item, idx) {
+      var wid = item.getAttribute('data-id');
+      var vis = item.querySelector('.widget-visible').checked;
+      data.push({ id: parseInt(wid), position: idx, visible: vis });
+    });
+    var csrfToken = '{{ csrf_token }}';
+    fetch('{% url "update_widgets" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ widgets: data })
+    }).then(function(r) {
+      if (r.ok) {
+        var el = document.getElementById('save-status');
+        el.style.display = 'block';
+        setTimeout(function() { el.style.display = 'none'; }, 2000);
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

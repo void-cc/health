@@ -263,3 +263,34 @@ class KetoneLog(models.Model):
 
     def __str__(self):
         return f"Ketone on {self.date}: {self.value} ({self.get_measurement_type_display()})"
+class DataPointAnnotation(models.Model):
+    blood_test = models.ForeignKey(BloodTest, on_delete=models.CASCADE, null=True, blank=True, related_name='annotations')
+    vital_sign = models.ForeignKey(VitalSign, on_delete=models.CASCADE, null=True, blank=True, related_name='annotations')
+    note = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        if self.blood_test:
+            return f"Note on {self.blood_test}"
+        return f"Note on {self.vital_sign}"
+
+
+class DashboardWidget(models.Model):
+    WIDGET_TYPES = [
+        ('summary_cards', 'Summary Cards'),
+        ('recent_results', 'Recent Blood Results'),
+        ('vital_signs', 'Latest Vital Signs'),
+        ('blood_charts', 'Blood Test Charts'),
+        ('vitals_charts', 'Vital Signs Charts'),
+        ('comparative_bars', 'Comparative Bar Charts'),
+        ('boxplots', 'Box Plots'),
+    ]
+    widget_type = models.CharField(max_length=50, choices=WIDGET_TYPES, unique=True)
+    position = models.IntegerField(default=0)
+    visible = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['position']
+
+    def __str__(self):
+        return f"{self.get_widget_type_display()} (pos {self.position})"

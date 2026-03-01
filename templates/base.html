@@ -69,6 +69,9 @@
       <li class="nav-item {% if request.resolver_match.url_name == 'add_test_info' %}active{% endif %}">
   <a class="nav-link" href="{% url 'add_test_info' %}">Add New Test Info</a>
 </li>
+      <li class="nav-item {% if request.resolver_match.url_name == 'bulk_edit' %}active{% endif %}">
+  <a class="nav-link" href="{% url 'bulk_edit' %}">Bulk Edit</a>
+</li>
 
         <!-- Phase 2 Dropdown -->
         <li class="nav-item dropdown">

@@ -10,14 +10,14 @@ This document outlines the strategic roadmap for the development of the comprehe
 - [x] **JSON Data Import:** Support for importing structured historical data from standard JSON formats.
 - [x] **Optical Character Recognition (OCR):** Capability to automatically extract laboratory test results directly from uploaded PDF reports.
 - [x] **HL7/FHIR Import Integration:** Capability to import records from standardized medical record formats used by hospitals.
-- [ ] **Custom Date Range Selectors:** Advanced calendar tools for filtering visualizations to specific timeframes.
-- [ ] **Moving Average Overlays:** Statistical trend lines overlaid on vital sign charts to clarify long-term trajectories.
-- [ ] **Correlative Scatter Plots:** Visual tools to plot two different health metrics against each other (e.g., weight versus blood pressure) to identify trends.
-- [ ] **Automated Anomaly Detection:** Visual highlighting of statistically significant abnormal spikes or drops in test results directly on charts.
-- [ ] **PDF Visualization Export:** High-resolution export of charts and dashboards for offline viewing or printing.
-- [ ] **Data Point Annotation:** The ability to attach qualitative personal notes to specific quantitative data points on charts.
-- [ ] **Bulk Data Editing Interface:** A spreadsheet-like interface for rapidly correcting or adjusting imported datasets.
-- [ ] **Customizable Dashboards:** Modular widget-based dashboards allowing users to prioritize their most important visualizations.
+- [x] **Custom Date Range Selectors:** Advanced calendar tools for filtering visualizations to specific timeframes.
+- [x] **Moving Average Overlays:** Statistical trend lines overlaid on vital sign charts to clarify long-term trajectories.
+- [x] **Correlative Scatter Plots:** Visual tools to plot two different health metrics against each other (e.g., weight versus blood pressure) to identify trends.
+- [x] **Automated Anomaly Detection:** Visual highlighting of statistically significant abnormal spikes or drops in test results directly on charts.
+- [x] **PDF Visualization Export:** High-resolution export of charts and dashboards for offline viewing or printing.
+- [x] **Data Point Annotation:** The ability to attach qualitative personal notes to specific quantitative data points on charts.
+- [x] **Bulk Data Editing Interface:** A spreadsheet-like interface for rapidly correcting or adjusting imported datasets.
+- [x] **Customizable Dashboards:** Modular widget-based dashboards allowing users to prioritize their most important visualizations.
 
 ## Phase 2: Vital Signs and Body Metrics
 - [ ] **Basal Body Temperature (BBT) Tracking:** Specialized module for precise temperature tracking.
