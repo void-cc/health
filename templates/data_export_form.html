@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Data Export</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="export_format" class="form-label">Export Format</label>
+      <select class="form-select" name="export_format" id="export_format">
+        <option value="json" {% if editing and entry.export_format == 'json' %}selected{% endif %}>JSON</option>
+        <option value="xml" {% if editing and entry.export_format == 'xml' %}selected{% endif %}>XML</option>
+        <option value="csv" {% if editing and entry.export_format == 'csv' %}selected{% endif %}>CSV</option>
+        <option value="pdf" {% if editing and entry.export_format == 'pdf' %}selected{% endif %}>PDF</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="status" class="form-label">Status</label>
+      <select class="form-select" name="status" id="status">
+        <option value="pending" {% if editing and entry.status == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="processing" {% if editing and entry.status == 'processing' %}selected{% endif %}>Processing</option>
+        <option value="completed" {% if editing and entry.status == 'completed' %}selected{% endif %}>Completed</option>
+        <option value="failed" {% if editing and entry.status == 'failed' %}selected{% endif %}>Failed</option>
+      </select>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'data_export_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
