@@ -300,3 +300,579 @@ class DashboardWidget(models.Model):
 
     def __str__(self):
         return f"{self.get_widget_type_display()} (pos {self.position})"
+
+
+# ===== Phase 5: Wearable Integrations =====
+
+WEARABLE_PLATFORMS = [
+    ('apple_health', 'Apple Health'),
+    ('fitbit', 'Fitbit'),
+    ('garmin', 'Garmin Connect'),
+    ('oura', 'Oura Ring'),
+    ('google_fit', 'Google Fit'),
+    ('withings', 'Withings'),
+    ('samsung_health', 'Samsung Health'),
+    ('dexcom_cgm', 'Dexcom CGM'),
+    ('strava', 'Strava'),
+]
+
+
+class WearableDevice(models.Model):
+    platform = models.CharField(max_length=50, choices=WEARABLE_PLATFORMS)
+    device_name = models.CharField(max_length=200, blank=True, default='')
+    access_token = models.TextField(blank=True, default='')
+    refresh_token = models.TextField(blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    last_synced = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.get_platform_display()} - {self.device_name or 'Unknown'}"
+
+
+class WearableSyncLog(models.Model):
+    SYNC_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+    ]
+    device = models.ForeignKey(WearableDevice, on_delete=models.CASCADE, related_name='sync_logs')
+    status = models.CharField(max_length=20, choices=SYNC_STATUS_CHOICES, default='pending')
+    records_synced = models.IntegerField(default=0)
+    error_message = models.TextField(blank=True, default='')
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Sync {self.device.get_platform_display()} - {self.status} ({self.started_at})"
+
+
+# ===== Phase 6: Sleep and Nutrition Tracking =====
+
+class SleepLog(models.Model):
+    date = models.DateField()
+    bedtime = models.TimeField(null=True, blank=True)
+    wake_time = models.TimeField(null=True, blank=True)
+    total_sleep_minutes = models.IntegerField(null=True, blank=True)
+    rem_minutes = models.IntegerField(null=True, blank=True)
+    deep_sleep_minutes = models.IntegerField(null=True, blank=True)
+    light_sleep_minutes = models.IntegerField(null=True, blank=True)
+    awake_minutes = models.IntegerField(null=True, blank=True)
+    sleep_quality_score = models.FloatField(null=True, blank=True)
+    notes = models.TextField(blank=True, default='')
+
+    @property
+    def sleep_efficiency(self):
+        if self.total_sleep_minutes is not None and self.awake_minutes is not None:
+            total = self.total_sleep_minutes + self.awake_minutes
+            if total > 0:
+                return round((self.total_sleep_minutes / total) * 100, 1)
+        return None
+
+    def __str__(self):
+        return f"Sleep on {self.date}"
+
+
+class CircadianRhythmLog(models.Model):
+    date = models.DateField()
+    wake_time = models.TimeField(null=True, blank=True)
+    sleep_onset = models.TimeField(null=True, blank=True)
+    peak_energy_time = models.TimeField(null=True, blank=True)
+    lowest_energy_time = models.TimeField(null=True, blank=True)
+    light_exposure_minutes = models.IntegerField(null=True, blank=True)
+    notes = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return f"Circadian Rhythm on {self.date}"
+
+
+class DreamJournal(models.Model):
+    date = models.DateField()
+    dream_description = models.TextField(blank=True, default='')
+    lucidity_level = models.IntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(5)]
+    )
+    mood_on_waking = models.CharField(max_length=100, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return f"Dream Journal on {self.date}"
+
+
+class MacronutrientLog(models.Model):
+    date = models.DateField()
+    protein_grams = models.FloatField(null=True, blank=True)
+    carbohydrate_grams = models.FloatField(null=True, blank=True)
+    fat_grams = models.FloatField(null=True, blank=True)
+    calories = models.FloatField(null=True, blank=True)
+    fiber_grams = models.FloatField(null=True, blank=True)
+    notes = models.TextField(blank=True, default='')
+
+    @property
+    def total_macros_grams(self):
+        p = self.protein_grams or 0
+        c = self.carbohydrate_grams or 0
+        f = self.fat_grams or 0
+        return round(p + c + f, 1)
+
+    def __str__(self):
+        return f"Macros on {self.date}"
+
+
+class MicronutrientLog(models.Model):
+    date = models.DateField()
+    nutrient_name = models.CharField(max_length=100)
+    amount = models.FloatField()
+    unit = models.CharField(max_length=20, default='mg')
+    notes = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return f"{self.nutrient_name} on {self.date}: {self.amount}{self.unit}"
+
+
+class FoodEntry(models.Model):
+    date = models.DateField()
+    food_name = models.CharField(max_length=200)
+    barcode = models.CharField(max_length=100, blank=True, default='')
+    serving_size = models.CharField(max_length=100, blank=True, default='')
+    calories = models.FloatField(null=True, blank=True)
+    protein_grams = models.FloatField(null=True, blank=True)
+    carbohydrate_grams = models.FloatField(null=True, blank=True)
+    fat_grams = models.FloatField(null=True, blank=True)
+    source = models.CharField(max_length=100, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return f"{self.food_name} on {self.date}"
+
+
+class FastingLog(models.Model):
+    date = models.DateField()
+    fast_start = models.DateTimeField(null=True, blank=True)
+    fast_end = models.DateTimeField(null=True, blank=True)
+    target_hours = models.FloatField(null=True, blank=True)
+    actual_hours = models.FloatField(null=True, blank=True)
+    notes = models.TextField(blank=True, default='')
+
+    @property
+    def goal_met(self):
+        if self.actual_hours is not None and self.target_hours is not None and self.target_hours > 0:
+            return self.actual_hours >= self.target_hours
+        return None
+
+    def __str__(self):
+        return f"Fasting on {self.date}"
+
+
+class CaffeineAlcoholLog(models.Model):
+    SUBSTANCE_CHOICES = [
+        ('caffeine', 'Caffeine'),
+        ('alcohol', 'Alcohol'),
+    ]
+    date = models.DateField()
+    substance = models.CharField(max_length=20, choices=SUBSTANCE_CHOICES)
+    amount_mg = models.FloatField(null=True, blank=True)
+    drink_name = models.CharField(max_length=200, blank=True, default='')
+    time_consumed = models.TimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return f"{self.get_substance_display()} on {self.date}"
+
+
+# ===== Phase 7: Multi-User Release Preparations =====
+
+class UserProfile(models.Model):
+    ROLE_CHOICES = [
+        ('admin', 'Administrator'),
+        ('user', 'Standard User'),
+        ('practitioner', 'Medical Practitioner'),
+    ]
+    username = models.CharField(max_length=150, unique=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.username} ({self.get_role_display()})"
+
+
+class FamilyAccount(models.Model):
+    primary_user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='family_members')
+    member_name = models.CharField(max_length=200)
+    relationship = models.CharField(max_length=100, blank=True, default='')
+    is_minor = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.member_name} (under {self.primary_user.username})"
+
+
+class EncryptionKey(models.Model):
+    key_identifier = models.CharField(max_length=255, unique=True)
+    public_key = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Key {self.key_identifier}"
+
+
+class AuditLog(models.Model):
+    action = models.CharField(max_length=200)
+    details = models.TextField(blank=True, default='')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.action} at {self.created_at}"
+
+
+class APIRateLimitConfig(models.Model):
+    endpoint = models.CharField(max_length=255, unique=True)
+    max_requests_per_minute = models.IntegerField(default=60)
+    max_requests_per_hour = models.IntegerField(default=1000)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Rate Limit: {self.endpoint} ({self.max_requests_per_minute}/min)"
+
+
+class ConsentLog(models.Model):
+    consent_type = models.CharField(max_length=100)
+    version = models.CharField(max_length=20)
+    accepted = models.BooleanField(default=False)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Consent: {self.consent_type} v{self.version}"
+
+
+class TenantConfig(models.Model):
+    tenant_name = models.CharField(max_length=200, unique=True)
+    is_active = models.BooleanField(default=True)
+    data_isolation_level = models.CharField(max_length=50, default='full')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Tenant: {self.tenant_name}"
+
+
+class AdminTelemetry(models.Model):
+    metric_name = models.CharField(max_length=200)
+    metric_value = models.FloatField()
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.metric_name}: {self.metric_value}"
+
+
+# ===== Phase 8: Advanced Health Analytics and AI =====
+
+class PredictiveBiomarker(models.Model):
+    biomarker_name = models.CharField(max_length=100)
+    predicted_value = models.FloatField()
+    confidence_percent = models.FloatField(null=True, blank=True)
+    prediction_date = models.DateField()
+    generated_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return f"Prediction: {self.biomarker_name} on {self.prediction_date}"
+
+
+class HealthReport(models.Model):
+    REPORT_TYPES = [
+        ('monthly', 'Monthly Summary'),
+        ('quarterly', 'Quarterly Review'),
+        ('annual', 'Annual Report'),
+    ]
+    report_type = models.CharField(max_length=20, choices=REPORT_TYPES, default='monthly')
+    title = models.CharField(max_length=200)
+    content = models.TextField(blank=True, default='')
+    period_start = models.DateField()
+    period_end = models.DateField()
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.period_start} - {self.period_end})"
+
+
+class ClinicalTrialMatch(models.Model):
+    trial_id = models.CharField(max_length=100)
+    trial_title = models.CharField(max_length=500)
+    condition = models.CharField(max_length=200)
+    match_score = models.FloatField(null=True, blank=True)
+    status = models.CharField(max_length=50, blank=True, default='')
+    url = models.URLField(blank=True, default='')
+    found_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Trial: {self.trial_title[:50]}"
+
+
+class BiologicalAgeCalculation(models.Model):
+    date = models.DateField()
+    chronological_age = models.FloatField()
+    biological_age = models.FloatField()
+    method = models.CharField(max_length=100, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+
+    @property
+    def age_difference(self):
+        return round(self.biological_age - self.chronological_age, 1)
+
+    def __str__(self):
+        return f"Bio Age on {self.date}: {self.biological_age} (chrono: {self.chronological_age})"
+
+
+class MedicationSchedule(models.Model):
+    medication_name = models.CharField(max_length=200)
+    dosage = models.CharField(max_length=100)
+    frequency = models.CharField(max_length=100)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    time_of_day = models.TimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return f"{self.medication_name} - {self.dosage}"
+
+
+class PharmacologicalInteraction(models.Model):
+    SEVERITY_CHOICES = [
+        ('low', 'Low'),
+        ('moderate', 'Moderate'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+    medication_a = models.CharField(max_length=200)
+    medication_b = models.CharField(max_length=200)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='low')
+    description = models.TextField(blank=True, default='')
+    detected_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Interaction: {self.medication_a} x {self.medication_b} ({self.severity})"
+
+
+class HealthGoal(models.Model):
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('completed', 'Completed'),
+        ('paused', 'Paused'),
+    ]
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default='')
+    target_value = models.FloatField(null=True, blank=True)
+    current_value = models.FloatField(null=True, blank=True)
+    unit = models.CharField(max_length=50, blank=True, default='')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    start_date = models.DateField()
+    target_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def progress_percent(self):
+        if self.target_value is not None and self.current_value is not None and self.target_value > 0:
+            return round((self.current_value / self.target_value) * 100, 1)
+        return None
+
+    def __str__(self):
+        return f"Goal: {self.title} ({self.status})"
+
+
+class CriticalAlert(models.Model):
+    ALERT_LEVELS = [
+        ('warning', 'Warning'),
+        ('critical', 'Critical'),
+        ('emergency', 'Emergency'),
+    ]
+    metric_name = models.CharField(max_length=100)
+    metric_value = models.FloatField()
+    threshold_value = models.FloatField()
+    alert_level = models.CharField(max_length=20, choices=ALERT_LEVELS, default='warning')
+    message = models.TextField(blank=True, default='')
+    acknowledged = models.BooleanField(default=False)
+    triggered_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Alert: {self.metric_name} ({self.alert_level})"
+
+
+# ===== Phase 9: Export, Sharing, and Practitioner Access =====
+
+class SecureViewingLink(models.Model):
+    token = models.CharField(max_length=255, unique=True)
+    data_types = models.CharField(max_length=500, blank=True, default='')
+    expires_at = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    access_count = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"Secure Link (expires {self.expires_at})"
+
+
+class PractitionerAccess(models.Model):
+    ACCESS_STATUS = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('revoked', 'Revoked'),
+    ]
+    practitioner_name = models.CharField(max_length=200)
+    practitioner_email = models.EmailField()
+    specialty = models.CharField(max_length=100, blank=True, default='')
+    access_status = models.CharField(max_length=20, choices=ACCESS_STATUS, default='pending')
+    granted_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Dr. {self.practitioner_name} - {self.access_status}"
+
+
+class IntakeSummary(models.Model):
+    title = models.CharField(max_length=200)
+    summary_text = models.TextField(blank=True, default='')
+    conditions = models.TextField(blank=True, default='')
+    medications = models.TextField(blank=True, default='')
+    allergies = models.TextField(blank=True, default='')
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Intake Summary: {self.title}"
+
+
+class DataExportRequest(models.Model):
+    FORMAT_CHOICES = [
+        ('json', 'JSON'),
+        ('xml', 'XML'),
+        ('csv', 'CSV'),
+        ('pdf', 'PDF'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    export_format = models.CharField(max_length=10, choices=FORMAT_CHOICES, default='json')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    file_path = models.CharField(max_length=500, blank=True, default='')
+
+    def __str__(self):
+        return f"Export ({self.export_format}) - {self.status}"
+
+
+class StakeholderEmail(models.Model):
+    FREQUENCY_CHOICES = [
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('quarterly', 'Quarterly'),
+    ]
+    recipient_name = models.CharField(max_length=200)
+    recipient_email = models.EmailField()
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='monthly')
+    is_active = models.BooleanField(default=True)
+    last_sent = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Email to {self.recipient_name} ({self.frequency})"
+
+
+# ===== Phases 10-12: Integration Sub-tasks =====
+
+INTEGRATION_CATEGORIES = [
+    ('genomics', 'Genomics'),
+    ('blockchain', 'Blockchain'),
+    ('reproductive_health', 'Reproductive Health'),
+    ('dicom', 'DICOM'),
+    ('mental_health', 'Mental Health'),
+    ('predictive_analytics', 'Predictive Analytics'),
+    ('ihe_xdm', 'IHE_XDM'),
+    ('machine_learning', 'Machine Learning'),
+    ('macronutrients', 'Macronutrients'),
+    ('micronutrients', 'Micronutrients'),
+    ('nutrition', 'Nutrition'),
+    ('cognitive_tracking', 'Cognitive Tracking'),
+    ('telehealth', 'Telehealth'),
+    ('garmin', 'Garmin'),
+    ('fitbit', 'Fitbit'),
+    ('oura', 'Oura'),
+    ('apple_health', 'Apple Health'),
+    ('withings', 'Withings'),
+    ('sleep_architecture', 'Sleep Architecture'),
+    ('circadian_rhythm', 'Circadian Rhythm'),
+    ('chronic_disease', 'Chronic Disease'),
+    ('gamification', 'Gamification'),
+    ('hl7_v3', 'HL7 v3'),
+    ('fhir_r4', 'FHIR R4'),
+    ('decentralized_identity', 'Decentralized Identity'),
+]
+
+INTEGRATION_FEATURE_TYPES = [
+    ('export', 'Export Capabilities'),
+    ('data_pipeline', 'Data Pipeline'),
+    ('predictive_modeling', 'Predictive Modeling'),
+    ('reporting', 'Reporting Tools'),
+    ('anomaly_detection', 'Anomaly Detection'),
+    ('user_dashboard', 'User Dashboard'),
+    ('api_syncing', 'API Syncing'),
+    ('mobile_integration', 'Mobile Integration'),
+    ('secure_storage', 'Secure Storage'),
+    ('data_visualization', 'Data Visualization'),
+    ('real_time_monitoring', 'Real-Time Monitoring'),
+    ('automated_alerts', 'Automated Alerts'),
+]
+
+
+class IntegrationConfig(models.Model):
+    category = models.CharField(max_length=50, choices=INTEGRATION_CATEGORIES)
+    feature_type = models.CharField(max_length=50, choices=INTEGRATION_FEATURE_TYPES)
+    is_enabled = models.BooleanField(default=False)
+    configuration = models.JSONField(default=dict, blank=True)
+    last_run = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['category', 'feature_type']
+
+    def __str__(self):
+        return f"{self.get_category_display()} - {self.get_feature_type_display()}"
+
+
+class IntegrationSubTask(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    PHASE_CHOICES = [
+        (10, 'Phase 10: Genomics & Personalized Medicine'),
+        (11, 'Phase 11: Interoperability'),
+        (12, 'Phase 12: Continuous Monitoring & Alerts'),
+    ]
+    phase = models.IntegerField(choices=PHASE_CHOICES)
+    sub_task_number = models.IntegerField()
+    title = models.CharField(max_length=300)
+    category = models.CharField(max_length=50, choices=INTEGRATION_CATEGORIES)
+    feature_type = models.CharField(max_length=50, choices=INTEGRATION_FEATURE_TYPES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    details = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ['phase', 'sub_task_number']
+        ordering = ['phase', 'sub_task_number']
+
+    def __str__(self):
+        return f"Phase {self.phase} Sub-task {self.sub_task_number}: {self.title}"
