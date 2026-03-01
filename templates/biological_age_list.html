@@ -25,7 +25,7 @@
         <td>{% if entry.date %}{{ entry.date|date:"Y-m-d" }}{% else %}-{% endif %}</td>
         <td>{% if entry.chronological_age is not None %}{{ entry.chronological_age }}{% else %}-{% endif %}</td>
         <td>{% if entry.biological_age is not None %}{{ entry.biological_age }}{% else %}-{% endif %}</td>
-        <td>{% if entry.difference is not None %}{{ entry.difference }}{% else %}-{% endif %}</td>
+        <td>{% if entry.age_difference is not None %}{{ entry.age_difference }}{% else %}-{% endif %}</td>
         <td>{% if entry.method %}{{ entry.method }}{% else %}-{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
