@@ -3,3 +3,8 @@ flask_sqlalchemy
 gunicorn
 Flask-WTF
 psycopg2-binary>=2.9.0
+pdf2image
+pytesseract
+pdfplumber
+thefuzz
+python-Levenshtein

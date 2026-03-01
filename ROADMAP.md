@@ -7,8 +7,8 @@ This document outlines the strategic roadmap for the development of the comprehe
 - [x] **Comparative Bar Charts:** Visualizations comparing current individual results against standardized optimal normal ranges.
 - [x] **Box-and-Whisker Plots:** Statistical visualizations to display variance and distribution in frequently tested metrics.
 - [x] **CSV Importation Engine:** Robust support for importing historical blood test results and vital signs via CSV files.
-- [ ] **JSON Data Import:** Support for importing structured historical data from standard JSON formats.
-- [ ] **Optical Character Recognition (OCR):** Capability to automatically extract laboratory test results directly from uploaded PDF reports.
+- [x] **JSON Data Import:** Support for importing structured historical data from standard JSON formats.
+- [x] **Optical Character Recognition (OCR):** Capability to automatically extract laboratory test results directly from uploaded PDF reports.
 - [ ] **HL7/FHIR Import Integration:** Capability to import records from standardized medical record formats used by hospitals.
 - [ ] **Custom Date Range Selectors:** Advanced calendar tools for filtering visualizations to specific timeframes.
 - [ ] **Moving Average Overlays:** Statistical trend lines overlaid on vital sign charts to clarify long-term trajectories.

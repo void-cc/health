@@ -5,7 +5,13 @@ from models import db, BloodTest, BloodTestInfo, VitalSign
 from datetime import datetime
 from flask_wtf.csrf import CSRFProtect
 import io
+import json
+import re
 from flask import Response
+import pdf2image
+import pytesseract
+import pdfplumber
+from thefuzz import process, fuzz
 
 test_url = os.getenv('DATABASE_URL')
 print(test_url)
@@ -55,11 +61,28 @@ def load_test_info():
                 'normal_max': normal_max,
                 'category': category
             }
+
+    # Also ensure the database is populated with these if empty
+    # Note: We must be in an app context here if called during init, or handle it carefully
     return test_info
 
 
 # Initialize TEST_INFO
 TEST_INFO = load_test_info()
+
+with app.app_context():
+    # Populate BloodTestInfo table if empty
+    if BloodTestInfo.query.count() == 0:
+        for t_name, info in TEST_INFO.items():
+            new_info = BloodTestInfo(
+                test_name=t_name,
+                unit=info['unit'] if info['unit'] is not None else "",
+                normal_min=info['normal_min'],
+                normal_max=info['normal_max'],
+                category=info['category']
+            )
+            db.session.add(new_info)
+        db.session.commit()
 
 
 @app.route('/')
@@ -452,26 +475,123 @@ def history():
 @app.route('/import', methods=['GET', 'POST'])
 def import_data():
     if request.method == 'POST':
-        if 'csv_file' not in request.files:
+        if 'file' not in request.files:
             flash('No file part', 'danger')
             return redirect(request.url)
-        file = request.files['csv_file']
+        file = request.files['file']
         if file.filename == '':
             flash('No selected file', 'danger')
             return redirect(request.url)
-        if not file.filename.endswith('.csv'):
-            flash('Please upload a .csv file', 'danger')
+
+        allowed_extensions = ('.csv', '.json', '.pdf')
+        if not file.filename.lower().endswith(allowed_extensions):
+            flash('Please upload a .csv, .json, or .pdf file', 'danger')
             return redirect(request.url)
 
         try:
-            stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-            csv_input = csv.DictReader(stream)
+            file_data = []
+
+            if file.filename.lower().endswith('.csv'):
+                stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+                csv_input = csv.DictReader(stream)
+                file_data = list(csv_input)
+            elif file.filename.lower().endswith('.json'):
+                file_data = json.load(file.stream)
+                if not isinstance(file_data, list):
+                    flash('JSON file must contain a list of objects.', 'danger')
+                    return redirect(request.url)
+            elif file.filename.lower().endswith('.pdf'):
+                pdf_bytes = file.read()
+                text = ""
+
+                # Try pdfplumber first
+                try:
+                    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                        for page in pdf.pages:
+                            page_text = page.extract_text()
+                            if page_text:
+                                text += page_text + "\n"
+
+                            # Also extract tables to catch well-formatted reports
+                            tables = page.extract_tables()
+                            for table in tables:
+                                for row in table:
+                                    row_text = " ".join([str(cell) for cell in row if cell])
+                                    if row_text not in text:
+                                        text += row_text + "\n"
+                except Exception as e:
+                    print(f"pdfplumber failed: {e}")
+
+                # Fallback to OCR if text is sparse (e.g. scanned image PDF)
+                if len(text.strip()) < 50:
+                    text = ""
+                    images = pdf2image.convert_from_bytes(pdf_bytes)
+                    for img in images:
+                        text += pytesseract.image_to_string(img) + "\n"
+
+                # Attempt to extract date
+                date_match = re.search(r'(\d{4}-\d{2}-\d{2})|(\d{1,2}/\d{1,2}/\d{4})', text)
+                pdf_date_str = None
+                if date_match:
+                    if date_match.group(1):
+                        pdf_date_str = date_match.group(1)
+                    else:
+                        try:
+                            pdf_date_str = datetime.strptime(date_match.group(2), "%m/%d/%Y").strftime("%Y-%m-%d")
+                        except ValueError:
+                            pass
+                if not pdf_date_str:
+                    pdf_date_str = datetime.now().date().strftime('%Y-%m-%d')
+
+                # Fetch test names from the database model BloodTestInfo instead of relying on the global TEST_INFO dict
+                blood_test_infos = BloodTestInfo.query.all()
+                db_test_names = [bti.test_name for bti in blood_test_infos]
+
+                # If BloodTestInfo is somehow empty, fallback to TEST_INFO keys to be safe, but prioritize db
+                test_names = db_test_names if db_test_names else list(TEST_INFO.keys())
+
+                # Try to extract blood test results robustly
+                for line in text.split('\n'):
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    # Find potential test names using fuzzy matching
+                    best_match = process.extractOne(line, test_names, scorer=fuzz.partial_ratio)
+
+                    if best_match and best_match[1] > 85: # High confidence threshold
+                        t_name = best_match[0]
+                        # Ensure the length of the matched substring isn't suspiciously short compared to the full name
+                        # (to avoid e.g. "K" matching random letters)
+                        if len(t_name) <= 3 and t_name not in line.split():
+                            continue
+
+                        # Find all numbers in the line
+                        nums = re.findall(r"[-+]?\d*\.\d+|\d+", line)
+                        if nums:
+                            val = None
+
+                            # Common heuristic: First number after the test name is usually the result
+                            # Or if the line has structure: Test Name | Result | Units | Reference
+                            # We can just take the first number as a good guess, or filter out known reference range numbers.
+                            # For simplicity and effectiveness, we take the first number.
+                            val = nums[0]
+
+                            # Avoid duplicate test parsing for the same day in one report
+                            already_added = any(d.get("Name") == t_name for d in file_data)
+                            if not already_added:
+                                file_data.append({
+                                    "Date": pdf_date_str,
+                                    "Type": "Blood Test",
+                                    "Name": t_name,
+                                    "Value": val
+                                })
 
             imported_tests = 0
             imported_vitals = 0
             skipped_rows = 0
 
-            for row in csv_input:
+            for row in file_data:
                 try:
                     date_str = row.get('Date')
                     if not date_str:
