@@ -138,6 +138,26 @@ def chart(test_name):
     values = [test.value for test in tests]
     return render_template('chart.html', dates=dates, values=values, test_name=test_name)
 
+@app.route('/blood_tests/charts')
+def blood_tests_charts():
+    tests = BloodTest.query.order_by(BloodTest.date).all()
+    # Group tests by test_name
+    charts_data = {}
+    for test in tests:
+        if test.test_name not in charts_data:
+            charts_data[test.test_name] = {
+                'unit': test.unit,
+                'data': [],
+                'normal_min': test.normal_min,
+                'normal_max': test.normal_max
+            }
+        charts_data[test.test_name]['data'].append({
+            'x': test.date.strftime('%Y-%m-%d'),
+            'y': test.value
+        })
+
+    return render_template('blood_charts.html', charts_data=charts_data)
+
 @app.route('/add', methods=['GET', 'POST'])
 def add_test():
     if request.method == 'POST':
@@ -270,6 +290,20 @@ def edit_test(test_id):
 def vitals():
     all_vitals = VitalSign.query.order_by(VitalSign.date.desc()).all()
     return render_template('vitals.html', vitals=all_vitals)
+
+@app.route('/vitals/charts')
+def vitals_charts():
+    vitals = VitalSign.query.order_by(VitalSign.date).all()
+    weight_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.weight} for v in vitals if v.weight is not None]
+    hr_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.heart_rate} for v in vitals if v.heart_rate is not None]
+    sys_bp_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.systolic_bp} for v in vitals if v.systolic_bp is not None]
+    dia_bp_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.diastolic_bp} for v in vitals if v.diastolic_bp is not None]
+
+    return render_template('vitals_charts.html',
+                           weight_data=weight_data,
+                           hr_data=hr_data,
+                           sys_bp_data=sys_bp_data,
+                           dia_bp_data=dia_bp_data)
 
 @app.route('/vitals/add', methods=['GET', 'POST'])
 def add_vitals():
