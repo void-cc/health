@@ -16,6 +16,7 @@ import io
 import json
 import re
 from django.http import HttpResponse, JsonResponse
+from django.db.models import Q as models_Q
 
 def index(request):
     tests = BloodTest.objects.all().order_by('-date')
@@ -1587,3 +1588,74 @@ def update_widgets(request):
         except (json.JSONDecodeError, KeyError):
             return JsonResponse({'status': 'error', 'message': 'Invalid data'}, status=400)
     return JsonResponse({'status': 'error', 'message': 'POST required'}, status=405)
+
+
+def global_search(request):
+    """Phase 3: Global search API endpoint for finding tests, vitals, and journal entries."""
+    q = request.GET.get('q', '').strip()
+    if not q or len(q) < 2:
+        return JsonResponse({'results': []})
+
+    results = []
+
+    # Search Blood Tests
+    blood_tests = BloodTest.objects.filter(
+        models_Q(test_name__icontains=q) | models_Q(category__icontains=q)
+    ).order_by('-date')[:10]
+    for t in blood_tests:
+        results.append({
+            'type': 'blood_test',
+            'icon': 'fa-vial',
+            'name': t.test_name,
+            'value': f"{t.value} {t.unit}",
+            'date': t.date.isoformat(),
+            'url': reverse('chart', args=[t.test_name]),
+        })
+
+    # Search Vital Signs by date
+    try:
+        from datetime import date as date_cls
+        if re.match(r'^\d{4}-\d{2}-\d{2}$', q):
+            search_date = date_cls.fromisoformat(q)
+            vitals = VitalSign.objects.filter(date=search_date)[:5]
+            for v in vitals:
+                results.append({
+                    'type': 'vital_sign',
+                    'icon': 'fa-heartbeat',
+                    'name': f"Vitals on {v.date}",
+                    'value': f"HR: {v.heart_rate or 'N/A'}, BP: {v.systolic_bp or 'N/A'}/{v.diastolic_bp or 'N/A'}",
+                    'date': v.date.isoformat(),
+                    'url': reverse('vitals'),
+                })
+    except (ValueError, TypeError):
+        pass
+
+    # Search Symptom Journal
+    symptoms = SymptomJournal.objects.filter(
+        models_Q(symptom__icontains=q) | models_Q(notes__icontains=q)
+    ).order_by('-date')[:5]
+    for s in symptoms:
+        results.append({
+            'type': 'symptom',
+            'icon': 'fa-notes-medical',
+            'name': f"Symptom: {s.symptom[:50]}",
+            'value': f"Severity: {s.severity}/5" if s.severity else '',
+            'date': s.date.isoformat(),
+            'url': reverse('symptom_list'),
+        })
+
+    # Search Annotations
+    annotations = DataPointAnnotation.objects.filter(
+        note__icontains=q
+    ).order_by('-created_at')[:5]
+    for a in annotations:
+        results.append({
+            'type': 'annotation',
+            'icon': 'fa-sticky-note',
+            'name': f"Note: {a.note[:50]}",
+            'value': '',
+            'date': a.created_at.isoformat() if a.created_at else '',
+            'url': reverse('index'),
+        })
+
+    return JsonResponse({'results': results})

@@ -1146,3 +1146,225 @@ class PDFExportTests(TestCase):
         response = self.client.get(reverse('chart', kwargs={'test_name': 'Hemoglobin'}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Export PDF')
+
+
+class Phase3DarkModeTests(TestCase):
+    """Phase 3: Dark mode toggle and theme infrastructure."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_base_template_has_dark_mode_toggle(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'dark-mode-toggle')
+
+    def test_base_template_has_data_theme_attribute(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'data-theme=')
+
+    def test_phase3_css_loaded(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'css/phase3.css')
+
+    def test_phase3_js_loaded(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'js/phase3.js')
+
+
+class Phase3NavigationTests(TestCase):
+    """Phase 3: Sidebar navigation system."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_sidebar_present(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'sidebar')
+        self.assertContains(response, 'sidebar-toggle')
+
+    def test_sidebar_has_categories(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'sidebar-category')
+        self.assertContains(response, 'Body &amp; Metrics')
+        self.assertContains(response, 'Charts &amp; Visualizations')
+        self.assertContains(response, 'Health Tracking')
+        self.assertContains(response, 'Data Management')
+
+    def test_sidebar_has_all_nav_links(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Dashboard')
+        self.assertContains(response, 'Vitals')
+        self.assertContains(response, 'History')
+        self.assertContains(response, 'Body Composition')
+        self.assertContains(response, 'Hydration')
+        self.assertContains(response, 'Pain Mapping')
+
+
+class Phase3AccessibilityTests(TestCase):
+    """Phase 3: WCAG 2.1 AA compliance features."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_skip_to_content_link(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'skip-to-content')
+        self.assertContains(response, 'Skip to main content')
+
+    def test_main_content_landmark(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'role="main"')
+
+    def test_nav_has_aria_label(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'aria-label="Main navigation"')
+
+    def test_buttons_have_aria_labels(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'aria-label="Toggle dark mode"')
+        self.assertContains(response, 'aria-label="Toggle navigation"')
+
+    def test_lang_attribute_present(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'lang="en"')
+
+    def test_search_has_role(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'role="search"')
+
+
+class Phase3QuickEntryTests(TestCase):
+    """Phase 3: Quick-entry vitals modal."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_quick_entry_button_present(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'quick-entry-btn')
+
+    def test_quick_entry_modal_present(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'quickEntryModal')
+        self.assertContains(response, 'Quick Vital Sign Entry')
+
+    def test_quick_entry_modal_has_fields(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'qe-weight')
+        self.assertContains(response, 'qe-hr')
+        self.assertContains(response, 'qe-systolic')
+        self.assertContains(response, 'qe-diastolic')
+        self.assertContains(response, 'qe-spo2')
+
+
+class Phase3PWATests(TestCase):
+    """Phase 3: Progressive Web App features."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_manifest_link_present(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'manifest.json')
+
+    def test_theme_color_present(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'theme-color')
+
+    def test_service_worker_js_registered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'js/phase3.js')
+
+
+class Phase3GlobalSearchTests(TestCase):
+    """Phase 3: Global search API."""
+
+    def setUp(self):
+        self.client = Client()
+        BloodTest.objects.create(
+            test_name="Hemoglobin", value=15.0, unit="g/dL",
+            date=date(2026, 1, 15), normal_min=13.8, normal_max=17.2,
+            category="Blood Count"
+        )
+
+    def test_search_api_endpoint_exists(self):
+        response = self.client.get(reverse('global_search'), {'q': 'hemo'})
+        self.assertEqual(response.status_code, 200)
+
+    def test_search_returns_json(self):
+        response = self.client.get(reverse('global_search'), {'q': 'hemo'})
+        self.assertEqual(response['Content-Type'], 'application/json')
+        data = json.loads(response.content)
+        self.assertIn('results', data)
+
+    def test_search_finds_blood_test(self):
+        response = self.client.get(reverse('global_search'), {'q': 'Hemoglobin'})
+        data = json.loads(response.content)
+        self.assertTrue(len(data['results']) > 0)
+        self.assertEqual(data['results'][0]['type'], 'blood_test')
+        self.assertEqual(data['results'][0]['name'], 'Hemoglobin')
+
+    def test_search_short_query_returns_empty(self):
+        response = self.client.get(reverse('global_search'), {'q': 'a'})
+        data = json.loads(response.content)
+        self.assertEqual(len(data['results']), 0)
+
+    def test_search_empty_query_returns_empty(self):
+        response = self.client.get(reverse('global_search'), {'q': ''})
+        data = json.loads(response.content)
+        self.assertEqual(len(data['results']), 0)
+
+    def test_search_no_match(self):
+        response = self.client.get(reverse('global_search'), {'q': 'zzzznonexistent'})
+        data = json.loads(response.content)
+        self.assertEqual(len(data['results']), 0)
+
+    def test_search_input_in_template(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'global-search-input')
+
+
+class Phase3MedicalTooltipTests(TestCase):
+    """Phase 3: Medical tooltips on forms and labels."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_tooltips_on_quick_entry(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'data-medical-tooltip')
+
+    def test_tooltip_content_present(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Blood oxygen saturation')
+        self.assertContains(response, 'Resting heart rate')
+
+
+class Phase3VoiceInputTests(TestCase):
+    """Phase 3: Voice-to-text integration."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_voice_button_present(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'voice-input-btn')
+
+    def test_voice_button_has_aria(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'aria-label="Voice search"')
+
+
+class Phase3OnboardingTests(TestCase):
+    """Phase 3: Onboarding tour button."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_tour_button_present(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'start-tour-btn')
+
+    def test_tour_button_has_label(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Start guided tour')

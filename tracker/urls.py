@@ -95,4 +95,7 @@ urlpatterns = [
     # Customizable Dashboard
     path('dashboard/customize/', views.customize_dashboard, name='customize_dashboard'),
     path('dashboard/update_widgets/', views.update_widgets, name='update_widgets'),
+
+    # Phase 3: Global Search API
+    path('api/search/', views.global_search, name='global_search'),
 ]
