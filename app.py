@@ -1,9 +1,11 @@
 import csv
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
-from models import db, BloodTest, BloodTestInfo
+from models import db, BloodTest, BloodTestInfo, VitalSign
 from datetime import datetime
 from flask_wtf.csrf import CSRFProtect
+import io
+from flask import Response
 
 test_url = os.getenv('DATABASE_URL')
 print(test_url)
@@ -37,6 +39,7 @@ def load_test_info():
             unit = row['unit']
             normal_min = row['normal_min']
             normal_max = row['normal_max']
+            category = row.get('category', 'Uncategorized')
 
             # Handle tests without numerical normal ranges
             try:
@@ -49,7 +52,8 @@ def load_test_info():
             test_info[test_name] = {
                 'unit': unit,
                 'normal_min': normal_min,
-                'normal_max': normal_max
+                'normal_max': normal_max,
+                'category': category
             }
     return test_info
 
@@ -63,10 +67,24 @@ def index():
     tests = BloodTest.query.order_by(BloodTest.date.desc()).all()
     test_types = set(test.test_name for test in tests)
 
+    # Calculate Summary Stats
+    total_tests = len(tests)
+    out_of_range = sum(1 for test in tests if test.normal_min is not None and test.normal_max is not None and not (test.normal_min <= test.value <= test.normal_max))
+    latest_vitals = VitalSign.query.order_by(VitalSign.date.desc()).first()
+
     # Create a dictionary to store the normal ranges for each test so that
     # we can display them as progress bars in the template. But adjust the
     # length of the progress bar based on the value of the test.
     bars = {}
+
+    # Group tests by category
+    tests_by_category = {}
+    for test in tests:
+        cat = test.category or 'Uncategorized'
+        if cat not in tests_by_category:
+            tests_by_category[cat] = []
+        tests_by_category[cat].append(test)
+
     for test in tests:
         if test.normal_min is not None and test.normal_max is not None:
             # Prevent division by zero if normal_min == normal_max
@@ -108,7 +126,9 @@ def index():
                 'unit': test.unit
             }
 
-    return render_template('index.html', tests=tests, test_types=test_types, bars=bars)
+    return render_template('index.html', tests=tests, test_types=test_types, bars=bars,
+                           total_tests=total_tests, out_of_range=out_of_range,
+                           latest_vitals=latest_vitals, tests_by_category=tests_by_category)
 
 
 @app.route('/chart/<test_name>')
@@ -158,7 +178,8 @@ def add_test():
                 unit=test_info['unit'],
                 date=date,
                 normal_min=test_info['normal_min'],
-                normal_max=test_info['normal_max']
+                normal_max=test_info['normal_max'],
+                category=test_info.get('category', 'Uncategorized')
             )
             db.session.add(new_test)
             tests_added += 1
@@ -186,6 +207,7 @@ def add_test_info():
         unit = request.form['unit']
         normal_min = request.form['normal_min']
         normal_max = request.form['normal_max']
+        category = request.form.get('category', 'Uncategorized')
 
         # Validate inputs
         if not test_name or not unit or not normal_min or not normal_max:
@@ -195,7 +217,7 @@ def add_test_info():
         # Append the new test to the CSV file
         with open('blood_tests.csv', mode='a', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow([test_name, unit, normal_min, normal_max])
+            writer.writerow([test_name, unit, normal_min, normal_max, category])
 
         # Reload TEST_INFO
         global TEST_INFO
@@ -243,6 +265,192 @@ def edit_test(test_id):
     else:
         return render_template('edit.html', test=test)
 
+
+@app.route('/vitals')
+def vitals():
+    all_vitals = VitalSign.query.order_by(VitalSign.date.desc()).all()
+    return render_template('vitals.html', vitals=all_vitals)
+
+@app.route('/vitals/add', methods=['GET', 'POST'])
+def add_vitals():
+    if request.method == 'POST':
+        date_str = request.form.get('date')
+        weight = request.form.get('weight')
+        heart_rate = request.form.get('heart_rate')
+        systolic_bp = request.form.get('systolic_bp')
+        diastolic_bp = request.form.get('diastolic_bp')
+
+        if not date_str:
+            flash('Please select a date.', 'danger')
+            return redirect(url_for('add_vitals'))
+
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+
+        try:
+            new_vital = VitalSign(
+                date=date,
+                weight=float(weight) if weight else None,
+                heart_rate=int(heart_rate) if heart_rate else None,
+                systolic_bp=int(systolic_bp) if systolic_bp else None,
+                diastolic_bp=int(diastolic_bp) if diastolic_bp else None
+            )
+            db.session.add(new_vital)
+            db.session.commit()
+            flash('Vital signs added successfully!', 'success')
+            return redirect(url_for('vitals'))
+        except Exception as e:
+            db.session.rollback()
+            flash('Error adding vital signs. Please try again.', 'danger')
+            return redirect(url_for('add_vitals'))
+    return render_template('add_vitals.html', date=datetime.now().strftime('%Y-%m-%d'))
+
+
+@app.route('/vitals/edit/<int:vital_id>', methods=['GET', 'POST'])
+def edit_vitals(vital_id):
+    vital = VitalSign.query.get_or_404(vital_id)
+
+    if request.method == 'POST':
+        date_str = request.form.get('date')
+        weight = request.form.get('weight')
+        heart_rate = request.form.get('heart_rate')
+        systolic_bp = request.form.get('systolic_bp')
+        diastolic_bp = request.form.get('diastolic_bp')
+
+        try:
+            vital.date = datetime.strptime(date_str, '%Y-%m-%d')
+            vital.weight = float(weight) if weight else None
+            vital.heart_rate = int(heart_rate) if heart_rate else None
+            vital.systolic_bp = int(systolic_bp) if systolic_bp else None
+            vital.diastolic_bp = int(diastolic_bp) if diastolic_bp else None
+
+            db.session.commit()
+            flash('Vital signs updated successfully!', 'success')
+            return redirect(url_for('vitals'))
+        except Exception as e:
+            db.session.rollback()
+            flash('Error updating vital signs. Please try again.', 'danger')
+            return redirect(url_for('edit_vitals', vital_id=vital.id))
+
+    return render_template('edit_vitals.html', vital=vital)
+
+
+@app.route('/vitals/delete/<int:vital_id>', methods=['POST'])
+def delete_vitals(vital_id):
+    vital = VitalSign.query.get_or_404(vital_id)
+    try:
+        db.session.delete(vital)
+        db.session.commit()
+        flash('Vital sign deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error deleting vital sign. Please try again.', 'danger')
+    return redirect(url_for('vitals'))
+
+
+@app.route('/history')
+def history():
+    tests = BloodTest.query.order_by(BloodTest.date.desc()).all()
+    vitals = VitalSign.query.order_by(VitalSign.date.desc()).all()
+
+    # Combine and sort all records by date
+    history_items = []
+    for test in tests:
+        history_items.append({
+            'type': 'Blood Test',
+            'date': test.date,
+            'name': test.test_name,
+            'value': f"{test.value} {test.unit}",
+            'notes': f"Range: {test.normal_min} - {test.normal_max} {test.unit}" if test.normal_min is not None and test.normal_max is not None else "",
+            'status': 'Normal' if test.normal_min is not None and test.normal_max is not None and test.normal_min <= test.value <= test.normal_max else ('Out of Range' if test.normal_min is not None and test.normal_max is not None else 'N/A')
+        })
+
+    for vital in vitals:
+        bp_str = f"{vital.systolic_bp}/{vital.diastolic_bp} mmHg" if vital.systolic_bp and vital.diastolic_bp else ""
+        hr_str = f"{vital.heart_rate} bpm" if vital.heart_rate else ""
+        weight_str = f"{vital.weight} kg" if vital.weight else ""
+
+        details = [val for val in [weight_str, hr_str, bp_str] if val]
+
+        history_items.append({
+            'type': 'Vitals',
+            'date': vital.date,
+            'name': 'Vital Signs',
+            'value': ", ".join(details),
+            'notes': '',
+            'status': 'N/A'
+        })
+
+    history_items.sort(key=lambda x: x['date'], reverse=True)
+
+    return render_template('history.html', history=history_items)
+
+
+@app.route('/export')
+def export_data():
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header
+    writer.writerow(['Date', 'Type', 'Name', 'Value', 'Unit', 'Normal Min', 'Normal Max', 'Status', 'Notes'])
+
+    # Query data
+    tests = BloodTest.query.order_by(BloodTest.date.desc()).all()
+    vitals = VitalSign.query.order_by(VitalSign.date.desc()).all()
+
+    history_items = []
+
+    for test in tests:
+        history_items.append({
+            'date': test.date,
+            'type': 'Blood Test',
+            'name': test.test_name,
+            'value': test.value,
+            'unit': test.unit,
+            'normal_min': test.normal_min,
+            'normal_max': test.normal_max,
+            'status': 'Normal' if test.normal_min is not None and test.normal_max is not None and test.normal_min <= test.value <= test.normal_max else ('Out of Range' if test.normal_min is not None and test.normal_max is not None else 'N/A'),
+            'notes': f"Range: {test.normal_min} - {test.normal_max}" if test.normal_min is not None and test.normal_max is not None else ""
+        })
+
+    for vital in vitals:
+        bp_str = f"{vital.systolic_bp}/{vital.diastolic_bp}" if vital.systolic_bp and vital.diastolic_bp else ""
+        hr_str = f"{vital.heart_rate} bpm" if vital.heart_rate else ""
+        weight_str = f"{vital.weight} kg" if vital.weight else ""
+
+        details = [val for val in [weight_str, hr_str, bp_str] if val]
+
+        history_items.append({
+            'date': vital.date,
+            'type': 'Vitals',
+            'name': 'Vital Signs',
+            'value': ", ".join(details),
+            'unit': '',
+            'normal_min': '',
+            'normal_max': '',
+            'status': 'N/A',
+            'notes': ''
+        })
+
+    history_items.sort(key=lambda x: x['date'], reverse=True)
+
+    for item in history_items:
+        writer.writerow([
+            item['date'].strftime('%Y-%m-%d'),
+            item['type'],
+            item['name'],
+            item['value'],
+            item['unit'],
+            item['normal_min'],
+            item['normal_max'],
+            item['status'],
+            item['notes']
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-disposition": "attachment; filename=medical_history.csv"}
+    )
 
 
 if __name__ == '__main__':

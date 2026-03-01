@@ -56,6 +56,12 @@
         <li class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
           <a class="nav-link" href="{{ url_for('index') }}">Home</a>
         </li>
+        <li class="nav-item {% if request.endpoint == 'vitals' or request.endpoint == 'add_vitals' or request.endpoint == 'edit_vitals' %}active{% endif %}">
+          <a class="nav-link" href="{{ url_for('vitals') }}">Vitals</a>
+        </li>
+        <li class="nav-item {% if request.endpoint == 'history' %}active{% endif %}">
+          <a class="nav-link" href="{{ url_for('history') }}">History</a>
+        </li>
         <li class="nav-item {% if request.endpoint == 'add_test' %}active{% endif %}">
           <a class="nav-link" href="{{ url_for('add_test') }}">Add New Test</a>
         </li>
@@ -63,6 +69,13 @@
   <a class="nav-link" href="{{ url_for('add_test_info') }}">Add New Test Info</a>
 </li>
 
+      </ul>
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+            <a class="nav-link btn btn-outline-success text-white px-3" href="{{ url_for('export_data') }}">
+                <i class="fas fa-file-download"></i> Export Data
+            </a>
+        </li>
       </ul>
     </div>
   </nav>
