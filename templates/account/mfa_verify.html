@@ -1,0 +1,28 @@
+{% extends "account/auth_base.html" %}
+{% block auth_content %}
+<div class="card shadow-sm">
+  <div class="card-body p-4">
+    <div class="text-center mb-4">
+      <i class="fas fa-shield-alt fa-2x text-primary"></i>
+      <h3 class="mt-2">Two-Factor Verification</h3>
+      <p class="text-muted">Enter the 6-digit code from your authenticator app</p>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="id_token" class="form-label">Authentication Code</label>
+        <input type="text" name="token" id="id_token" class="form-control form-control-lg text-center font-monospace" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required autofocus />
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 mb-3">
+        <i class="fas fa-check-circle"></i> Verify
+      </button>
+    </form>
+
+    <p class="text-center mb-0">
+      <a href="{% url 'login' %}"><i class="fas fa-arrow-left"></i> Back to Login</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

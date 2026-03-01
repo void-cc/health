@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-desktop"></i> Active Sessions</span>
+        <a href="{% url 'profile' %}" class="btn btn-sm btn-outline-secondary">
+          <i class="fas fa-arrow-left"></i> Back to Profile
+        </a>
+      </div>
+      <div class="card-body">
+        {% if sessions %}
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead>
+                <tr>
+                  <th>IP Address</th>
+                  <th>Device</th>
+                  <th>Last Activity</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for session in sessions %}
+                  <tr {% if session.session_key == current_session_key %}class="table-active"{% endif %}>
+                    <td><code>{{ session.ip_address }}</code></td>
+                    <td>{{ session.device_type|default:"Unknown" }}</td>
+                    <td>{{ session.last_activity|date:"M d, Y H:i" }}</td>
+                    <td>{{ session.created_at|date:"M d, Y H:i" }}</td>
+                    <td>
+                      {% if session.session_key == current_session_key %}
+                        <span class="badge bg-primary"><i class="fas fa-check-circle"></i> Current</span>
+                      {% else %}
+                        <form method="post" action="{% url 'terminate_session' session.id %}" class="d-inline">
+                          {% csrf_token %}
+                          <button type="submit" class="btn btn-sm btn-outline-danger" title="Terminate session">
+                            <i class="fas fa-times"></i> Terminate
+                          </button>
+                        </form>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted text-center py-4">
+            <i class="fas fa-info-circle"></i> No active sessions found.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

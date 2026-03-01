@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <i class="fas fa-mobile-alt"></i> Set Up Two-Factor Authentication
+      </div>
+      <div class="card-body">
+        <p class="text-muted">Scan the QR code below with your authenticator app (e.g., Google Authenticator, Authy).</p>
+
+        <div class="text-center my-4">
+          {{ qr_svg|safe }}
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label"><strong>Manual Entry Key</strong></label>
+          <div class="input-group">
+            <input type="text" class="form-control font-monospace" value="{{ secret_key }}" readonly />
+            <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('{{ secret_key }}')" title="Copy key">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+          <div class="form-text">Enter this key manually if you can't scan the QR code.</div>
+        </div>
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="id_token" class="form-label">Verification Code</label>
+            <input type="text" name="token" id="id_token" class="form-control" placeholder="Enter 6-digit code" maxlength="6" pattern="[0-9]{6}" required autofocus />
+            <div class="form-text">Enter the 6-digit code from your authenticator app to verify setup.</div>
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-arrow-left"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-check"></i> Verify &amp; Enable
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

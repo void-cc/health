@@ -1,0 +1,66 @@
+{% extends "account/auth_base.html" %}
+{% block auth_content %}
+<div class="card shadow-sm">
+  <div class="card-body p-4">
+    <div class="text-center mb-4">
+      <i class="fas fa-heartbeat fa-2x text-primary"></i>
+      <h3 class="mt-2">Health Tracker</h3>
+      <p class="text-muted">Sign in to your account</p>
+    </div>
+
+    {% if timeout %}
+      <div class="alert alert-warning">
+        <i class="fas fa-clock"></i> Your session has timed out. Please log in again.
+      </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+          {% for error in form.non_field_errors %}
+            <p class="mb-0">{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="mb-3">
+        <label for="id_username" class="form-label">Username</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-user"></i></span>
+          <input type="text" name="username" id="id_username" class="form-control {% if form.username.errors %}is-invalid{% endif %}" value="{{ form.username.value|default:'' }}" required autofocus />
+        </div>
+        {% for error in form.username.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label for="id_password" class="form-label">Password</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-lock"></i></span>
+          <input type="password" name="password" id="id_password" class="form-control {% if form.password.errors %}is-invalid{% endif %}" required />
+        </div>
+        {% for error in form.password.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 mb-3">
+        <i class="fas fa-sign-in-alt"></i> Log In
+      </button>
+    </form>
+
+    <div class="d-flex justify-content-between mb-3">
+      <a href="{% url 'register' %}">Create an account</a>
+      <a href="/accounts/social/password/reset/">Forgot password?</a>
+    </div>
+
+    <hr />
+
+    <p class="text-center text-muted mb-2">Or sign in with</p>
+    <div class="d-flex justify-content-center gap-3 mb-3">
+      <a href="#" class="btn btn-outline-secondary" title="Google"><i class="fab fa-google"></i></a>
+      <a href="#" class="btn btn-outline-secondary" title="Microsoft"><i class="fab fa-microsoft"></i></a>
+      <a href="#" class="btn btn-outline-secondary" title="Apple"><i class="fab fa-apple"></i></a>
+    </div>
+  </div>
+</div>
+{% endblock %}

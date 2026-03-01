@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm mb-4">
+      <div class="card-body text-center py-4">
+        {% if profile.avatar %}
+          <img src="{{ profile.avatar.url }}" alt="Avatar" class="rounded-circle mb-3" width="100" height="100" />
+        {% else %}
+          <i class="fas fa-user-circle fa-5x text-secondary mb-3"></i>
+        {% endif %}
+        <h4>{{ request.user.get_full_name|default:request.user.username }}</h4>
+        <p class="text-muted">@{{ request.user.username }}</p>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-header"><i class="fas fa-edit"></i> Edit Profile</div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+              {% for error in form.non_field_errors %}
+                <p class="mb-0">{{ error }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          {% for field in form %}
+            <div class="mb-3">
+              <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+              {% if field.name == 'avatar' %}
+                <input type="file" name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control {% if field.errors %}is-invalid{% endif %}" accept="image/*" />
+              {% elif field.name == 'biological_sex' or field.name == 'theme_preference' %}
+                <select name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-select {% if field.errors %}is-invalid{% endif %}">
+                  {% for value, label in field.field.choices %}
+                    <option value="{{ value }}" {% if field.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              {% elif field.name == 'date_of_birth' %}
+                <input type="date" name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control {% if field.errors %}is-invalid{% endif %}" value="{{ field.value|default:'' }}" />
+              {% elif field.name == 'genetic_baseline_info' %}
+                <textarea name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control {% if field.errors %}is-invalid{% endif %}" rows="3">{{ field.value|default:'' }}</textarea>
+              {% else %}
+                <input type="text" name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control {% if field.errors %}is-invalid{% endif %}" value="{{ field.value|default:'' }}" />
+              {% endif %}
+              {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+          {% endfor %}
+
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Save Profile
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-header"><i class="fas fa-shield-alt"></i> Security &amp; Privacy</div>
+      <div class="card-body">
+        <div class="list-group list-group-flush">
+          <a href="{% url 'change_password' %}" class="list-group-item list-group-item-action d-flex align-items-center">
+            <i class="fas fa-key me-3 text-primary"></i>
+            <div>
+              <strong>Change Password</strong>
+              <p class="mb-0 text-muted small">Update your account password</p>
+            </div>
+          </a>
+          <a href="{% url 'mfa_setup' %}" class="list-group-item list-group-item-action d-flex align-items-center">
+            <i class="fas fa-mobile-alt me-3 text-success"></i>
+            <div>
+              <strong>MFA Setup</strong>
+              <p class="mb-0 text-muted small">Configure two-factor authentication</p>
+            </div>
+          </a>
+          <a href="{% url 'security_log' %}" class="list-group-item list-group-item-action d-flex align-items-center">
+            <i class="fas fa-clipboard-list me-3 text-info"></i>
+            <div>
+              <strong>Security Log</strong>
+              <p class="mb-0 text-muted small">View recent account activity</p>
+            </div>
+          </a>
+          <a href="{% url 'active_sessions' %}" class="list-group-item list-group-item-action d-flex align-items-center">
+            <i class="fas fa-desktop me-3 text-warning"></i>
+            <div>
+              <strong>Active Sessions</strong>
+              <p class="mb-0 text-muted small">Manage your logged-in devices</p>
+            </div>
+          </a>
+          <a href="{% url 'privacy_preferences' %}" class="list-group-item list-group-item-action d-flex align-items-center">
+            <i class="fas fa-user-shield me-3 text-secondary"></i>
+            <div>
+              <strong>Privacy Preferences</strong>
+              <p class="mb-0 text-muted small">Control your data sharing settings</p>
+            </div>
+          </a>
+          <a href="{% url 'delete_account' %}" class="list-group-item list-group-item-action d-flex align-items-center text-danger">
+            <i class="fas fa-trash-alt me-3"></i>
+            <div>
+              <strong>Delete Account</strong>
+              <p class="mb-0 small">Permanently remove your account and data</p>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
