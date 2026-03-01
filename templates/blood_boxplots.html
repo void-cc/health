@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Blood Test Boxplots</h2>
+  <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% if boxplots_data %}
+  <div class="row">
+    {% for test_name, test_info in boxplots_data.items() %}
+    <div class="col-md-6 mb-5">
+      <h4>{{ test_name }} <small class="text-muted">({{ test_info.unit }})</small></h4>
+      {% if test_info.normal_min is not none and test_info.normal_max is not none %}
+        <p class="text-muted mb-1">Normal Range: {{ test_info.normal_min }} - {{ test_info.normal_max }} {{ test_info.unit }}</p>
+      {% endif %}
+      <div style="position: relative; height:40vh; width:100%">
+        <canvas id="chart-{{ loop.index }}"></canvas>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info">No blood tests recorded yet.</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@3.9.0/build/index.umd.min.js"></script>
+<script>
+  {% for test_name, test_info in boxplots_data.items() %}
+  var ctx_{{ loop.index }} = document.getElementById('chart-{{ loop.index }}').getContext('2d');
+  new Chart(ctx_{{ loop.index }}, {
+    type: 'boxplot',
+    data: {
+      labels: ['{{ test_name }}'],
+      datasets: [{
+        label: '{{ test_name }} Distribution',
+        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1,
+        outlierColor: '#999999',
+        padding: 10,
+        itemRadius: 2,
+        data: [
+          {{ test_info.data|tojson|safe }}
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        title: {
+          display: false
+        }
+      }
+    }
+  });
+  {% endfor %}
+</script>
+{% endblock %}
