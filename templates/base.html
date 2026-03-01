@@ -71,6 +71,11 @@
 
       </ul>
       <ul class="navbar-nav ms-auto">
+        <li class="nav-item me-2">
+            <a class="nav-link btn btn-outline-primary text-white px-3" href="{{ url_for('import_data') }}">
+                <i class="fas fa-file-upload"></i> Import Data
+            </a>
+        </li>
         <li class="nav-item">
             <a class="nav-link btn btn-outline-success text-white px-3" href="{{ url_for('export_data') }}">
                 <i class="fas fa-file-download"></i> Export Data
