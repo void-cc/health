@@ -5,23 +5,23 @@
   <form method="POST">
     {% csrf_token %}
     <div class="mb-3">
-      <label for="date" class="form-label">Date</label>
+      <label for="date" class="form-label">Date:</label>
       <input type="date" class="form-control" id="date" name="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required>
     </div>
     <div class="mb-3">
-      <label for="chronological_age" class="form-label">Chronological Age</label>
+      <label for="chronological_age" class="form-label">Chronological Age:</label>
       <input type="number" class="form-control" id="chronological_age" name="chronological_age" step="0.1" value="{% if editing and entry.chronological_age is not None %}{{ entry.chronological_age }}{% endif %}">
     </div>
     <div class="mb-3">
-      <label for="biological_age" class="form-label">Biological Age</label>
+      <label for="biological_age" class="form-label">Biological Age:</label>
       <input type="number" class="form-control" id="biological_age" name="biological_age" step="0.1" value="{% if editing and entry.biological_age is not None %}{{ entry.biological_age }}{% endif %}">
     </div>
     <div class="mb-3">
-      <label for="method" class="form-label">Method</label>
+      <label for="method" class="form-label">Method:</label>
       <input type="text" class="form-control" id="method" name="method" value="{% if editing %}{{ entry.method }}{% endif %}">
     </div>
     <div class="mb-3">
-      <label for="notes" class="form-label">Notes</label>
+      <label for="notes" class="form-label">Notes:</label>
       <textarea class="form-control" id="notes" name="notes" rows="3">{% if editing %}{{ entry.notes }}{% endif %}</textarea>
     </div>
     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">

@@ -5,7 +5,7 @@
   <form method="POST">
     {% csrf_token %}
     <div class="mb-3">
-      <label for="category" class="form-label">Category</label>
+      <label for="category" class="form-label">Category:</label>
       <select class="form-select" name="category" id="category">
         {% for value, label in categories %}
         <option value="{{ value }}" {% if editing and entry.category == value %}selected{% endif %}>{{ label }}</option>
@@ -13,7 +13,7 @@
       </select>
     </div>
     <div class="mb-3">
-      <label for="feature_type" class="form-label">Feature Type</label>
+      <label for="feature_type" class="form-label">Feature Type:</label>
       <select class="form-select" name="feature_type" id="feature_type">
         {% for value, label in feature_types %}
         <option value="{{ value }}" {% if editing and entry.feature_type == value %}selected{% endif %}>{{ label }}</option>
@@ -21,7 +21,7 @@
       </select>
     </div>
     <div class="mb-3 form-check">
-      <input type="checkbox" class="form-check-input" name="is_enabled" id="is_enabled" {% if editing %}{% if entry.is_enabled %}checked{% endif %}{% else %}checked{% endif %} />
+      <input type="checkbox" class="form-check-input" name="is_enabled" id="is_enabled" {% if editing and entry.is_enabled %}checked{% elif not editing %}checked{% endif %}>
       <label for="is_enabled" class="form-check-label">Enabled</label>
     </div>
     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">

@@ -5,7 +5,7 @@
   <form method="POST">
     {% csrf_token %}
     <div class="mb-3">
-      <label for="export_format" class="form-label">Export Format</label>
+      <label for="export_format" class="form-label">Export Format:</label>
       <select class="form-select" name="export_format" id="export_format">
         <option value="json" {% if editing and entry.export_format == 'json' %}selected{% endif %}>JSON</option>
         <option value="xml" {% if editing and entry.export_format == 'xml' %}selected{% endif %}>XML</option>
@@ -14,7 +14,7 @@
       </select>
     </div>
     <div class="mb-3">
-      <label for="status" class="form-label">Status</label>
+      <label for="status" class="form-label">Status:</label>
       <select class="form-select" name="status" id="status">
         <option value="pending" {% if editing and entry.status == 'pending' %}selected{% endif %}>Pending</option>
         <option value="processing" {% if editing and entry.status == 'processing' %}selected{% endif %}>Processing</option>
