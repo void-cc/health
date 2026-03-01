@@ -31,16 +31,22 @@
                         <span class="badge bg-success"><i class="fas fa-sign-in-alt"></i> Login</span>
                       {% elif log.action == 'logout' %}
                         <span class="badge bg-secondary"><i class="fas fa-sign-out-alt"></i> Logout</span>
-                      {% elif log.action == 'password_change' %}
-                        <span class="badge bg-warning text-dark"><i class="fas fa-key"></i> Password Change</span>
+                      {% elif log.action == 'login_failed' %}
+                        <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Login Failed</span>
+                      {% elif log.action == 'password_changed' %}
+                        <span class="badge bg-warning text-dark"><i class="fas fa-key"></i> Password Changed</span>
+                      {% elif log.action == 'password_reset' %}
+                        <span class="badge bg-warning text-dark"><i class="fas fa-undo"></i> Password Reset</span>
                       {% elif log.action == 'mfa_enabled' %}
                         <span class="badge bg-info"><i class="fas fa-shield-alt"></i> MFA Enabled</span>
                       {% elif log.action == 'mfa_disabled' %}
                         <span class="badge bg-danger"><i class="fas fa-shield-alt"></i> MFA Disabled</span>
-                      {% elif log.action == 'profile_update' %}
-                        <span class="badge bg-primary"><i class="fas fa-user-edit"></i> Profile Update</span>
+                      {% elif log.action == 'profile_updated' %}
+                        <span class="badge bg-primary"><i class="fas fa-user-edit"></i> Profile Updated</span>
+                      {% elif log.action == 'account_deleted' %}
+                        <span class="badge bg-dark"><i class="fas fa-trash-alt"></i> Account Deleted</span>
                       {% else %}
-                        <span class="badge bg-dark">{{ log.action }}</span>
+                        <span class="badge bg-dark">{{ log.get_action_display }}</span>
                       {% endif %}
                     </td>
                     <td><code>{{ log.ip_address }}</code></td>

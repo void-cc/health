@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import auth_views
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -98,4 +99,19 @@ urlpatterns = [
 
     # Phase 3: Global Search API
     path('api/search/', views.global_search, name='global_search'),
+
+    # Phase 4: User Authentication and Profiles
+    path('accounts/register/', auth_views.register_view, name='register'),
+    path('accounts/login/', auth_views.login_view, name='login'),
+    path('accounts/logout/', auth_views.logout_view, name='logout'),
+    path('accounts/profile/', auth_views.profile_view, name='profile'),
+    path('accounts/change-password/', auth_views.change_password_view, name='change_password'),
+    path('accounts/security-log/', auth_views.security_log_view, name='security_log'),
+    path('accounts/sessions/', auth_views.active_sessions_view, name='active_sessions'),
+    path('accounts/sessions/terminate/<int:session_id>/', auth_views.terminate_session_view, name='terminate_session'),
+    path('accounts/privacy/', auth_views.privacy_preferences_view, name='privacy_preferences'),
+    path('accounts/delete/', auth_views.delete_account_view, name='delete_account'),
+    path('accounts/mfa/setup/', auth_views.mfa_setup_view, name='mfa_setup'),
+    path('accounts/mfa/verify/', auth_views.mfa_verify_view, name='mfa_verify'),
+    path('accounts/mfa/disable/', auth_views.mfa_disable_view, name='mfa_disable'),
 ]
