@@ -29,7 +29,7 @@
         <td>{{ entry.height_cm }}</td>
         <td>{{ entry.get_gender_display }}</td>
         <td>{{ entry.get_formula_display }}</td>
-        <td>{% if entry.rmr is not None %}{{ entry.rmr }}{% else %}-{% endif %}</td>
+        <td>{% if entry.rmr_value is not None %}{{ entry.rmr_value }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'rmr_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
             <i class="fas fa-edit"></i> Edit

@@ -19,6 +19,9 @@
         <th>Weight (kg)</th>
         <th>Heart Rate (bpm)</th>
         <th>Blood Pressure (mmHg)</th>
+        <th>BBT (°C)</th>
+        <th>SpO2 (%)</th>
+        <th>Resp. Rate (/min)</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -35,6 +38,9 @@
             -
           {% endif %}
         </td>
+        <td>{% if vital.bbt is not None %}{{ vital.bbt }}{% else %}-{% endif %}</td>
+        <td>{% if vital.spo2 is not None %}{{ vital.spo2 }}{% else %}-{% endif %}</td>
+        <td>{% if vital.respiratory_rate is not None %}{{ vital.respiratory_rate }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'edit_vitals' vital_id=vital.id %}" class="btn btn-sm btn-secondary">
             <i class="fas fa-edit"></i> Edit

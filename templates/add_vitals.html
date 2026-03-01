@@ -30,6 +30,21 @@
       </div>
     </div>
 
+    <div class="mb-3">
+      <label for="bbt" class="form-label">Basal Body Temperature (°C):</label>
+      <input type="number" step="0.01" class="form-control" name="bbt" id="bbt" placeholder="e.g. 36.6" />
+    </div>
+
+    <div class="mb-3">
+      <label for="spo2" class="form-label">Blood Oxygen Saturation - SpO2 (%):</label>
+      <input type="number" step="0.1" class="form-control" name="spo2" id="spo2" placeholder="e.g. 98" />
+    </div>
+
+    <div class="mb-3">
+      <label for="respiratory_rate" class="form-label">Respiratory Rate (breaths/min):</label>
+      <input type="number" class="form-control" name="respiratory_rate" id="respiratory_rate" placeholder="e.g. 16" />
+    </div>
+
     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
       <button type="submit" class="btn btn-primary me-md-2">Save Vitals</button>
       <a href="{% url 'vitals' %}" class="btn btn-secondary">Cancel</a>

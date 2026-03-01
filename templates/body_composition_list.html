@@ -30,7 +30,7 @@
         <td>{% if entry.bone_density is not None %}{{ entry.bone_density }}{% else %}-{% endif %}</td>
         <td>{% if entry.waist_circumference is not None %}{{ entry.waist_circumference }}{% else %}-{% endif %}</td>
         <td>{% if entry.hip_circumference is not None %}{{ entry.hip_circumference }}{% else %}-{% endif %}</td>
-        <td>{% if entry.whr is not None %}{{ entry.whr }}{% else %}-{% endif %}</td>
+        <td>{% if entry.waist_to_hip_ratio is not None %}{{ entry.waist_to_hip_ratio }}{% else %}-{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'body_composition_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">

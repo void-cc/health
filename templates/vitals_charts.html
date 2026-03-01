@@ -21,6 +21,21 @@
     <h4>Blood Pressure (mmHg)</h4>
     <canvas id="bpChart"></canvas>
   </div>
+
+  <div class="col-md-12 mb-5">
+    <h4>Basal Body Temperature (°C)</h4>
+    <canvas id="bbtChart"></canvas>
+  </div>
+
+  <div class="col-md-12 mb-5">
+    <h4>Blood Oxygen Saturation - SpO2 (%)</h4>
+    <canvas id="spo2Chart"></canvas>
+  </div>
+
+  <div class="col-md-12 mb-5">
+    <h4>Respiratory Rate (breaths/min)</h4>
+    <canvas id="rrChart"></canvas>
+  </div>
 </div>
 
 <!-- Moment.js is required for time axes in Chart.js 2.9.4 -->
@@ -28,9 +43,6 @@
 <!-- Chart.js time adapter -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script>
-  // Chart.js requires moment.js for time scale in version 2.9.4 usually, or we can use time scale.
-  // We need to parse dates carefully. Since base.html has Chart.js, we can define our charts.
-
   var chartOptions = {
     scales: {
       xAxes: [{
@@ -118,6 +130,63 @@
           pointHoverRadius: 6
         }
       ]
+    },
+    options: chartOptions
+  });
+
+  // BBT Chart
+  var bbtCtx = document.getElementById('bbtChart').getContext('2d');
+  new Chart(bbtCtx, {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: 'BBT (°C)',
+        data: {{ bbt_data|tojson }},
+        backgroundColor: 'rgba(255, 206, 86, 0.2)',
+        borderColor: 'rgba(255, 206, 86, 1)',
+        borderWidth: 2,
+        fill: false,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: chartOptions
+  });
+
+  // SpO2 Chart
+  var spo2Ctx = document.getElementById('spo2Chart').getContext('2d');
+  new Chart(spo2Ctx, {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: 'SpO2 (%)',
+        data: {{ spo2_data|tojson }},
+        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+        borderColor: 'rgba(153, 102, 255, 1)',
+        borderWidth: 2,
+        fill: false,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: chartOptions
+  });
+
+  // Respiratory Rate Chart
+  var rrCtx = document.getElementById('rrChart').getContext('2d');
+  new Chart(rrCtx, {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: 'Respiratory Rate (/min)',
+        data: {{ rr_data|tojson }},
+        backgroundColor: 'rgba(0, 204, 150, 0.2)',
+        borderColor: 'rgba(0, 204, 150, 1)',
+        borderWidth: 2,
+        fill: false,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
     },
     options: chartOptions
   });

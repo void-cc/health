@@ -70,6 +70,28 @@
   <a class="nav-link" href="{% url 'add_test_info' %}">Add New Test Info</a>
 </li>
 
+        <!-- Phase 2 Dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="phase2Dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Body &amp; Metrics
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="phase2Dropdown">
+            <li><a class="dropdown-item" href="{% url 'body_composition_list' %}"><i class="fas fa-weight"></i> Body Composition</a></li>
+            <li><a class="dropdown-item" href="{% url 'hydration_list' %}"><i class="fas fa-tint"></i> Hydration</a></li>
+            <li><a class="dropdown-item" href="{% url 'energy_list' %}"><i class="fas fa-battery-half"></i> Energy &amp; Fatigue</a></li>
+            <li><a class="dropdown-item" href="{% url 'pain_list' %}"><i class="fas fa-user-injured"></i> Pain Mapping</a></li>
+            <li><a class="dropdown-item" href="{% url 'rmr_list' %}"><i class="fas fa-fire"></i> Metabolic Rate (RMR)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'orthostatic_list' %}"><i class="fas fa-heartbeat"></i> Orthostatic</a></li>
+            <li><a class="dropdown-item" href="{% url 'reproductive_list' %}"><i class="fas fa-venus"></i> Reproductive Health</a></li>
+            <li><a class="dropdown-item" href="{% url 'symptom_list' %}"><i class="fas fa-notes-medical"></i> Symptom Journal</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'metabolic_list' %}"><i class="fas fa-vial"></i> Glucose &amp; Insulin</a></li>
+            <li><a class="dropdown-item" href="{% url 'ketone_list' %}"><i class="fas fa-flask"></i> Ketones</a></li>
+            <li><a class="dropdown-item" href="{% url 'custom_vitals_list' %}"><i class="fas fa-sliders-h"></i> Custom Vitals</a></li>
+          </ul>
+        </li>
+
       </ul>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item me-2">

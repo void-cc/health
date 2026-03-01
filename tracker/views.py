@@ -1,7 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.urls import reverse
-from .models import BloodTest, BloodTestInfo, VitalSign
+from .models import (
+    BloodTest, BloodTestInfo, VitalSign,
+    BodyComposition, HydrationLog, EnergyFatigueLog,
+    CustomVitalDefinition, CustomVitalEntry, PainLog,
+    RestingMetabolicRate, OrthostaticReading, ReproductiveHealthLog,
+    SymptomJournal, MetabolicLog, KetoneLog, BODY_REGIONS,
+)
 from datetime import datetime
 import csv
 import os
@@ -94,8 +100,11 @@ def history(request):
         bp_str = f"{vital.systolic_bp}/{vital.diastolic_bp} mmHg" if vital.systolic_bp and vital.diastolic_bp else ""
         hr_str = f"{vital.heart_rate} bpm" if vital.heart_rate else ""
         weight_str = f"{vital.weight} kg" if vital.weight else ""
+        bbt_str = f"BBT: {vital.bbt}°C" if vital.bbt else ""
+        spo2_str = f"SpO2: {vital.spo2}%" if vital.spo2 else ""
+        rr_str = f"RR: {vital.respiratory_rate}/min" if vital.respiratory_rate else ""
 
-        details = [val for val in [weight_str, hr_str, bp_str] if val]
+        details = [val for val in [weight_str, hr_str, bp_str, bbt_str, spo2_str, rr_str] if val]
 
         history_items.append({
             'type': 'Vitals',
@@ -240,6 +249,9 @@ def add_vitals(request):
         heart_rate = request.POST.get('heart_rate')
         systolic_bp = request.POST.get('systolic_bp')
         diastolic_bp = request.POST.get('diastolic_bp')
+        bbt = request.POST.get('bbt')
+        spo2 = request.POST.get('spo2')
+        respiratory_rate = request.POST.get('respiratory_rate')
 
         if not date_str:
             messages.error(request, 'Please select a date.')
@@ -253,7 +265,10 @@ def add_vitals(request):
                 weight=float(weight) if weight else None,
                 heart_rate=int(heart_rate) if heart_rate else None,
                 systolic_bp=int(systolic_bp) if systolic_bp else None,
-                diastolic_bp=int(diastolic_bp) if diastolic_bp else None
+                diastolic_bp=int(diastolic_bp) if diastolic_bp else None,
+                bbt=float(bbt) if bbt else None,
+                spo2=float(spo2) if spo2 else None,
+                respiratory_rate=int(respiratory_rate) if respiratory_rate else None,
             )
             messages.success(request, 'Vital signs added successfully!')
             return redirect('vitals')
@@ -272,6 +287,9 @@ def edit_vitals(request, vital_id):
         heart_rate = request.POST.get('heart_rate')
         systolic_bp = request.POST.get('systolic_bp')
         diastolic_bp = request.POST.get('diastolic_bp')
+        bbt = request.POST.get('bbt')
+        spo2 = request.POST.get('spo2')
+        respiratory_rate = request.POST.get('respiratory_rate')
 
         try:
             vital.date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -279,6 +297,9 @@ def edit_vitals(request, vital_id):
             vital.heart_rate = int(heart_rate) if heart_rate else None
             vital.systolic_bp = int(systolic_bp) if systolic_bp else None
             vital.diastolic_bp = int(diastolic_bp) if diastolic_bp else None
+            vital.bbt = float(bbt) if bbt else None
+            vital.spo2 = float(spo2) if spo2 else None
+            vital.respiratory_rate = int(respiratory_rate) if respiratory_rate else None
             vital.save()
 
             messages.success(request, 'Vital signs updated successfully!')
@@ -351,12 +372,18 @@ def vitals_charts(request):
     hr_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.heart_rate} for v in vitals if v.heart_rate is not None]
     sys_bp_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.systolic_bp} for v in vitals if v.systolic_bp is not None]
     dia_bp_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.diastolic_bp} for v in vitals if v.diastolic_bp is not None]
+    bbt_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.bbt} for v in vitals if v.bbt is not None]
+    spo2_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.spo2} for v in vitals if v.spo2 is not None]
+    rr_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.respiratory_rate} for v in vitals if v.respiratory_rate is not None]
 
     return render(request, 'vitals_charts.html', {
         'weight_data': weight_data,
         'hr_data': hr_data,
         'sys_bp_data': sys_bp_data,
-        'dia_bp_data': dia_bp_data
+        'dia_bp_data': dia_bp_data,
+        'bbt_data': bbt_data,
+        'spo2_data': spo2_data,
+        'rr_data': rr_data,
     })
 
 import pdfplumber
@@ -720,8 +747,11 @@ def export_data(request):
         bp_str = f"{vital.systolic_bp}/{vital.diastolic_bp}" if vital.systolic_bp and vital.diastolic_bp else ""
         hr_str = f"{vital.heart_rate} bpm" if vital.heart_rate else ""
         weight_str = f"{vital.weight} kg" if vital.weight else ""
+        bbt_str = f"BBT: {vital.bbt}°C" if vital.bbt else ""
+        spo2_str = f"SpO2: {vital.spo2}%" if vital.spo2 else ""
+        rr_str = f"RR: {vital.respiratory_rate}/min" if vital.respiratory_rate else ""
 
-        details = [val for val in [weight_str, hr_str, bp_str] if val]
+        details = [val for val in [weight_str, hr_str, bp_str, bbt_str, spo2_str, rr_str] if val]
 
         history_items.append({
             'date': vital.date,
@@ -753,3 +783,617 @@ def export_data(request):
     response = HttpResponse(output.getvalue(), content_type="text/csv")
     response['Content-Disposition'] = 'attachment; filename=medical_history.csv'
     return response
+
+
+# ===== Phase 2: Body Composition =====
+
+def body_composition_list(request):
+    entries = BodyComposition.objects.all().order_by('-date')
+    return render(request, 'body_composition_list.html', {'entries': entries})
+
+def body_composition_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('body_composition_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            BodyComposition.objects.create(
+                date=date,
+                body_fat_percentage=float(request.POST.get('body_fat_percentage')) if request.POST.get('body_fat_percentage') else None,
+                skeletal_muscle_mass=float(request.POST.get('skeletal_muscle_mass')) if request.POST.get('skeletal_muscle_mass') else None,
+                bone_density=float(request.POST.get('bone_density')) if request.POST.get('bone_density') else None,
+                waist_circumference=float(request.POST.get('waist_circumference')) if request.POST.get('waist_circumference') else None,
+                hip_circumference=float(request.POST.get('hip_circumference')) if request.POST.get('hip_circumference') else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Body composition entry added!')
+            return redirect('body_composition_list')
+        except Exception:
+            messages.error(request, 'Error adding body composition. Please try again.')
+            return redirect('body_composition_add')
+    return render(request, 'body_composition_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def body_composition_edit(request, pk):
+    entry = get_object_or_404(BodyComposition, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.body_fat_percentage = float(request.POST.get('body_fat_percentage')) if request.POST.get('body_fat_percentage') else None
+            entry.skeletal_muscle_mass = float(request.POST.get('skeletal_muscle_mass')) if request.POST.get('skeletal_muscle_mass') else None
+            entry.bone_density = float(request.POST.get('bone_density')) if request.POST.get('bone_density') else None
+            entry.waist_circumference = float(request.POST.get('waist_circumference')) if request.POST.get('waist_circumference') else None
+            entry.hip_circumference = float(request.POST.get('hip_circumference')) if request.POST.get('hip_circumference') else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Body composition updated!')
+            return redirect('body_composition_list')
+        except Exception:
+            messages.error(request, 'Error updating body composition.')
+            return redirect('body_composition_edit', pk=pk)
+    return render(request, 'body_composition_form.html', {'entry': entry, 'editing': True})
+
+def body_composition_delete(request, pk):
+    if request.method == 'POST':
+        entry = get_object_or_404(BodyComposition, id=pk)
+        entry.delete()
+        messages.success(request, 'Body composition entry deleted!')
+    return redirect('body_composition_list')
+
+
+# ===== Phase 2: Hydration Tracking =====
+
+def hydration_list(request):
+    entries = HydrationLog.objects.all().order_by('-date')
+    return render(request, 'hydration_list.html', {'entries': entries})
+
+def hydration_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('hydration_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            HydrationLog.objects.create(
+                date=date,
+                fluid_intake_ml=float(request.POST.get('fluid_intake_ml', 0)),
+                goal_ml=float(request.POST.get('goal_ml')) if request.POST.get('goal_ml') else 2500,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Hydration log added!')
+            return redirect('hydration_list')
+        except Exception:
+            messages.error(request, 'Error adding hydration log.')
+            return redirect('hydration_add')
+    return render(request, 'hydration_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def hydration_edit(request, pk):
+    entry = get_object_or_404(HydrationLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.fluid_intake_ml = float(request.POST.get('fluid_intake_ml', 0))
+            entry.goal_ml = float(request.POST.get('goal_ml')) if request.POST.get('goal_ml') else 2500
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Hydration log updated!')
+            return redirect('hydration_list')
+        except Exception:
+            messages.error(request, 'Error updating hydration log.')
+            return redirect('hydration_edit', pk=pk)
+    return render(request, 'hydration_form.html', {'entry': entry, 'editing': True})
+
+def hydration_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(HydrationLog, id=pk).delete()
+        messages.success(request, 'Hydration log deleted!')
+    return redirect('hydration_list')
+
+
+# ===== Phase 2: Energy and Fatigue Scoring =====
+
+def energy_list(request):
+    entries = EnergyFatigueLog.objects.all().order_by('-date')
+    return render(request, 'energy_list.html', {'entries': entries})
+
+def energy_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('energy_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            EnergyFatigueLog.objects.create(
+                date=date,
+                energy_score=int(request.POST.get('energy_score', 5)),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Energy log added!')
+            return redirect('energy_list')
+        except Exception:
+            messages.error(request, 'Error adding energy log.')
+            return redirect('energy_add')
+    return render(request, 'energy_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def energy_edit(request, pk):
+    entry = get_object_or_404(EnergyFatigueLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.energy_score = int(request.POST.get('energy_score', 5))
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Energy log updated!')
+            return redirect('energy_list')
+        except Exception:
+            messages.error(request, 'Error updating energy log.')
+            return redirect('energy_edit', pk=pk)
+    return render(request, 'energy_form.html', {'entry': entry, 'editing': True})
+
+def energy_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(EnergyFatigueLog, id=pk).delete()
+        messages.success(request, 'Energy log deleted!')
+    return redirect('energy_list')
+
+
+# ===== Phase 2: Custom Vital Signs =====
+
+def custom_vitals_list(request):
+    definitions = CustomVitalDefinition.objects.all()
+    entries = CustomVitalEntry.objects.all().order_by('-date')
+    return render(request, 'custom_vitals_list.html', {'definitions': definitions, 'entries': entries})
+
+def custom_vital_define(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        unit = request.POST.get('unit')
+        if not name or not unit:
+            messages.error(request, 'Name and unit are required.')
+            return redirect('custom_vital_define')
+        try:
+            CustomVitalDefinition.objects.create(
+                name=name,
+                unit=unit,
+                normal_min=float(request.POST.get('normal_min')) if request.POST.get('normal_min') else None,
+                normal_max=float(request.POST.get('normal_max')) if request.POST.get('normal_max') else None,
+                description=request.POST.get('description', ''),
+            )
+            messages.success(request, f'Custom vital "{name}" defined!')
+            return redirect('custom_vitals_list')
+        except Exception:
+            messages.error(request, 'Error defining custom vital.')
+            return redirect('custom_vital_define')
+    return render(request, 'custom_vital_define.html')
+
+def custom_vital_add_entry(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        definition_id = request.POST.get('definition')
+        if not date_str or not definition_id:
+            messages.error(request, 'Date and metric type are required.')
+            return redirect('custom_vital_add_entry')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            definition = get_object_or_404(CustomVitalDefinition, id=definition_id)
+            CustomVitalEntry.objects.create(
+                definition=definition,
+                date=date,
+                value=float(request.POST.get('value', 0)),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Custom vital entry added!')
+            return redirect('custom_vitals_list')
+        except Exception:
+            messages.error(request, 'Error adding custom vital entry.')
+            return redirect('custom_vital_add_entry')
+    definitions = CustomVitalDefinition.objects.all()
+    return render(request, 'custom_vital_entry_form.html', {
+        'definitions': definitions,
+        'date': datetime.now().strftime('%Y-%m-%d'),
+        'editing': False,
+    })
+
+def custom_vital_edit_entry(request, pk):
+    entry = get_object_or_404(CustomVitalEntry, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.value = float(request.POST.get('value', 0))
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Custom vital entry updated!')
+            return redirect('custom_vitals_list')
+        except Exception:
+            messages.error(request, 'Error updating custom vital entry.')
+            return redirect('custom_vital_edit_entry', pk=pk)
+    definitions = CustomVitalDefinition.objects.all()
+    return render(request, 'custom_vital_entry_form.html', {
+        'entry': entry,
+        'definitions': definitions,
+        'editing': True,
+    })
+
+def custom_vital_delete_entry(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(CustomVitalEntry, id=pk).delete()
+        messages.success(request, 'Custom vital entry deleted!')
+    return redirect('custom_vitals_list')
+
+
+# ===== Phase 2: Anatomical Pain Mapping =====
+
+def pain_list(request):
+    entries = PainLog.objects.all().order_by('-date')
+    return render(request, 'pain_list.html', {'entries': entries, 'body_regions': BODY_REGIONS})
+
+def pain_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('pain_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            PainLog.objects.create(
+                date=date,
+                body_region=request.POST.get('body_region'),
+                pain_level=int(request.POST.get('pain_level', 1)),
+                description=request.POST.get('description', ''),
+            )
+            messages.success(request, 'Pain log added!')
+            return redirect('pain_list')
+        except Exception:
+            messages.error(request, 'Error adding pain log.')
+            return redirect('pain_add')
+    return render(request, 'pain_form.html', {
+        'date': datetime.now().strftime('%Y-%m-%d'),
+        'body_regions': BODY_REGIONS,
+        'editing': False,
+    })
+
+def pain_edit(request, pk):
+    entry = get_object_or_404(PainLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.body_region = request.POST.get('body_region')
+            entry.pain_level = int(request.POST.get('pain_level', 1))
+            entry.description = request.POST.get('description', '')
+            entry.save()
+            messages.success(request, 'Pain log updated!')
+            return redirect('pain_list')
+        except Exception:
+            messages.error(request, 'Error updating pain log.')
+            return redirect('pain_edit', pk=pk)
+    return render(request, 'pain_form.html', {
+        'entry': entry,
+        'body_regions': BODY_REGIONS,
+        'editing': True,
+    })
+
+def pain_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(PainLog, id=pk).delete()
+        messages.success(request, 'Pain log deleted!')
+    return redirect('pain_list')
+
+
+# ===== Phase 2: Resting Metabolic Rate =====
+
+def rmr_list(request):
+    entries = RestingMetabolicRate.objects.all().order_by('-date')
+    return render(request, 'rmr_list.html', {'entries': entries})
+
+def rmr_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('rmr_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            RestingMetabolicRate.objects.create(
+                date=date,
+                age=int(request.POST.get('age', 0)),
+                weight_kg=float(request.POST.get('weight_kg', 0)),
+                height_cm=float(request.POST.get('height_cm', 0)),
+                gender=request.POST.get('gender', 'M'),
+                formula=request.POST.get('formula', 'mifflin'),
+            )
+            messages.success(request, 'RMR entry added!')
+            return redirect('rmr_list')
+        except Exception:
+            messages.error(request, 'Error adding RMR entry.')
+            return redirect('rmr_add')
+    return render(request, 'rmr_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def rmr_edit(request, pk):
+    entry = get_object_or_404(RestingMetabolicRate, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.age = int(request.POST.get('age', 0))
+            entry.weight_kg = float(request.POST.get('weight_kg', 0))
+            entry.height_cm = float(request.POST.get('height_cm', 0))
+            entry.gender = request.POST.get('gender', 'M')
+            entry.formula = request.POST.get('formula', 'mifflin')
+            entry.save()
+            messages.success(request, 'RMR entry updated!')
+            return redirect('rmr_list')
+        except Exception:
+            messages.error(request, 'Error updating RMR entry.')
+            return redirect('rmr_edit', pk=pk)
+    return render(request, 'rmr_form.html', {'entry': entry, 'editing': True})
+
+def rmr_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(RestingMetabolicRate, id=pk).delete()
+        messages.success(request, 'RMR entry deleted!')
+    return redirect('rmr_list')
+
+
+# ===== Phase 2: Orthostatic Tracking =====
+
+def orthostatic_list(request):
+    entries = OrthostaticReading.objects.all().order_by('-date')
+    return render(request, 'orthostatic_list.html', {'entries': entries})
+
+def orthostatic_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('orthostatic_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            OrthostaticReading.objects.create(
+                date=date,
+                supine_hr=int(request.POST.get('supine_hr')) if request.POST.get('supine_hr') else None,
+                standing_hr=int(request.POST.get('standing_hr')) if request.POST.get('standing_hr') else None,
+                supine_systolic=int(request.POST.get('supine_systolic')) if request.POST.get('supine_systolic') else None,
+                supine_diastolic=int(request.POST.get('supine_diastolic')) if request.POST.get('supine_diastolic') else None,
+                standing_systolic=int(request.POST.get('standing_systolic')) if request.POST.get('standing_systolic') else None,
+                standing_diastolic=int(request.POST.get('standing_diastolic')) if request.POST.get('standing_diastolic') else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Orthostatic reading added!')
+            return redirect('orthostatic_list')
+        except Exception:
+            messages.error(request, 'Error adding orthostatic reading.')
+            return redirect('orthostatic_add')
+    return render(request, 'orthostatic_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def orthostatic_edit(request, pk):
+    entry = get_object_or_404(OrthostaticReading, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.supine_hr = int(request.POST.get('supine_hr')) if request.POST.get('supine_hr') else None
+            entry.standing_hr = int(request.POST.get('standing_hr')) if request.POST.get('standing_hr') else None
+            entry.supine_systolic = int(request.POST.get('supine_systolic')) if request.POST.get('supine_systolic') else None
+            entry.supine_diastolic = int(request.POST.get('supine_diastolic')) if request.POST.get('supine_diastolic') else None
+            entry.standing_systolic = int(request.POST.get('standing_systolic')) if request.POST.get('standing_systolic') else None
+            entry.standing_diastolic = int(request.POST.get('standing_diastolic')) if request.POST.get('standing_diastolic') else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Orthostatic reading updated!')
+            return redirect('orthostatic_list')
+        except Exception:
+            messages.error(request, 'Error updating orthostatic reading.')
+            return redirect('orthostatic_edit', pk=pk)
+    return render(request, 'orthostatic_form.html', {'entry': entry, 'editing': True})
+
+def orthostatic_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(OrthostaticReading, id=pk).delete()
+        messages.success(request, 'Orthostatic reading deleted!')
+    return redirect('orthostatic_list')
+
+
+# ===== Phase 2: Reproductive Health =====
+
+def reproductive_list(request):
+    entries = ReproductiveHealthLog.objects.all().order_by('-date')
+    return render(request, 'reproductive_list.html', {'entries': entries})
+
+def reproductive_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('reproductive_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            ReproductiveHealthLog.objects.create(
+                date=date,
+                cycle_day=int(request.POST.get('cycle_day')) if request.POST.get('cycle_day') else None,
+                phase=request.POST.get('phase', ''),
+                flow_intensity=int(request.POST.get('flow_intensity')) if request.POST.get('flow_intensity') else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Reproductive health entry added!')
+            return redirect('reproductive_list')
+        except Exception:
+            messages.error(request, 'Error adding entry.')
+            return redirect('reproductive_add')
+    return render(request, 'reproductive_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def reproductive_edit(request, pk):
+    entry = get_object_or_404(ReproductiveHealthLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.cycle_day = int(request.POST.get('cycle_day')) if request.POST.get('cycle_day') else None
+            entry.phase = request.POST.get('phase', '')
+            entry.flow_intensity = int(request.POST.get('flow_intensity')) if request.POST.get('flow_intensity') else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Reproductive health entry updated!')
+            return redirect('reproductive_list')
+        except Exception:
+            messages.error(request, 'Error updating entry.')
+            return redirect('reproductive_edit', pk=pk)
+    return render(request, 'reproductive_form.html', {'entry': entry, 'editing': True})
+
+def reproductive_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(ReproductiveHealthLog, id=pk).delete()
+        messages.success(request, 'Reproductive health entry deleted!')
+    return redirect('reproductive_list')
+
+
+# ===== Phase 2: Symptom Journaling =====
+
+def symptom_list(request):
+    entries = SymptomJournal.objects.all().order_by('-date')
+    return render(request, 'symptom_list.html', {'entries': entries})
+
+def symptom_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        symptom = request.POST.get('symptom')
+        if not date_str or not symptom:
+            messages.error(request, 'Date and symptom are required.')
+            return redirect('symptom_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            SymptomJournal.objects.create(
+                date=date,
+                symptom=symptom,
+                severity=int(request.POST.get('severity', 1)),
+                duration=request.POST.get('duration', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Symptom journal entry added!')
+            return redirect('symptom_list')
+        except Exception:
+            messages.error(request, 'Error adding symptom entry.')
+            return redirect('symptom_add')
+    return render(request, 'symptom_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def symptom_edit(request, pk):
+    entry = get_object_or_404(SymptomJournal, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.symptom = request.POST.get('symptom', '')
+            entry.severity = int(request.POST.get('severity', 1))
+            entry.duration = request.POST.get('duration', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Symptom journal entry updated!')
+            return redirect('symptom_list')
+        except Exception:
+            messages.error(request, 'Error updating symptom entry.')
+            return redirect('symptom_edit', pk=pk)
+    return render(request, 'symptom_form.html', {'entry': entry, 'editing': True})
+
+def symptom_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(SymptomJournal, id=pk).delete()
+        messages.success(request, 'Symptom journal entry deleted!')
+    return redirect('symptom_list')
+
+
+# ===== Phase 2: Metabolic Monitoring =====
+
+def metabolic_list(request):
+    entries = MetabolicLog.objects.all().order_by('-date')
+    return render(request, 'metabolic_list.html', {'entries': entries})
+
+def metabolic_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('metabolic_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            MetabolicLog.objects.create(
+                date=date,
+                blood_glucose=float(request.POST.get('blood_glucose')) if request.POST.get('blood_glucose') else None,
+                insulin_level=float(request.POST.get('insulin_level')) if request.POST.get('insulin_level') else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Metabolic log added!')
+            return redirect('metabolic_list')
+        except Exception:
+            messages.error(request, 'Error adding metabolic log.')
+            return redirect('metabolic_add')
+    return render(request, 'metabolic_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def metabolic_edit(request, pk):
+    entry = get_object_or_404(MetabolicLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.blood_glucose = float(request.POST.get('blood_glucose')) if request.POST.get('blood_glucose') else None
+            entry.insulin_level = float(request.POST.get('insulin_level')) if request.POST.get('insulin_level') else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Metabolic log updated!')
+            return redirect('metabolic_list')
+        except Exception:
+            messages.error(request, 'Error updating metabolic log.')
+            return redirect('metabolic_edit', pk=pk)
+    return render(request, 'metabolic_form.html', {'entry': entry, 'editing': True})
+
+def metabolic_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(MetabolicLog, id=pk).delete()
+        messages.success(request, 'Metabolic log deleted!')
+    return redirect('metabolic_list')
+
+
+# ===== Phase 2: Ketone Level Tracking =====
+
+def ketone_list(request):
+    entries = KetoneLog.objects.all().order_by('-date')
+    return render(request, 'ketone_list.html', {'entries': entries})
+
+def ketone_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('ketone_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            KetoneLog.objects.create(
+                date=date,
+                value=float(request.POST.get('value', 0)),
+                measurement_type=request.POST.get('measurement_type', 'blood'),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Ketone log added!')
+            return redirect('ketone_list')
+        except Exception:
+            messages.error(request, 'Error adding ketone log.')
+            return redirect('ketone_add')
+    return render(request, 'ketone_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def ketone_edit(request, pk):
+    entry = get_object_or_404(KetoneLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.value = float(request.POST.get('value', 0))
+            entry.measurement_type = request.POST.get('measurement_type', 'blood')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Ketone log updated!')
+            return redirect('ketone_list')
+        except Exception:
+            messages.error(request, 'Error updating ketone log.')
+            return redirect('ketone_edit', pk=pk)
+    return render(request, 'ketone_form.html', {'entry': entry, 'editing': True})
+
+def ketone_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(KetoneLog, id=pk).delete()
+        messages.success(request, 'Ketone log deleted!')
+    return redirect('ketone_list')
