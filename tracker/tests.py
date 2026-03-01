@@ -1,6 +1,10 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from tracker.models import BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget
+from django.contrib.auth.models import User
+from tracker.models import (
+    BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
+    UserProfile, SecurityLog, UserSession, PrivacyPreference,
+)
 from datetime import date
 import json
 
@@ -26,6 +30,8 @@ class TemplateFilterTests(TestCase):
 class ViewStatusCodeTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_index_page(self):
         response = self.client.get(reverse('index'))
@@ -84,6 +90,8 @@ class ViewStatusCodeTests(TestCase):
 class ViewWithDataTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
         self.test_info = BloodTestInfo.objects.create(
             test_name="Hemoglobin", unit="g/dL",
             normal_min=13.8, normal_max=17.2, category="Blood Count"
@@ -385,6 +393,9 @@ class Phase2StatusCodeTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_body_composition_list(self):
         response = self.client.get(reverse('body_composition_list'))
@@ -484,6 +495,9 @@ class Phase2CRUDTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     # ----- Body Composition -----
     def test_body_composition_add_post(self):
@@ -868,6 +882,9 @@ class Phase2VitalsExtensionTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
         self.vital = VitalSign.objects.create(
             date=date(2026, 3, 1), weight=70.0, heart_rate=72,
             systolic_bp=120, diastolic_bp=80,
@@ -930,6 +947,8 @@ class Phase2VitalsExtensionTests(TestCase):
 class AnnotationTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
         self.blood_test = BloodTest.objects.create(
             test_name="Hemoglobin", value=15.0, unit="g/dL",
             date=date(2026, 1, 15), normal_min=13.8, normal_max=17.2,
@@ -993,6 +1012,8 @@ class AnnotationTests(TestCase):
 class BulkEditTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
         self.test1 = BloodTest.objects.create(
             test_name="Hemoglobin", value=15.0, unit="g/dL",
             date=date(2026, 1, 15), normal_min=13.8, normal_max=17.2,
@@ -1045,6 +1066,8 @@ class BulkEditTests(TestCase):
 class DashboardWidgetTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_customize_dashboard_page(self):
         response = self.client.get(reverse('customize_dashboard'))
@@ -1116,6 +1139,8 @@ class DashboardWidgetTests(TestCase):
 class PDFExportTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_blood_charts_has_pdf_export(self):
         response = self.client.get(reverse('blood_tests_charts'))
@@ -1153,6 +1178,9 @@ class Phase3DarkModeTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_base_template_has_dark_mode_toggle(self):
         response = self.client.get(reverse('index'))
@@ -1176,6 +1204,9 @@ class Phase3NavigationTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_sidebar_present(self):
         response = self.client.get(reverse('index'))
@@ -1205,6 +1236,9 @@ class Phase3AccessibilityTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_skip_to_content_link(self):
         response = self.client.get(reverse('index'))
@@ -1238,6 +1272,9 @@ class Phase3QuickEntryTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_quick_entry_button_present(self):
         response = self.client.get(reverse('index'))
@@ -1262,6 +1299,9 @@ class Phase3PWATests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_manifest_link_present(self):
         response = self.client.get(reverse('index'))
@@ -1281,6 +1321,9 @@ class Phase3GlobalSearchTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
         BloodTest.objects.create(
             test_name="Hemoglobin", value=15.0, unit="g/dL",
             date=date(2026, 1, 15), normal_min=13.8, normal_max=17.2,
@@ -1329,6 +1372,9 @@ class Phase3MedicalTooltipTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_tooltips_on_quick_entry(self):
         response = self.client.get(reverse('index'))
@@ -1345,6 +1391,9 @@ class Phase3VoiceInputTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_voice_button_present(self):
         response = self.client.get(reverse('index'))
@@ -1360,6 +1409,9 @@ class Phase3OnboardingTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_tour_button_present(self):
         response = self.client.get(reverse('index'))
