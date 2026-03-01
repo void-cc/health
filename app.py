@@ -159,6 +159,23 @@ def blood_tests_charts():
     return render_template('blood_charts.html', charts_data=charts_data)
 
 
+@app.route('/blood_tests/boxplots')
+def blood_tests_boxplots():
+    tests = BloodTest.query.order_by(BloodTest.date).all()
+    # Group tests by test_name
+    boxplots_data = {}
+    for test in tests:
+        if test.test_name not in boxplots_data:
+            boxplots_data[test.test_name] = {
+                'unit': test.unit,
+                'data': [],
+                'normal_min': test.normal_min,
+                'normal_max': test.normal_max
+            }
+        boxplots_data[test.test_name]['data'].append(test.value)
+
+    return render_template('blood_boxplots.html', boxplots_data=boxplots_data)
+
 @app.route('/blood_tests/bar_charts')
 def comparative_bar_charts():
     tests = BloodTest.query.order_by(BloodTest.date.desc()).all()
