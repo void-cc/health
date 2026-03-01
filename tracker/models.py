@@ -50,8 +50,14 @@ class BodyComposition(models.Model):
     notes = models.TextField(blank=True, default='')
 
     def save(self, *args, **kwargs):
-        if self.waist_circumference and self.hip_circumference and self.hip_circumference > 0:
+        if (
+            self.waist_circumference is not None
+            and self.hip_circumference is not None
+            and self.hip_circumference > 0
+        ):
             self.waist_to_hip_ratio = round(self.waist_circumference / self.hip_circumference, 3)
+        else:
+            self.waist_to_hip_ratio = None
         super().save(*args, **kwargs)
 
     def __str__(self):
