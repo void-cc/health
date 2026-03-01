@@ -4,7 +4,7 @@ This document outlines the strategic roadmap for the development of the comprehe
 
 ## Phase 1: Data Visualization and Importation
 - [x] **Interactive Line Charts:** Advanced historical line charts for all blood test results and vital signs.
-- [ ] **Comparative Bar Charts:** Visualizations comparing current individual results against standardized optimal normal ranges.
+- [x] **Comparative Bar Charts:** Visualizations comparing current individual results against standardized optimal normal ranges.
 - [ ] **Box-and-Whisker Plots:** Statistical visualizations to display variance and distribution in frequently tested metrics.
 - [ ] **CSV Importation Engine:** Robust support for importing historical blood test results and vital signs via CSV files.
 - [ ] **JSON Data Import:** Support for importing structured historical data from standard JSON formats.
