@@ -20,21 +20,21 @@ This document outlines the strategic roadmap for the development of the comprehe
 - [x] **Customizable Dashboards:** Modular widget-based dashboards allowing users to prioritize their most important visualizations.
 
 ## Phase 2: Vital Signs and Body Metrics
-- [ ] **Basal Body Temperature (BBT) Tracking:** Specialized module for precise temperature tracking.
-- [ ] **Blood Oxygen Saturation (SpO2) Logging:** Tracking for pulse oximetry readings.
-- [ ] **Respiratory Rate Tracking:** Capabilities for logging breaths per minute.
-- [ ] **Advanced Body Composition Tracking:** Dedicated fields for body fat percentage, skeletal muscle mass, and bone density.
-- [ ] **Anthropometric Measurements:** Tracking for waist-to-hip ratio and specific body circumferences.
-- [ ] **Hydration Tracking:** Daily fluid intake logging paired with custom hydration goals.
-- [ ] **Energy and Fatigue Scoring:** A daily qualitative scoring system to track perceived energy levels.
-- [ ] **Custom Vital Sign Creation:** Flexibility for users to define and track entirely unique, personalized health metrics.
-- [ ] **Anatomical Pain Mapping:** A pain tracking scale featuring an interactive anatomical map to pinpoint discomfort areas.
-- [ ] **Resting Metabolic Rate (RMR) Estimation:** Calculators and trackers for daily caloric expenditure baselines.
-- [ ] **Orthostatic Tracking:** Specialized tracking for conditions like POTS (comparing supine versus standing heart rate and blood pressure).
-- [ ] **Reproductive Health Tracking:** Modules for tracking menstrual cycles and related physiological phases.
-- [ ] **Symptom Journaling:** A structured daily log for tracking acute or chronic symptoms alongside vital signs.
-- [ ] **Metabolic Monitoring:** Detailed tracking for blood glucose and insulin levels.
-- [ ] **Ketone Level Tracking:** Specialized tracking for users managing specific dietary or metabolic protocols.
+- [x] **Basal Body Temperature (BBT) Tracking:** Specialized module for precise temperature tracking.
+- [x] **Blood Oxygen Saturation (SpO2) Logging:** Tracking for pulse oximetry readings.
+- [x] **Respiratory Rate Tracking:** Capabilities for logging breaths per minute.
+- [x] **Advanced Body Composition Tracking:** Dedicated fields for body fat percentage, skeletal muscle mass, and bone density.
+- [x] **Anthropometric Measurements:** Tracking for waist-to-hip ratio and specific body circumferences.
+- [x] **Hydration Tracking:** Daily fluid intake logging paired with custom hydration goals.
+- [x] **Energy and Fatigue Scoring:** A daily qualitative scoring system to track perceived energy levels.
+- [x] **Custom Vital Sign Creation:** Flexibility for users to define and track entirely unique, personalized health metrics.
+- [x] **Anatomical Pain Mapping:** A pain tracking scale featuring an interactive anatomical map to pinpoint discomfort areas.
+- [x] **Resting Metabolic Rate (RMR) Estimation:** Calculators and trackers for daily caloric expenditure baselines.
+- [x] **Orthostatic Tracking:** Specialized tracking for conditions like POTS (comparing supine versus standing heart rate and blood pressure).
+- [x] **Reproductive Health Tracking:** Modules for tracking menstrual cycles and related physiological phases.
+- [x] **Symptom Journaling:** A structured daily log for tracking acute or chronic symptoms alongside vital signs.
+- [x] **Metabolic Monitoring:** Detailed tracking for blood glucose and insulin levels.
+- [x] **Ketone Level Tracking:** Specialized tracking for users managing specific dietary or metabolic protocols.
 
 ## Phase 3: Major UI/UX Improvements
 - [ ] **Comprehensive Dark Mode:** A complete, high-contrast dark theme spanning the entire application.
