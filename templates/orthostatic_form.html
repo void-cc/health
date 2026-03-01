@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Orthostatic Reading</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Date:</label>
+      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    </div>
+
+    <h5 class="mt-4 mb-3">Heart Rate</h5>
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="supine_hr" class="form-label">Supine HR (bpm):</label>
+        <input type="number" class="form-control" name="supine_hr" id="supine_hr" value="{% if editing and entry.supine_hr is not None %}{{ entry.supine_hr }}{% endif %}" placeholder="e.g. 65" />
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="standing_hr" class="form-label">Standing HR (bpm):</label>
+        <input type="number" class="form-control" name="standing_hr" id="standing_hr" value="{% if editing and entry.standing_hr is not None %}{{ entry.standing_hr }}{% endif %}" placeholder="e.g. 85" />
+      </div>
+    </div>
+
+    <h5 class="mt-4 mb-3">Supine Blood Pressure</h5>
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="supine_systolic" class="form-label">Systolic (mmHg):</label>
+        <input type="number" class="form-control" name="supine_systolic" id="supine_systolic" value="{% if editing and entry.supine_systolic is not None %}{{ entry.supine_systolic }}{% endif %}" placeholder="e.g. 120" />
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="supine_diastolic" class="form-label">Diastolic (mmHg):</label>
+        <input type="number" class="form-control" name="supine_diastolic" id="supine_diastolic" value="{% if editing and entry.supine_diastolic is not None %}{{ entry.supine_diastolic }}{% endif %}" placeholder="e.g. 80" />
+      </div>
+    </div>
+
+    <h5 class="mt-4 mb-3">Standing Blood Pressure</h5>
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="standing_systolic" class="form-label">Systolic (mmHg):</label>
+        <input type="number" class="form-control" name="standing_systolic" id="standing_systolic" value="{% if editing and entry.standing_systolic is not None %}{{ entry.standing_systolic }}{% endif %}" placeholder="e.g. 110" />
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="standing_diastolic" class="form-label">Diastolic (mmHg):</label>
+        <input type="number" class="form-control" name="standing_diastolic" id="standing_diastolic" value="{% if editing and entry.standing_diastolic is not None %}{{ entry.standing_diastolic }}{% endif %}" placeholder="e.g. 75" />
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'orthostatic_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

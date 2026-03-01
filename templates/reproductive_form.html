@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Reproductive Health Entry</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Date:</label>
+      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="cycle_day" class="form-label">Cycle Day:</label>
+      <input type="number" class="form-control" name="cycle_day" id="cycle_day" min="1" value="{% if editing and entry.cycle_day is not None %}{{ entry.cycle_day }}{% endif %}" placeholder="e.g. 14" />
+    </div>
+
+    <div class="mb-3">
+      <label for="phase" class="form-label">Phase:</label>
+      <select class="form-select" name="phase" id="phase">
+        <option value="">-- Select phase --</option>
+        <option value="menstrual" {% if editing and entry.phase == 'menstrual' %}selected{% endif %}>Menstrual</option>
+        <option value="follicular" {% if editing and entry.phase == 'follicular' %}selected{% endif %}>Follicular</option>
+        <option value="ovulation" {% if editing and entry.phase == 'ovulation' %}selected{% endif %}>Ovulation</option>
+        <option value="luteal" {% if editing and entry.phase == 'luteal' %}selected{% endif %}>Luteal</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="flow_intensity" class="form-label">Flow Intensity (0-5):</label>
+      <input type="number" class="form-control" name="flow_intensity" id="flow_intensity" min="0" max="5" value="{% if editing and entry.flow_intensity is not None %}{{ entry.flow_intensity }}{% endif %}" placeholder="0 = None, 5 = Very Heavy" />
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'reproductive_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
