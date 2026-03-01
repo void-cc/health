@@ -66,6 +66,10 @@ class ViewStatusCodeTests(TestCase):
         response = self.client.get(reverse('vitals_charts'))
         self.assertEqual(response.status_code, 200)
 
+    def test_scatter_plots_page(self):
+        response = self.client.get(reverse('scatter_plots'))
+        self.assertEqual(response.status_code, 200)
+
     def test_import_data_page(self):
         response = self.client.get(reverse('import_data'))
         self.assertEqual(response.status_code, 200)
@@ -127,6 +131,45 @@ class ViewWithDataTests(TestCase):
         response = self.client.get(reverse('blood_tests_charts'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Hemoglobin')
+
+    def test_blood_tests_charts_has_date_filter(self):
+        response = self.client.get(reverse('blood_tests_charts'))
+        self.assertContains(response, 'startDate')
+        self.assertContains(response, 'endDate')
+        self.assertContains(response, 'Apply Filter')
+
+    def test_blood_tests_charts_has_moving_avg_toggle(self):
+        response = self.client.get(reverse('blood_tests_charts'))
+        self.assertContains(response, 'toggleMovingAvg')
+        self.assertContains(response, 'Moving Average')
+
+    def test_blood_tests_charts_has_anomaly_toggle(self):
+        response = self.client.get(reverse('blood_tests_charts'))
+        self.assertContains(response, 'toggleAnomaly')
+        self.assertContains(response, 'Anomaly Detection')
+
+    def test_vitals_charts_has_date_filter(self):
+        response = self.client.get(reverse('vitals_charts'))
+        self.assertContains(response, 'startDate')
+        self.assertContains(response, 'endDate')
+        self.assertContains(response, 'Apply Filter')
+
+    def test_vitals_charts_has_moving_avg_toggle(self):
+        response = self.client.get(reverse('vitals_charts'))
+        self.assertContains(response, 'toggleMovingAvg')
+        self.assertContains(response, 'Moving Average')
+
+    def test_vitals_charts_has_anomaly_toggle(self):
+        response = self.client.get(reverse('vitals_charts'))
+        self.assertContains(response, 'toggleAnomaly')
+        self.assertContains(response, 'Anomaly Detection')
+
+    def test_scatter_plots_with_data(self):
+        response = self.client.get(reverse('scatter_plots'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Correlative Scatter Plots')
+        self.assertContains(response, 'Hemoglobin')
+        self.assertContains(response, 'Weight')
 
     def test_comparative_bar_charts_with_data(self):
         response = self.client.get(reverse('comparative_bar_charts'))
