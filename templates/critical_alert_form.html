@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Critical Alert</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="metric_name" class="form-label">Metric Name</label>
+      <input type="text" class="form-control" id="metric_name" name="metric_name" value="{% if editing %}{{ entry.metric_name }}{% endif %}">
+    </div>
+    <div class="mb-3">
+      <label for="metric_value" class="form-label">Metric Value</label>
+      <input type="number" class="form-control" id="metric_value" name="metric_value" step="0.01" value="{% if editing and entry.metric_value is not None %}{{ entry.metric_value }}{% endif %}">
+    </div>
+    <div class="mb-3">
+      <label for="threshold_value" class="form-label">Threshold Value</label>
+      <input type="number" class="form-control" id="threshold_value" name="threshold_value" step="0.01" value="{% if editing and entry.threshold_value is not None %}{{ entry.threshold_value }}{% endif %}">
+    </div>
+    <div class="mb-3">
+      <label for="alert_level" class="form-label">Alert Level</label>
+      <select class="form-select" id="alert_level" name="alert_level">
+        <option value="warning" {% if editing and entry.alert_level == 'warning' %}selected{% endif %}>Warning</option>
+        <option value="critical" {% if editing and entry.alert_level == 'critical' %}selected{% endif %}>Critical</option>
+        <option value="emergency" {% if editing and entry.alert_level == 'emergency' %}selected{% endif %}>Emergency</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="message" class="form-label">Message</label>
+      <textarea class="form-control" id="message" name="message" rows="3">{% if editing %}{{ entry.message }}{% endif %}</textarea>
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" id="acknowledged" name="acknowledged" {% if editing and entry.acknowledged %}checked{% endif %}>
+      <label class="form-check-label" for="acknowledged">Acknowledged</label>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'critical_alert_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

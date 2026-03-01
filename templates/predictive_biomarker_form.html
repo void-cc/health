@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Predictive Biomarker</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="biomarker_name" class="form-label">Biomarker Name</label>
+      <input type="text" class="form-control" id="biomarker_name" name="biomarker_name" value="{% if editing %}{{ entry.biomarker_name }}{% endif %}" required>
+    </div>
+    <div class="mb-3">
+      <label for="predicted_value" class="form-label">Predicted Value</label>
+      <input type="number" class="form-control" id="predicted_value" name="predicted_value" step="0.01" value="{% if editing and entry.predicted_value is not None %}{{ entry.predicted_value }}{% endif %}">
+    </div>
+    <div class="mb-3">
+      <label for="confidence_percent" class="form-label">Confidence %</label>
+      <input type="number" class="form-control" id="confidence_percent" name="confidence_percent" step="0.1" value="{% if editing and entry.confidence_percent is not None %}{{ entry.confidence_percent }}{% endif %}">
+    </div>
+    <div class="mb-3">
+      <label for="prediction_date" class="form-label">Prediction Date</label>
+      <input type="date" class="form-control" id="prediction_date" name="prediction_date" value="{% if editing %}{{ entry.prediction_date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required>
+    </div>
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes</label>
+      <textarea class="form-control" id="notes" name="notes" rows="3">{% if editing %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'predictive_biomarker_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

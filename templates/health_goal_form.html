@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Health Goal</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="title" class="form-label">Title</label>
+      <input type="text" class="form-control" id="title" name="title" value="{% if editing %}{{ entry.title }}{% endif %}" required>
+    </div>
+    <div class="mb-3">
+      <label for="description" class="form-label">Description</label>
+      <textarea class="form-control" id="description" name="description" rows="3">{% if editing %}{{ entry.description }}{% endif %}</textarea>
+    </div>
+    <div class="mb-3">
+      <label for="target_value" class="form-label">Target Value</label>
+      <input type="number" class="form-control" id="target_value" name="target_value" step="0.1" value="{% if editing and entry.target_value is not None %}{{ entry.target_value }}{% endif %}">
+    </div>
+    <div class="mb-3">
+      <label for="current_value" class="form-label">Current Value</label>
+      <input type="number" class="form-control" id="current_value" name="current_value" step="0.1" value="{% if editing and entry.current_value is not None %}{{ entry.current_value }}{% endif %}">
+    </div>
+    <div class="mb-3">
+      <label for="unit" class="form-label">Unit</label>
+      <input type="text" class="form-control" id="unit" name="unit" value="{% if editing %}{{ entry.unit }}{% endif %}">
+    </div>
+    <div class="mb-3">
+      <label for="status" class="form-label">Status</label>
+      <select class="form-select" id="status" name="status">
+        <option value="active" {% if editing and entry.status == 'active' %}selected{% endif %}>Active</option>
+        <option value="completed" {% if editing and entry.status == 'completed' %}selected{% endif %}>Completed</option>
+        <option value="paused" {% if editing and entry.status == 'paused' %}selected{% endif %}>Paused</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="start_date" class="form-label">Start Date</label>
+      <input type="date" class="form-control" id="start_date" name="start_date" value="{% if editing %}{{ entry.start_date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required>
+    </div>
+    <div class="mb-3">
+      <label for="target_date" class="form-label">Target Date</label>
+      <input type="date" class="form-control" id="target_date" name="target_date" value="{% if editing and entry.target_date %}{{ entry.target_date|date:'Y-m-d' }}{% endif %}">
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'health_goal_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
