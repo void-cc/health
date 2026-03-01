@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Blood Test Charts</h2>
+  <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% if charts_data %}
+  <div class="row">
+    {% for test_name, test_info in charts_data.items() %}
+    <div class="col-md-12 mb-5">
+      <h4>{{ test_name }} <small class="text-muted">({{ test_info.unit }})</small></h4>
+      {% if test_info.normal_min is not none and test_info.normal_max is not none %}
+        <p class="text-muted mb-1">Normal Range: {{ test_info.normal_min }} - {{ test_info.normal_max }} {{ test_info.unit }}</p>
+      {% endif %}
+      <div style="position: relative; height:40vh; width:100%">
+        <canvas id="chart-{{ loop.index }}"></canvas>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info">No blood tests recorded yet.</div>
+{% endif %}
+
+<!-- Moment.js is required for time axes in Chart.js 2.9.4 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<!-- Chart.js time adapter -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script>
+  var chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      xAxes: [{
+        type: 'time',
+        time: {
+          parser: 'YYYY-MM-DD',
+          tooltipFormat: 'll',
+          unit: 'day'
+        },
+        scaleLabel: {
+          display: true,
+          labelString: 'Date'
+        }
+      }],
+      yAxes: [{
+        ticks: {
+          beginAtZero: false
+        }
+      }]
+    }
+  };
+
+  {% for test_name, test_info in charts_data.items() %}
+  var ctx_{{ loop.index }} = document.getElementById('chart-{{ loop.index }}').getContext('2d');
+  new Chart(ctx_{{ loop.index }}, {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: '{{ test_name }}',
+        data: {{ test_info.data|tojson }},
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 2,
+        fill: false,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: Object.assign({}, chartOptions, {
+      annotation: {
+        // We could use chartjs-plugin-annotation for normal ranges,
+        // but since we are keeping it simple, we use a basic chart.
+      }
+    })
+  });
+  {% endfor %}
+</script>
+{% endblock %}

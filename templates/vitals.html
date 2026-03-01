@@ -2,7 +2,12 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2>Your Vital Signs</h2>
-  <a href="{{ url_for('add_vitals') }}" class="btn btn-primary">Add Vitals</a>
+  <div>
+    <a href="{{ url_for('vitals_charts') }}" class="btn btn-info me-2 text-white">
+      <i class="fas fa-chart-line"></i> View Charts
+    </a>
+    <a href="{{ url_for('add_vitals') }}" class="btn btn-primary">Add Vitals</a>
+  </div>
 </div>
 
 {% if vitals %}
