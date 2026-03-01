@@ -2,6 +2,7 @@
 {% block content %}
 <h2 class="mb-4">Add New Blood Test Information</h2>
 <form method="POST">
+  {% csrf_token %}
   <div class="form-group">
     <label for="test_name">Test Name:</label>
     <input type="text" class="form-control" name="test_name" id="test_name" required>

@@ -3,6 +3,7 @@
 <div class="container my-5">
   <h2 class="mb-4 text-center">Add Vital Signs</h2>
   <form method="POST">
+    {% csrf_token %}
     <div class="mb-3">
       <label for="date" class="form-label">Date:</label>
       <input type="date" class="form-control" name="date" id="date" value="{{ date }}" required />
@@ -31,7 +32,7 @@
 
     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
       <button type="submit" class="btn btn-primary me-md-2">Save Vitals</button>
-      <a href="{{ url_for('vitals') }}" class="btn btn-secondary">Cancel</a>
+      <a href="{% url 'vitals' %}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
 </div>
