@@ -374,9 +374,9 @@ def import_data(request):
             messages.error(request, 'No selected file')
             return redirect('import_data')
 
-        allowed_extensions = ('.csv', '.json', '.pdf')
+        allowed_extensions = ('.csv', '.json', '.pdf', '.hl7')
         if not file.name.lower().endswith(allowed_extensions):
-            messages.error(request, 'Please upload a .csv, .json, or .pdf file')
+            messages.error(request, 'Please upload a .csv, .json, .pdf, or .hl7 file')
             return redirect('import_data')
 
         try:
@@ -388,10 +388,122 @@ def import_data(request):
                 csv_input = csv.DictReader(stream)
                 file_data = list(csv_input)
             elif file.name.lower().endswith('.json'):
-                file_data = json.load(file)
-                if not isinstance(file_data, list):
-                    messages.error(request, 'JSON file must contain a list of objects.')
-                    return redirect('import_data')
+                json_data = json.load(file)
+                if isinstance(json_data, dict) and json_data.get('resourceType') == 'Bundle':
+                    for entry in json_data.get('entry', []):
+                        obs = entry.get('resource', {})
+                        if obs.get('resourceType') == 'Observation':
+                            name = obs.get('code', {}).get('text')
+                            if not name:
+                                codings = obs.get('code', {}).get('coding', [])
+                                if codings:
+                                    name = codings[0].get('display')
+
+                            val_quantity = obs.get('valueQuantity', {})
+                            val = val_quantity.get('value')
+                            unit = val_quantity.get('unit')
+
+                            date_str = obs.get('effectiveDateTime')
+                            date_obj = date_str[:10] if date_str else None
+
+                            ref_ranges = obs.get('referenceRange', [])
+                            normal_min = None
+                            normal_max = None
+                            if ref_ranges:
+                                normal_min = ref_ranges[0].get('low', {}).get('value')
+                                normal_max = ref_ranges[0].get('high', {}).get('value')
+
+                            is_vital = False
+                            categories = obs.get('category', [])
+                            for cat in categories:
+                                codings = cat.get('coding', [])
+                                for c in codings:
+                                    if c.get('code') == 'vital-signs':
+                                        is_vital = True
+
+                            if is_vital:
+                                if name and "Blood Pressure" in name and "component" in obs:
+                                    sys = None
+                                    dia = None
+                                    for comp in obs['component']:
+                                        c_name = comp.get('code', {}).get('text', '').lower()
+                                        c_val = comp.get('valueQuantity', {}).get('value')
+                                        if 'systolic' in c_name:
+                                            sys = c_val
+                                        elif 'diastolic' in c_name:
+                                            dia = c_val
+                                    if sys and dia:
+                                        file_data.append({
+                                            "Date": date_obj,
+                                            "Type": "Vitals",
+                                            "Value": f"{sys}/{dia} mmHg"
+                                        })
+                                else:
+                                    file_data.append({
+                                        "Date": date_obj,
+                                        "Type": "Vitals",
+                                        "Value": f"{val} {unit}"
+                                    })
+                            else:
+                                if name and val is not None and date_obj:
+                                    file_data.append({
+                                        "Date": date_obj,
+                                        "Type": "Blood Test",
+                                        "Name": name,
+                                        "Value": val,
+                                        "Unit": unit,
+                                        "Normal Min": normal_min,
+                                        "Normal Max": normal_max
+                                    })
+                else:
+                    file_data = json_data
+                    if not isinstance(file_data, list):
+                        messages.error(request, 'JSON file must contain a list of objects or be a FHIR Bundle.')
+                        return redirect('import_data')
+            elif file.name.lower().endswith('.hl7'):
+                hl7_text = file.read().decode("UTF8")
+                lines = hl7_text.replace('\r', '\n').split('\n')
+                current_date = None
+                for line in lines:
+                    fields = line.split('|')
+                    if fields[0] == 'OBR' and len(fields) > 7:
+                        date_field = fields[7]
+                        if date_field and len(date_field) >= 8:
+                            current_date = f"{date_field[0:4]}-{date_field[4:6]}-{date_field[6:8]}"
+                    elif fields[0] == 'OBX' and len(fields) > 5:
+                        name_field = fields[3]
+                        name = name_field.split('^')[1] if '^' in name_field else name_field
+                        val = fields[5]
+                        unit = fields[6] if len(fields) > 6 else ""
+                        ref_range = fields[7] if len(fields) > 7 else ""
+
+                        normal_min = None
+                        normal_max = None
+                        if '-' in ref_range:
+                            try:
+                                normal_min = float(ref_range.split('-')[0])
+                                normal_max = float(ref_range.split('-')[1])
+                            except ValueError:
+                                pass
+
+                        obs_date = current_date
+                        if len(fields) > 14 and fields[14] and len(fields[14]) >= 8:
+                            d = fields[14]
+                            obs_date = f"{d[0:4]}-{d[4:6]}-{d[6:8]}"
+
+                        if not obs_date:
+                            obs_date = datetime.now().date().strftime('%Y-%m-%d')
+
+                        if name and val:
+                            file_data.append({
+                                "Date": obs_date,
+                                "Type": "Blood Test",
+                                "Name": name,
+                                "Value": val,
+                                "Unit": unit,
+                                "Normal Min": normal_min,
+                                "Normal Max": normal_max
+                            })
             elif file.name.lower().endswith('.pdf'):
                 pdf_bytes = file.read()
                 text = ""
