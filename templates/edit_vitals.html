@@ -3,29 +3,30 @@
 <div class="container my-5">
   <h2 class="mb-4 text-center">Edit Vital Signs</h2>
   <form method="POST">
+    {% csrf_token %}
     <div class="mb-3">
       <label for="date" class="form-label">Date:</label>
-      <input type="date" class="form-control" name="date" id="date" value="{{ vital.date.strftime('%Y-%m-%d') }}" required />
+      <input type="date" class="form-control" name="date" id="date" value="{{ vital.date|date:"Y-m-d" }}" required />
     </div>
 
     <div class="mb-3">
       <label for="weight" class="form-label">Weight (kg):</label>
-      <input type="number" step="0.1" class="form-control" name="weight" id="weight" value="{{ vital.weight if vital.weight is not none else '' }}" />
+      <input type="number" step="0.1" class="form-control" name="weight" id="weight" value="{% if vital.weight is not None %}{{ vital.weight }}{% endif %}" />
     </div>
 
     <div class="mb-3">
       <label for="heart_rate" class="form-label">Heart Rate (bpm):</label>
-      <input type="number" class="form-control" name="heart_rate" id="heart_rate" value="{{ vital.heart_rate if vital.heart_rate is not none else '' }}" />
+      <input type="number" class="form-control" name="heart_rate" id="heart_rate" value="{% if vital.heart_rate is not None %}{{ vital.heart_rate }}{% endif %}" />
     </div>
 
     <div class="row">
       <div class="col-md-6 mb-3">
         <label for="systolic_bp" class="form-label">Systolic BP (mmHg):</label>
-        <input type="number" class="form-control" name="systolic_bp" id="systolic_bp" value="{{ vital.systolic_bp if vital.systolic_bp is not none else '' }}" />
+        <input type="number" class="form-control" name="systolic_bp" id="systolic_bp" value="{% if vital.systolic_bp is not None %}{{ vital.systolic_bp }}{% endif %}" />
       </div>
       <div class="col-md-6 mb-3">
         <label for="diastolic_bp" class="form-label">Diastolic BP (mmHg):</label>
-        <input type="number" class="form-control" name="diastolic_bp" id="diastolic_bp" value="{{ vital.diastolic_bp if vital.diastolic_bp is not none else '' }}" />
+        <input type="number" class="form-control" name="diastolic_bp" id="diastolic_bp" value="{% if vital.diastolic_bp is not None %}{{ vital.diastolic_bp }}{% endif %}" />
       </div>
     </div>
 

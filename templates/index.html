@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load json_filters %}
 {% block content %}
 <h2 class="mb-4">Dashboard</h2>
 
@@ -22,11 +23,11 @@
   </div>
   <div class="col-md-4">
     <div class="card bg-light mb-3">
-      <div class="card-header">Latest Vital Signs {% if latest_vitals %}({{ latest_vitals.date.strftime('%Y-%m-%d') }}){% endif %}</div>
+      <div class="card-header">Latest Vital Signs {% if latest_vitals %}({{ latest_vitals.date|date:"Y-m-d" }}){% endif %}</div>
       <div class="card-body">
         {% if latest_vitals %}
-          <p class="card-text mb-1"><strong>Weight:</strong> {{ latest_vitals.weight if latest_vitals.weight else 'N/A' }} kg</p>
-          <p class="card-text mb-1"><strong>HR:</strong> {{ latest_vitals.heart_rate if latest_vitals.heart_rate else 'N/A' }} bpm</p>
+          <p class="card-text mb-1"><strong>Weight:</strong> {% if latest_vitals.weight %}{{ latest_vitals.weight }}{% else %}N/A{% endif %} kg</p>
+          <p class="card-text mb-1"><strong>HR:</strong> {% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }}{% else %}N/A{% endif %} bpm</p>
           <p class="card-text mb-0"><strong>BP:</strong> {% if latest_vitals.systolic_bp and latest_vitals.diastolic_bp %}{{ latest_vitals.systolic_bp }} / {{ latest_vitals.diastolic_bp }}{% else %}N/A{% endif %} mmHg</p>
         {% else %}
           <p class="card-text">No vitals recorded.</p>
@@ -52,7 +53,7 @@
 </div>
 
 {% if tests_by_category %}
-  {% for category, cat_tests in tests_by_category.items() %}
+  {% for category, cat_tests in tests_by_category.items %}
     <h4 class="mt-4 mb-3 text-secondary border-bottom pb-2">{{ category }}</h4>
     <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
       {% for test in cat_tests %}
@@ -60,8 +61,8 @@
         <div class="card h-100">
           <div class="card-header d-flex justify-content-between ">
             <h5 class="card-title" style="display: inline">{{ test.test_name }}</h5>
-          {% if test.normal_min is not none and test.normal_max is not none %}
-                {% if test.normal_min <= test.value <= test.normal_max %}
+          {% if test.normal_min is not None and test.normal_max is not None %}
+                {% if test.normal_min <= test.value and test.value <= test.normal_max %}
                   <span class="badge bg-success align-right align-self-start">Normal</span>
                 {% else %}
                   <span class="badge bg-danger align-self-start">Out of Range</span>
@@ -72,40 +73,42 @@
           </div>
         <div class="card-body">
             <p class="card-text">
-              <span class="text-muted align-self-start"><i class="far fa-calendar-alt"></i> {{ test.date.strftime('%Y-%m-%d') }}</span><br>
+              <span class="text-muted align-self-start"><i class="far fa-calendar-alt"></i> {{ test.date|date:"Y-m-d" }}</span><br>
               <strong>Value:</strong> {{ test.value }} {{ test.unit }}<br>
               <strong>Normal Range:</strong>
-              {% if test.normal_min is not none and test.normal_max is not none %}
+              {% if test.normal_min is not None and test.normal_max is not None %}
                 {{ test.normal_min }} - {{ test.normal_max }} {{ test.unit }}
               {% else %}
                 {{ test.unit }}
               {% endif %}
             </p>
           </div>
-        {% if bars is not none and test.id in bars %}
+        {% with test_bar=bars|lookup:test.id %}
+        {% if test_bar %}
         <div style="position: relative; margin-bottom: 25px; margin-top: 25px; height: 20px; padding: 0 15px;">
             <div class="progress" style="height: 10px; position: absolute; top: 5px; width: calc(100% - 30px); border-radius: 0;">
               <!-- Low Zone -->
-              <div class="progress-bar bg-danger" role="progressbar" style="width: {{ bars[test.id]['low_width'] }}%; opacity: 0.8;" aria-valuenow="{{ bars[test.id]['low_width'] }}" aria-valuemin="0" aria-valuemax="100"></div>
+              <div class="progress-bar bg-danger" role="progressbar" style="width: {{ test_bar.low_width }}%; opacity: 0.8;" aria-valuenow="{{ test_bar.low_width }}" aria-valuemin="0" aria-valuemax="100"></div>
 
               <!-- Normal Zone -->
-              <div class="progress-bar bg-success" role="progressbar" style="width: {{ bars[test.id]['normal_width'] }}%; opacity: 0.8;" aria-valuenow="{{ bars[test.id]['normal_width'] }}" aria-valuemin="0" aria-valuemax="100"></div>
+              <div class="progress-bar bg-success" role="progressbar" style="width: {{ test_bar.normal_width }}%; opacity: 0.8;" aria-valuenow="{{ test_bar.normal_width }}" aria-valuemin="0" aria-valuemax="100"></div>
 
               <!-- High Zone -->
-              <div class="progress-bar bg-warning" role="progressbar" style="width: {{ bars[test.id]['high_width'] }}%; opacity: 0.8;" aria-valuenow="{{ bars[test.id]['high_width'] }}" aria-valuemin="0" aria-valuemax="100"></div>
+              <div class="progress-bar bg-warning" role="progressbar" style="width: {{ test_bar.high_width }}%; opacity: 0.8;" aria-valuenow="{{ test_bar.high_width }}" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
 
             <!-- The Value Indicator -->
-            <div style="position: absolute; left: calc(15px + (100% - 30px) * ({{ bars[test.id]['value_pos'] }} / 100)); top: 0; bottom: 0; width: 4px; background-color: #000; z-index: 10; transform: translateX(-50%);"></div>
+            <div style="position: absolute; left: calc(15px + (100% - 30px) * ({{ test_bar.value_pos }} / 100)); top: 0; bottom: 0; width: 4px; background-color: #000; z-index: 10; transform: translateX(-50%);"></div>
 
             <!-- The Value Bubble -->
-            <div style="position: absolute; left: calc(15px + (100% - 30px) * ({{ bars[test.id]['value_pos'] }} / 100)); top: -20px; transform: translateX(-50%); background: black; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; line-height: 1; z-index: 11; white-space: nowrap;">
-                {{ bars[test.id]['value'] }} {{ bars[test.id]['unit'] }}
+            <div style="position: absolute; left: calc(15px + (100% - 30px) * ({{ test_bar.value_pos }} / 100)); top: -20px; transform: translateX(-50%); background: black; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; line-height: 1; z-index: 11; white-space: nowrap;">
+                {{ test_bar.value }} {{ test_bar.unit }}
                 <!-- Little arrow pointing down -->
                 <div style="position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid black;"></div>
             </div>
         </div>
         {% endif %}
+        {% endwith %}
           <div class="card-footer">
               <a href="{% url 'chart' test_name=test.test_name %}" class="btn btn-primary btn-sm">
                 <i class="fas fa-chart-line"></i> Graph

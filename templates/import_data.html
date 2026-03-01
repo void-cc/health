@@ -13,7 +13,7 @@
         <div class="alert alert-info">
           <h5><i class="fas fa-info-circle"></i> Expected Format</h5>
           <p class="mb-2">The CSV file must contain a header row. JSON files should contain a list of objects with the corresponding keys. The required columns/keys depend on the data type.</p>
-          <p class="mb-2"><strong>Tip:</strong> The easiest way to get the correct format is to use the <a href="{{ url_for('export_data') }}">Export Data</a> feature, modify the resulting file, and import it back.</p>
+          <p class="mb-2"><strong>Tip:</strong> The easiest way to get the correct format is to use the <a href="{% url 'export_data' %}">Export Data</a> feature, modify the resulting file, and import it back.</p>
 
            <ul class="mb-0 small">
                <li><code>Date</code> (YYYY-MM-DD)</li>
@@ -24,6 +24,7 @@
         </div>
 
         <form method="POST" enctype="multipart/form-data">
+          {% csrf_token %}
           <div class="mb-3">
             <label for="file" class="form-label">Select File (.csv, .json, .pdf)</label>
             <input class="form-control" type="file" id="file" name="file" accept=".csv,.json,.pdf" required>

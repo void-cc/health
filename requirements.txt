@@ -1,5 +1,5 @@
 django
-django_sqlalchemy
+dj-database-url
 gunicorn
 
 psycopg2-binary>=2.9.0
