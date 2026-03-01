@@ -2,20 +2,24 @@
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-10">
-    <div class="card shadow-sm">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fas fa-clipboard-list"></i> Security Log</span>
-        <a href="{% url 'profile' %}" class="btn btn-sm btn-outline-secondary">
-          <i class="fas fa-arrow-left"></i> Back to Profile
+    <div class="account-card">
+      <div class="account-card-header" style="justify-content:space-between;">
+        <span style="display:flex;align-items:center;gap:0.5rem;">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="var(--auth-accent)"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          Security Log
+        </span>
+        <a href="{% url 'profile' %}" class="account-btn account-btn-ghost" style="padding:0.4rem 0.75rem;font-size:0.8rem;">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          Back
         </a>
       </div>
-      <div class="card-body">
+      <div class="account-card-body" style="padding:0;">
         {% if logs %}
-          <div class="table-responsive">
-            <table class="table table-striped table-hover">
+          <div style="overflow-x:auto;">
+            <table class="account-table">
               <thead>
                 <tr>
-                  <th>Date/Time</th>
+                  <th>Date / Time</th>
                   <th>Action</th>
                   <th>IP Address</th>
                   <th>Device</th>
@@ -25,42 +29,43 @@
               <tbody>
                 {% for log in logs %}
                   <tr>
-                    <td>{{ log.timestamp|date:"M d, Y H:i" }}</td>
+                    <td style="white-space:nowrap;">{{ log.timestamp|date:"M d, Y H:i" }}</td>
                     <td>
                       {% if log.action == 'login' %}
-                        <span class="badge bg-success"><i class="fas fa-sign-in-alt"></i> Login</span>
+                        <span class="auth-badge auth-badge-success">✓ Login</span>
                       {% elif log.action == 'logout' %}
-                        <span class="badge bg-secondary"><i class="fas fa-sign-out-alt"></i> Logout</span>
+                        <span class="auth-badge auth-badge-secondary">↩ Logout</span>
                       {% elif log.action == 'login_failed' %}
-                        <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Login Failed</span>
+                        <span class="auth-badge auth-badge-danger">✗ Login Failed</span>
                       {% elif log.action == 'password_changed' %}
-                        <span class="badge bg-warning text-dark"><i class="fas fa-key"></i> Password Changed</span>
+                        <span class="auth-badge auth-badge-warning">🔑 Password Changed</span>
                       {% elif log.action == 'password_reset' %}
-                        <span class="badge bg-warning text-dark"><i class="fas fa-undo"></i> Password Reset</span>
+                        <span class="auth-badge auth-badge-warning">↻ Password Reset</span>
                       {% elif log.action == 'mfa_enabled' %}
-                        <span class="badge bg-info"><i class="fas fa-shield-alt"></i> MFA Enabled</span>
+                        <span class="auth-badge auth-badge-info">🛡 MFA Enabled</span>
                       {% elif log.action == 'mfa_disabled' %}
-                        <span class="badge bg-danger"><i class="fas fa-shield-alt"></i> MFA Disabled</span>
+                        <span class="auth-badge auth-badge-danger">🛡 MFA Disabled</span>
                       {% elif log.action == 'profile_updated' %}
-                        <span class="badge bg-primary"><i class="fas fa-user-edit"></i> Profile Updated</span>
+                        <span class="auth-badge auth-badge-primary">✎ Profile Updated</span>
                       {% elif log.action == 'account_deleted' %}
-                        <span class="badge bg-dark"><i class="fas fa-trash-alt"></i> Account Deleted</span>
+                        <span class="auth-badge auth-badge-dark">⌫ Account Deleted</span>
                       {% else %}
-                        <span class="badge bg-dark">{{ log.get_action_display }}</span>
+                        <span class="auth-badge auth-badge-secondary">{{ log.get_action_display }}</span>
                       {% endif %}
                     </td>
-                    <td><code>{{ log.ip_address }}</code></td>
+                    <td><span class="auth-code">{{ log.ip_address }}</span></td>
                     <td>{{ log.device_type|default:"—" }}</td>
-                    <td><small class="text-muted">{{ log.user_agent|truncatechars:60 }}</small></td>
+                    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted,#8898aa);font-size:0.8rem;">{{ log.user_agent|truncatechars:60 }}</td>
                   </tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
         {% else %}
-          <p class="text-muted text-center py-4">
-            <i class="fas fa-info-circle"></i> No security activity recorded yet.
-          </p>
+          <div class="auth-empty">
+            <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z"/></svg>
+            <p>No security activity recorded yet.</p>
+          </div>
         {% endif %}
       </div>
     </div>
