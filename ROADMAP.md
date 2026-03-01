@@ -54,16 +54,16 @@ This document outlines the strategic roadmap for the development of the comprehe
 - [ ] **Interactive Onboarding Tour:** A guided, step-by-step interactive tutorial for first-time users exploring the platform.
 
 ## Phase 4: User Authentication and Profiles
-- [ ] **Secure Credential Registration:** Standardized email and password authentication backed by robust hashing algorithms (bcrypt/Argon2).
-- [ ] **Multi-Factor Authentication (MFA):** Enhanced security via Time-based One-Time Passwords (TOTP).
-- [ ] **OAuth2 Single Sign-On (SSO):** Integration with major providers (Google, Apple, Microsoft) for seamless login.
-- [ ] **Secure Password Reset Flow:** Standardized, token-based email recovery systems.
-- [ ] **Comprehensive Profile Management:** Detailed demographic data storage (age, biological sex, height, genetic baseline info).
-- [ ] **Advanced Session Management:** Automatic inactivity timeouts and concurrent session monitoring.
-- [ ] **Automated Account Deletion:** Self-service tools for complete account and data erasure to maintain privacy compliance.
-- [ ] **Security Activity Logging:** User-facing logs detailing login times, locations, and device types for security auditing.
-- [ ] **Profile Customization:** Support for uploading custom avatars and personalizing profile aesthetics.
-- [ ] **Privacy Preference Center:** A centralized hub for managing specific data handling, storage, and sharing preferences.
+- [x] **Secure Credential Registration:** Standardized email and password authentication backed by robust hashing algorithms (bcrypt/Argon2).
+- [x] **Multi-Factor Authentication (MFA):** Enhanced security via Time-based One-Time Passwords (TOTP).
+- [x] **OAuth2 Single Sign-On (SSO):** Integration with major providers (Google, Apple, Microsoft) for seamless login.
+- [x] **Secure Password Reset Flow:** Standardized, token-based email recovery systems.
+- [x] **Comprehensive Profile Management:** Detailed demographic data storage (age, biological sex, height, genetic baseline info).
+- [x] **Advanced Session Management:** Automatic inactivity timeouts and concurrent session monitoring.
+- [x] **Automated Account Deletion:** Self-service tools for complete account and data erasure to maintain privacy compliance.
+- [x] **Security Activity Logging:** User-facing logs detailing login times, locations, and device types for security auditing.
+- [x] **Profile Customization:** Support for uploading custom avatars and personalizing profile aesthetics.
+- [x] **Privacy Preference Center:** A centralized hub for managing specific data handling, storage, and sharing preferences.
 
 ## Phase 5: Wearable Integrations
 - [ ] **Apple Health (HealthKit) Synchronization:** Bidirectional syncing capabilities with the iOS ecosystem.
