@@ -3,12 +3,9 @@
    Premium, self-contained styling (no CDN dependency)
    ========================================================================== */
 
-/* ---------- Google Fonts fallback (Inter) ---------- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 /* ---------- Custom Properties ---------- */
 :root {
-  --auth-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --auth-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --auth-gradient-1: #0f3460;
   --auth-gradient-2: #533483;
   --auth-gradient-3: #e94560;
