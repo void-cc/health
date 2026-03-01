@@ -99,12 +99,12 @@ def history(request):
         })
 
     for vital in vitals:
-        bp_str = f"{vital.systolic_bp}/{vital.diastolic_bp} mmHg" if vital.systolic_bp and vital.diastolic_bp else ""
-        hr_str = f"{vital.heart_rate} bpm" if vital.heart_rate else ""
-        weight_str = f"{vital.weight} kg" if vital.weight else ""
-        bbt_str = f"BBT: {vital.bbt}°C" if vital.bbt else ""
-        spo2_str = f"SpO2: {vital.spo2}%" if vital.spo2 else ""
-        rr_str = f"RR: {vital.respiratory_rate}/min" if vital.respiratory_rate else ""
+        bp_str = f"{vital.systolic_bp}/{vital.diastolic_bp} mmHg" if vital.systolic_bp is not None and vital.diastolic_bp is not None else ""
+        hr_str = f"{vital.heart_rate} bpm" if vital.heart_rate is not None else ""
+        weight_str = f"{vital.weight} kg" if vital.weight is not None else ""
+        bbt_str = f"BBT: {vital.bbt}°C" if vital.bbt is not None else ""
+        spo2_str = f"SpO2: {vital.spo2}%" if vital.spo2 is not None else ""
+        rr_str = f"RR: {vital.respiratory_rate}/min" if vital.respiratory_rate is not None else ""
 
         details = [val for val in [weight_str, hr_str, bp_str, bbt_str, spo2_str, rr_str] if val]
 
@@ -796,12 +796,12 @@ def export_data(request):
         })
 
     for vital in vitals:
-        bp_str = f"{vital.systolic_bp}/{vital.diastolic_bp}" if vital.systolic_bp and vital.diastolic_bp else ""
-        hr_str = f"{vital.heart_rate} bpm" if vital.heart_rate else ""
-        weight_str = f"{vital.weight} kg" if vital.weight else ""
-        bbt_str = f"BBT: {vital.bbt}°C" if vital.bbt else ""
-        spo2_str = f"SpO2: {vital.spo2}%" if vital.spo2 else ""
-        rr_str = f"RR: {vital.respiratory_rate}/min" if vital.respiratory_rate else ""
+        bp_str = f"{vital.systolic_bp}/{vital.diastolic_bp}" if vital.systolic_bp is not None and vital.diastolic_bp is not None else ""
+        hr_str = f"{vital.heart_rate} bpm" if vital.heart_rate is not None else ""
+        weight_str = f"{vital.weight} kg" if vital.weight is not None else ""
+        bbt_str = f"BBT: {vital.bbt}°C" if vital.bbt is not None else ""
+        spo2_str = f"SpO2: {vital.spo2}%" if vital.spo2 is not None else ""
+        rr_str = f"RR: {vital.respiratory_rate}/min" if vital.respiratory_rate is not None else ""
 
         details = [val for val in [weight_str, hr_str, bp_str, bbt_str, spo2_str, rr_str] if val]
 
@@ -908,10 +908,12 @@ def hydration_add(request):
             return redirect('hydration_add')
         date = datetime.strptime(date_str, '%Y-%m-%d').date()
         try:
+            fluid_val = request.POST.get('fluid_intake_ml', '').strip()
+            goal_val = request.POST.get('goal_ml', '').strip()
             HydrationLog.objects.create(
                 date=date,
-                fluid_intake_ml=float(request.POST.get('fluid_intake_ml', 0)),
-                goal_ml=float(request.POST.get('goal_ml')) if request.POST.get('goal_ml') else 2500,
+                fluid_intake_ml=float(fluid_val) if fluid_val else 0,
+                goal_ml=float(goal_val) if goal_val else 2500,
                 notes=request.POST.get('notes', ''),
             )
             messages.success(request, 'Hydration log added!')
@@ -926,8 +928,10 @@ def hydration_edit(request, pk):
     if request.method == 'POST':
         try:
             entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.fluid_intake_ml = float(request.POST.get('fluid_intake_ml', 0))
-            entry.goal_ml = float(request.POST.get('goal_ml')) if request.POST.get('goal_ml') else 2500
+            fluid_val = request.POST.get('fluid_intake_ml', '').strip()
+            goal_val = request.POST.get('goal_ml', '').strip()
+            entry.fluid_intake_ml = float(fluid_val) if fluid_val else 0
+            entry.goal_ml = float(goal_val) if goal_val else 2500
             entry.notes = request.POST.get('notes', '')
             entry.save()
             messages.success(request, 'Hydration log updated!')
@@ -1054,6 +1058,9 @@ def custom_vital_edit_entry(request, pk):
     if request.method == 'POST':
         try:
             entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            definition_id = request.POST.get('definition')
+            if definition_id:
+                entry.definition = get_object_or_404(CustomVitalDefinition, id=definition_id)
             entry.value = float(request.POST.get('value', 0))
             entry.notes = request.POST.get('notes', '')
             entry.save()
