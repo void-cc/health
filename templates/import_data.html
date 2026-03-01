@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Import Data</h4>
+      </div>
+      <div class="card-body">
+        <p class="lead">Upload a CSV file containing your health data.</p>
+
+        <div class="alert alert-info">
+          <h5><i class="fas fa-info-circle"></i> Expected CSV Format</h5>
+          <p class="mb-2">The CSV file must contain a header row. The required columns depend on the data type.</p>
+          <p class="mb-2"><strong>Tip:</strong> The easiest way to get the correct format is to use the <a href="{{ url_for('export_data') }}">Export Data</a> feature, modify the resulting file, and import it back.</p>
+
+           <ul class="mb-0 small">
+               <li><code>Date</code> (YYYY-MM-DD)</li>
+               <li><code>Type</code> ('Blood Test' or 'Vitals')</li>
+               <li><code>Name</code> (Test name or 'Vital Signs')</li>
+               <li><code>Value</code> (Numeric for tests, or a comma-separated string for vitals e.g. "70.0 kg, 65 bpm, 120/80")</li>
+           </ul>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="csv_file" class="form-label">Select CSV File</label>
+            <input class="form-control" type="file" id="csv_file" name="csv_file" accept=".csv" required>
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Import Data</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

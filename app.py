@@ -449,6 +449,151 @@ def history():
     return render_template('history.html', history=history_items)
 
 
+@app.route('/import', methods=['GET', 'POST'])
+def import_data():
+    if request.method == 'POST':
+        if 'csv_file' not in request.files:
+            flash('No file part', 'danger')
+            return redirect(request.url)
+        file = request.files['csv_file']
+        if file.filename == '':
+            flash('No selected file', 'danger')
+            return redirect(request.url)
+        if not file.filename.endswith('.csv'):
+            flash('Please upload a .csv file', 'danger')
+            return redirect(request.url)
+
+        try:
+            stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+            csv_input = csv.DictReader(stream)
+
+            imported_tests = 0
+            imported_vitals = 0
+            skipped_rows = 0
+
+            for row in csv_input:
+                try:
+                    date_str = row.get('Date')
+                    if not date_str:
+                        skipped_rows += 1
+                        continue
+                    date = datetime.strptime(date_str, '%Y-%m-%d').date()
+
+                    row_type = row.get('Type')
+
+                    if row_type == 'Blood Test':
+                        name = row.get('Name')
+                        value_str = row.get('Value')
+                        unit = row.get('Unit', '')
+                        normal_min_str = row.get('Normal Min', '')
+                        normal_max_str = row.get('Normal Max', '')
+
+                        if not name or not value_str:
+                            skipped_rows += 1
+                            continue
+
+                        value = float(value_str)
+                        normal_min = float(normal_min_str) if normal_min_str else None
+                        normal_max = float(normal_max_str) if normal_max_str else None
+
+                        test_info = TEST_INFO.get(name)
+                        category = test_info.get('category', 'Uncategorized') if test_info else 'Uncategorized'
+
+                        # Use unit from TEST_INFO if available, else from CSV, else empty string
+                        if test_info and test_info.get('unit'):
+                            final_unit = test_info['unit']
+                        else:
+                            final_unit = unit
+
+                        # Use normal ranges from TEST_INFO if missing in CSV
+                        if test_info:
+                            if normal_min is None and test_info.get('normal_min') is not None:
+                                normal_min = test_info['normal_min']
+                            if normal_max is None and test_info.get('normal_max') is not None:
+                                normal_max = test_info['normal_max']
+
+                        new_test = BloodTest(
+                            test_name=name,
+                            value=value,
+                            unit=final_unit,
+                            date=date,
+                            normal_min=normal_min,
+                            normal_max=normal_max,
+                            category=category
+                        )
+                        db.session.add(new_test)
+                        imported_tests += 1
+
+                    elif row_type == 'Vitals':
+                        value_str = row.get('Value', '')
+
+                        weight = None
+                        heart_rate = None
+                        systolic_bp = None
+                        diastolic_bp = None
+
+                        parts = [p.strip() for p in value_str.split(',')]
+                        for part in parts:
+                            if 'kg' in part:
+                                try:
+                                    weight = float(part.replace('kg', '').strip())
+                                except ValueError:
+                                    pass
+                            elif 'lbs' in part:
+                                try:
+                                    weight = float(part.replace('lbs', '').strip()) * 0.453592
+                                except ValueError:
+                                    pass
+                            elif 'bpm' in part:
+                                try:
+                                    heart_rate = int(part.replace('bpm', '').strip())
+                                except ValueError:
+                                    pass
+                            elif '/' in part:
+                                try:
+                                    bp_parts = part.replace('mmHg', '').split('/')
+                                    systolic_bp = int(bp_parts[0].strip())
+                                    diastolic_bp = int(bp_parts[1].strip())
+                                except (ValueError, IndexError):
+                                    pass
+
+                        if weight is not None or heart_rate is not None or (systolic_bp is not None and diastolic_bp is not None):
+                            new_vital = VitalSign(
+                                date=date,
+                                weight=weight,
+                                heart_rate=heart_rate,
+                                systolic_bp=systolic_bp,
+                                diastolic_bp=diastolic_bp
+                            )
+                            db.session.add(new_vital)
+                            imported_vitals += 1
+                        else:
+                            skipped_rows += 1
+
+                    else:
+                        skipped_rows += 1
+
+                except Exception as e:
+                    print(f"Error parsing row: {e}")
+                    skipped_rows += 1
+
+            db.session.commit()
+
+            flash_msg = f"Imported {imported_tests} blood tests and {imported_vitals} vital signs."
+            if skipped_rows > 0:
+                flash_msg += f" Skipped {skipped_rows} rows due to missing/invalid data."
+            flash(flash_msg, 'success')
+
+            return redirect(url_for('index'))
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"File processing error: {e}")
+            flash(f"Error processing file: {str(e)}", 'danger')
+            return redirect(request.url)
+
+    return render_template('import_data.html')
+
 @app.route('/export')
 def export_data():
     output = io.StringIO()
