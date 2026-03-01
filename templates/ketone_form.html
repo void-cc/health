@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Ketone Log</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Date:</label>
+      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="value" class="form-label">Value:</label>
+      <input type="number" step="0.01" class="form-control" name="value" id="value" value="{% if editing and entry.value is not None %}{{ entry.value }}{% endif %}" placeholder="e.g. 1.5" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="measurement_type" class="form-label">Measurement Type:</label>
+      <select class="form-select" name="measurement_type" id="measurement_type" required>
+        <option value="">-- Select type --</option>
+        <option value="blood" {% if editing and entry.measurement_type == 'blood' %}selected{% endif %}>Blood (mmol/L)</option>
+        <option value="urine" {% if editing and entry.measurement_type == 'urine' %}selected{% endif %}>Urine (mg/dL)</option>
+        <option value="breath" {% if editing and entry.measurement_type == 'breath' %}selected{% endif %}>Breath (ppm)</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'ketone_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

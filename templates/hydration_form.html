@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Hydration Log</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Date:</label>
+      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="fluid_intake_ml" class="form-label">Fluid Intake (ml):</label>
+      <input type="number" class="form-control" name="fluid_intake_ml" id="fluid_intake_ml" value="{% if editing and entry.fluid_intake_ml is not None %}{{ entry.fluid_intake_ml }}{% endif %}" placeholder="e.g. 2000" />
+    </div>
+
+    <div class="mb-3">
+      <label for="goal_ml" class="form-label">Goal (ml):</label>
+      <input type="number" class="form-control" name="goal_ml" id="goal_ml" value="{% if editing and entry.goal_ml is not None %}{{ entry.goal_ml }}{% else %}2500{% endif %}" placeholder="e.g. 2500" />
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'hydration_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

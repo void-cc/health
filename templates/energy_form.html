@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Energy Log</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Date:</label>
+      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="energy_score" class="form-label">Energy Score: <span id="scoreDisplay">{% if editing %}{{ entry.energy_score }}{% else %}5{% endif %}</span> / 10</label>
+      <input type="range" class="form-range" name="energy_score" id="energy_score" min="1" max="10" value="{% if editing %}{{ entry.energy_score }}{% else %}5{% endif %}" oninput="document.getElementById('scoreDisplay').textContent = this.value" />
+      <div class="d-flex justify-content-between">
+        <small class="text-muted">1 (Very Low)</small>
+        <small class="text-muted">10 (Very High)</small>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'energy_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Symptom Entry</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Date:</label>
+      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="symptom" class="form-label">Symptom:</label>
+      <input type="text" class="form-control" name="symptom" id="symptom" value="{% if editing %}{{ entry.symptom }}{% endif %}" placeholder="e.g. Headache, Nausea" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="severity" class="form-label">Severity:</label>
+      <select class="form-select" name="severity" id="severity" required>
+        <option value="">-- Select severity --</option>
+        <option value="1" {% if editing and entry.severity == 1 %}selected{% endif %}>1 - Mild</option>
+        <option value="2" {% if editing and entry.severity == 2 %}selected{% endif %}>2 - Moderate</option>
+        <option value="3" {% if editing and entry.severity == 3 %}selected{% endif %}>3 - Severe</option>
+        <option value="4" {% if editing and entry.severity == 4 %}selected{% endif %}>4 - Very Severe</option>
+        <option value="5" {% if editing and entry.severity == 5 %}selected{% endif %}>5 - Extreme</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="duration" class="form-label">Duration:</label>
+      <input type="text" class="form-control" name="duration" id="duration" value="{% if editing and entry.duration %}{{ entry.duration }}{% endif %}" placeholder="e.g. 2 hours, all day" />
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'symptom_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
