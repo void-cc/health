@@ -78,8 +78,7 @@ WSGI_APPLICATION = "health_tracker.wsgi.application"
 DATABASES = {
     "default": dj_database_url.config(
         default=f"sqlite:///{BASE_DIR}/blood_tests.db",
-        conn_max_age=600,
-        conn_health_checks=True,
+
     )
 }
 

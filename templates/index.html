@@ -22,7 +22,7 @@
   </div>
   <div class="col-md-4">
     <div class="card bg-light mb-3">
-      <div class="card-header">Latest Vital Signs {% if latest_vitals %}({{ latest_vitals.date.strftime('%Y-%m-%d') }}){% endif %}</div>
+      <div class="card-header">Latest Vital Signs {% if latest_vitals %}({{ latest_vitals.date.utctime('%Y-%m-%d') }}){% endif %}</div>
       <div class="card-body">
         {% if latest_vitals %}
           <p class="card-text mb-1"><strong>Weight:</strong> {{ latest_vitals.weight if latest_vitals.weight else 'N/A' }} kg</p>
