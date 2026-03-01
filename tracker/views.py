@@ -371,6 +371,46 @@ def vitals_charts(request):
         'dia_bp_data': dia_bp_data
     })
 
+def scatter_plots(request):
+    tests = BloodTest.objects.all().order_by('date')
+    vitals = VitalSign.objects.all().order_by('date')
+
+    # Build a dict of metric_name -> list of {date, value}
+    metrics = {}
+
+    for test in tests:
+        key = test.test_name
+        if key not in metrics:
+            metrics[key] = []
+        metrics[key].append({
+            'date': test.date.strftime('%Y-%m-%d'),
+            'value': test.value
+        })
+
+    vital_fields = [
+        ('Weight', 'weight'),
+        ('Heart Rate', 'heart_rate'),
+        ('Systolic BP', 'systolic_bp'),
+        ('Diastolic BP', 'diastolic_bp'),
+    ]
+    for label, field in vital_fields:
+        for v in vitals:
+            val = getattr(v, field)
+            if val is not None:
+                if label not in metrics:
+                    metrics[label] = []
+                metrics[label].append({
+                    'date': v.date.strftime('%Y-%m-%d'),
+                    'value': float(val)
+                })
+
+    metric_names = sorted(metrics.keys())
+
+    return render(request, 'scatter_plots.html', {
+        'metrics': metrics,
+        'metric_names': metric_names,
+    })
+
 import pdfplumber
 import pdf2image
 import pytesseract
