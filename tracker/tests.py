@@ -9,6 +9,10 @@ class TemplateFilterTests(TestCase):
         from tracker.templatetags.json_filters import tojson
         self.assertEqual(tojson([1, 2, 3]), '[1, 2, 3]')
         self.assertEqual(tojson({"key": "value"}), '{"key": "value"}')
+        # Test XSS escaping
+        result = tojson("<script>alert('xss')</script>")
+        self.assertNotIn('<script>', str(result))
+        self.assertIn('\\u003C', str(result))
 
     def test_lookup_filter(self):
         from tracker.templatetags.json_filters import lookup
