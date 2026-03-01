@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from .models import BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget
 from datetime import datetime
 import csv
@@ -768,6 +769,13 @@ def export_data(request):
 
 # --- Data Point Annotation views ---
 
+def _safe_redirect(request, default='index'):
+    next_url = request.POST.get('next', '')
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return redirect(next_url)
+    return redirect(default)
+
+
 def add_annotation(request, model_type, object_id):
     if request.method == 'POST':
         note = request.POST.get('note', '').strip()
@@ -784,8 +792,7 @@ def add_annotation(request, model_type, object_id):
         else:
             messages.error(request, 'Invalid data type.')
 
-    next_url = request.POST.get('next', request.META.get('HTTP_REFERER', reverse('index')))
-    return redirect(next_url)
+    return _safe_redirect(request)
 
 
 def delete_annotation(request, annotation_id):
@@ -793,8 +800,7 @@ def delete_annotation(request, annotation_id):
         annotation = get_object_or_404(DataPointAnnotation, id=annotation_id)
         annotation.delete()
         messages.success(request, 'Annotation deleted successfully!')
-    next_url = request.POST.get('next', request.META.get('HTTP_REFERER', reverse('index')))
-    return redirect(next_url)
+    return _safe_redirect(request)
 
 
 # --- Bulk Data Editing Interface ---
@@ -808,20 +814,27 @@ def bulk_edit(request):
             BloodTest.objects.filter(id__in=deleted_ids).delete()
 
         test_ids = request.POST.getlist('test_ids')
-        for test_id in test_ids:
-            if test_id in deleted_ids:
-                continue
-            try:
-                test = BloodTest.objects.get(id=int(test_id))
-                new_value = request.POST.get(f'value_{test_id}')
-                new_date = request.POST.get(f'date_{test_id}')
-                if new_value is not None and new_date:
-                    test.value = float(new_value)
-                    test.date = datetime.strptime(new_date, '%Y-%m-%d').date()
-                    test.save()
-                    updated += 1
-            except (BloodTest.DoesNotExist, ValueError, TypeError):
-                continue
+        remaining_ids = [tid for tid in test_ids if tid not in deleted_ids]
+
+        if remaining_ids:
+            tests_map = {str(t.id): t for t in BloodTest.objects.filter(id__in=remaining_ids)}
+            to_update = []
+            for test_id in remaining_ids:
+                test = tests_map.get(test_id)
+                if not test:
+                    continue
+                try:
+                    new_value = request.POST.get(f'value_{test_id}')
+                    new_date = request.POST.get(f'date_{test_id}')
+                    if new_value is not None and new_date:
+                        test.value = float(new_value)
+                        test.date = datetime.strptime(new_date, '%Y-%m-%d').date()
+                        to_update.append(test)
+                        updated += 1
+                except (ValueError, TypeError):
+                    continue
+            if to_update:
+                BloodTest.objects.bulk_update(to_update, ['value', 'date'])
 
         deleted_count = len(deleted_ids)
         parts = []
