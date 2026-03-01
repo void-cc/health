@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Medical History</h2>
+</div>
+
+{% if history %}
+<div class="table-responsive">
+  <table class="table table-striped table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Value(s)</th>
+        <th>Status</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in history %}
+      <tr>
+        <td>{{ item.date.strftime('%Y-%m-%d') }}</td>
+        <td>
+            {% if item.type == 'Blood Test' %}
+                <span class="badge bg-info text-dark">Blood Test</span>
+            {% else %}
+                <span class="badge bg-secondary">Vitals</span>
+            {% endif %}
+        </td>
+        <td><strong>{{ item.name }}</strong></td>
+        <td>{{ item.value }}</td>
+        <td>
+            {% if item.status == 'Normal' %}
+                <span class="badge bg-success">Normal</span>
+            {% elif item.status == 'Out of Range' %}
+                <span class="badge bg-danger">Out of Range</span>
+            {% else %}
+                <span class="text-muted">-</span>
+            {% endif %}
+        </td>
+        <td class="text-muted small">{{ item.notes }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+  <p>No medical history available.</p>
+</div>
+{% endif %}
+{% endblock %}
