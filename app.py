@@ -158,6 +158,19 @@ def blood_tests_charts():
 
     return render_template('blood_charts.html', charts_data=charts_data)
 
+
+@app.route('/blood_tests/bar_charts')
+def comparative_bar_charts():
+    tests = BloodTest.query.order_by(BloodTest.date.desc()).all()
+    # Get the latest test for each test_name that has valid normal ranges
+    latest_tests = {}
+    for test in tests:
+        if test.test_name not in latest_tests:
+            if test.normal_min is not None and test.normal_max is not None:
+                latest_tests[test.test_name] = test
+
+    return render_template('comparative_bar_charts.html', latest_tests=latest_tests)
+
 @app.route('/add', methods=['GET', 'POST'])
 def add_test():
     if request.method == 'POST':
