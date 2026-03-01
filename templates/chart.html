@@ -1,10 +1,73 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<h2 class="mb-4">Blood Test Trends</h2>
-<canvas id="bloodChart"></canvas>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0">Blood Test Trends: {{ test_name }}</h2>
+  <div>
+    <button class="btn btn-outline-dark me-2" onclick="exportChartPDF()">
+      <i class="fas fa-file-pdf"></i> Export PDF
+    </button>
+    <a href="{% url 'blood_tests_charts' %}" class="btn btn-secondary">All Charts</a>
+  </div>
+</div>
 
+<div id="chart-container">
+  <canvas id="bloodChart"></canvas>
+</div>
+
+<!-- Data Point Annotations -->
+{% if tests %}
+<h4 class="mt-4 mb-3">Data Point Annotations</h4>
+<div class="table-responsive">
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Value</th>
+        <th>Notes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for test in tests %}
+      <tr>
+        <td>{{ test.date|date:"Y-m-d" }}</td>
+        <td>{{ test.value }} {{ test.unit }}</td>
+        <td>
+          {% for annotation in test.annotations.all %}
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span><i class="fas fa-sticky-note text-warning"></i> {{ annotation.note }}</span>
+              <form action="{% url 'delete_annotation' annotation_id=annotation.id %}" method="post" class="d-inline ms-2">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'chart' test_name=test_name %}">
+                <button type="submit" class="btn btn-sm btn-link text-danger p-0"><i class="fas fa-times"></i></button>
+              </form>
+            </div>
+          {% empty %}
+            <span class="text-muted">No notes</span>
+          {% endfor %}
+        </td>
+        <td>
+          <form action="{% url 'add_annotation' model_type='blood_test' object_id=test.id %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'chart' test_name=test_name %}">
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input type="text" name="note" class="form-control" placeholder="Add note...">
+              <button type="submit" class="btn btn-outline-secondary"><i class="fas fa-plus"></i></button>
+            </div>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 <script>
+  var annotationsMap = {{ annotations_map|tojson }};
+
   var ctx = document.getElementById('bloodChart').getContext('2d');
   var bloodChart = new Chart(ctx, {
     type: 'line',
@@ -26,7 +89,38 @@
         xAxes: [{ type: 'time', time: { unit: 'month' } }],
         yAxes: [{ ticks: { beginAtZero: false } }],
       },
+      tooltips: {
+        callbacks: {
+          afterLabel: function(tooltipItem) {
+            var date = tooltipItem.xLabel || tooltipItem.label;
+            if (typeof date === 'object' && date.format) {
+              date = date.format('YYYY-MM-DD');
+            }
+            var notes = annotationsMap[date];
+            if (notes && notes.length > 0) {
+              return notes.map(function(n) { return '📝 ' + n.note; });
+            }
+            return '';
+          }
+        }
+      }
     },
   });
+</script>
+
+<!-- PDF Export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+function exportChartPDF() {
+  var element = document.getElementById('chart-container');
+  html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
+    var pdf = new jspdf.jsPDF('l', 'mm', 'a4');
+    var imgWidth = 287;
+    var imgHeight = canvas.height * imgWidth / canvas.width;
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 5, 5, imgWidth, imgHeight);
+    pdf.save('{{ test_name }}_chart.pdf');
+  });
+}
 </script>
 {% endblock %}
