@@ -3113,7 +3113,7 @@ class Phase11SubTaskModelTests(TestCase):
         ist.save()
         ist.refresh_from_db()
         self.assertEqual(ist.status, 'completed')
-        self.assertEqual(IntegrationSubTask.objects.count(), 0)
+        self.assertEqual(IntegrationSubTask.objects.count(), 1)
 
 
 class Phase9SecureViewingLinkTests(TestCase):
