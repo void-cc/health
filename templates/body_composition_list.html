@@ -1,9 +1,74 @@
 {% extends 'base.html' %}
+{% load json_filters %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Body Composition</h2>
-  <a href="{% url 'body_composition_add' %}" class="btn btn-primary">Add Entry</a>
+  <h2><i class="fas fa-weight"></i> Body Composition</h2>
+  <a href="{% url 'body_composition_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Entry</a>
 </div>
+
+<!-- Summary Statistics -->
+{% if stats.total_entries %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-primary">
+      <div class="card-body py-2">
+        <div class="text-muted small">Total Entries</div>
+        <div class="h4 mb-0">{{ stats.total_entries }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-info">
+      <div class="card-body py-2">
+        <div class="text-muted small">Avg Body Fat %</div>
+        <div class="h4 mb-0">{% if stats.avg_body_fat is not None %}{{ stats.avg_body_fat|floatformat:1 }}%{% else %}-{% endif %}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-success">
+      <div class="card-body py-2">
+        <div class="text-muted small">Avg Muscle Mass</div>
+        <div class="h4 mb-0">{% if stats.avg_muscle_mass is not None %}{{ stats.avg_muscle_mass|floatformat:1 }} kg{% else %}-{% endif %}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-warning">
+      <div class="card-body py-2">
+        <div class="text-muted small">Avg WHR</div>
+        <div class="h4 mb-0">{% if stats.avg_whr is not None %}{{ stats.avg_whr|floatformat:3 }}{% else %}-{% endif %}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Date Filter -->
+<form method="get" class="row g-2 mb-4 align-items-end">
+  <div class="col-auto">
+    <label for="startDate" class="form-label small mb-0">From</label>
+    <input type="date" class="form-control form-control-sm" id="startDate" name="start_date" value="{{ start_date }}">
+  </div>
+  <div class="col-auto">
+    <label for="endDate" class="form-label small mb-0">To</label>
+    <input type="date" class="form-control form-control-sm" id="endDate" name="end_date" value="{{ end_date }}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-filter"></i> Filter</button>
+    <a href="{% url 'body_composition_list' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i> Clear</a>
+  </div>
+</form>
+
+<!-- Trend Chart -->
+{% if stats.total_entries and stats.total_entries > 1 %}
+<div class="card mb-4">
+  <div class="card-body">
+    <h6 class="card-title"><i class="fas fa-chart-line"></i> Body Composition Trends</h6>
+    <canvas id="bodyCompTrendChart" height="80"></canvas>
+  </div>
+</div>
+{% endif %}
 
 {% if entries %}
 <div class="table-responsive">
@@ -12,8 +77,8 @@
       <tr>
         <th>Date</th>
         <th>Body Fat %</th>
-        <th>Skeletal Muscle Mass (kg)</th>
-        <th>Bone Density (g/cm²)</th>
+        <th>Muscle Mass (kg)</th>
+        <th>Bone Density</th>
         <th>Waist (cm)</th>
         <th>Hip (cm)</th>
         <th>WHR</th>
@@ -30,14 +95,20 @@
         <td>{% if entry.bone_density is not None %}{{ entry.bone_density }}{% else %}-{% endif %}</td>
         <td>{% if entry.waist_circumference is not None %}{{ entry.waist_circumference }}{% else %}-{% endif %}</td>
         <td>{% if entry.hip_circumference is not None %}{{ entry.hip_circumference }}{% else %}-{% endif %}</td>
-        <td>{% if entry.waist_to_hip_ratio is not None %}{{ entry.waist_to_hip_ratio }}{% else %}-{% endif %}</td>
-        <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
+        <td>
+          {% if entry.waist_to_hip_ratio is not None %}
+            <span class="badge {% if entry.waist_to_hip_ratio <= 0.85 %}bg-success{% elif entry.waist_to_hip_ratio <= 0.95 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+              {{ entry.waist_to_hip_ratio }}
+            </span>
+          {% else %}-{% endif %}
+        </td>
+        <td>{% if entry.notes %}{{ entry.notes|truncatewords:8 }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'body_composition_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
-            <i class="fas fa-edit"></i> Edit
+            <i class="fas fa-edit"></i>
           </a>
           <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
-            <i class="fas fa-trash-alt"></i> Delete
+            <i class="fas fa-trash-alt"></i>
           </button>
 
           <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">
@@ -66,10 +137,49 @@
     </tbody>
   </table>
 </div>
+
+{% include 'includes/pagination.html' %}
+
 {% else %}
 <div class="alert alert-info">
   <p>No body composition entries recorded yet.</p>
   <a class="btn btn-primary" href="{% url 'body_composition_add' %}">Add Your First Entry</a>
 </div>
+{% endif %}
+
+{% if stats.total_entries and stats.total_entries > 1 %}
+<script>
+(function() {
+  var ctx = document.getElementById('bodyCompTrendChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: {{ chart_dates|safe }},
+      datasets: [{
+        label: 'Body Fat %',
+        data: {{ chart_body_fat|safe }},
+        borderColor: 'rgba(255, 99, 132, 0.8)',
+        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+        fill: true,
+        yAxisID: 'y'
+      }, {
+        label: 'Muscle Mass (kg)',
+        data: {{ chart_muscle|safe }},
+        borderColor: 'rgba(40, 167, 69, 0.8)',
+        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+        fill: false,
+        yAxisID: 'y1'
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { position: 'left', beginAtZero: false, scaleLabel: { display: true, labelString: 'Body Fat %' } },
+        y1: { position: 'right', beginAtZero: false, gridLines: { drawOnChartArea: false }, scaleLabel: { display: true, labelString: 'kg' } }
+      }
+    }
+  });
+})();
+</script>
 {% endif %}
 {% endblock %}
