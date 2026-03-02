@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Body Composition</h2>
   <a href="{% url 'body_composition_add' %}" class="btn btn-primary">Add Entry</a>
 </div>
@@ -67,9 +67,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-weight"></i></div>
   <p>No body composition entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'body_composition_add' %}">Add Your First Entry</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'body_composition_add' %}">Add Your First Entry</a>
 </div>
 {% endif %}
 {% endblock %}

@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Custom Vitals</h2>
-  <div>
-    <a href="{% url 'custom_vital_define' %}" class="btn btn-info me-2 text-white">Define New Vital</a>
+  <div class="btn-group-header">
+    <a href="{% url 'custom_vital_define' %}" class="btn btn-info text-white">Define New Vital</a>
     <a href="{% url 'custom_vital_add_entry' %}" class="btn btn-primary">Add Entry</a>
   </div>
 </div>
@@ -35,9 +35,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info mb-5">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-clipboard-list"></i></div>
   <p>No custom vitals defined yet.</p>
-  <a class="btn btn-info text-white" href="{% url 'custom_vital_define' %}">Define Your First Custom Vital</a>
+  <a class="btn btn-info btn-lg text-white" href="{% url 'custom_vital_define' %}">Define Your First Custom Vital</a>
 </div>
 {% endif %}
 
@@ -96,9 +97,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-clipboard-list"></i></div>
   <p>No custom vital entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'custom_vital_add_entry' %}">Add Your First Custom Vital Entry</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'custom_vital_add_entry' %}">Add Your First Custom Vital Entry</a>
 </div>
 {% endif %}
 {% endblock %}

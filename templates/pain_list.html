@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Pain Log</h2>
   <a href="{% url 'pain_add' %}" class="btn btn-primary">Add Entry</a>
 </div>
@@ -165,9 +165,10 @@ document.addEventListener("DOMContentLoaded", function() {
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-user-injured"></i></div>
   <p>No pain log entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'pain_add' %}">Log Your First Pain Entry</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'pain_add' %}">Log Your First Pain Entry</a>
 </div>
 {% endif %}
 {% endblock %}

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Symptom Journal</h2>
   <a href="{% url 'symptom_add' %}" class="btn btn-primary">Add Entry</a>
 </div>
@@ -68,9 +68,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-notes-medical"></i></div>
   <p>No symptom entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'symptom_add' %}">Log Your First Symptom</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'symptom_add' %}">Log Your First Symptom</a>
 </div>
 {% endif %}
 {% endblock %}

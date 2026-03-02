@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Ketone Log</h2>
   <a href="{% url 'ketone_add' %}" class="btn btn-primary">Add Entry</a>
 </div>
@@ -59,9 +59,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-flask"></i></div>
   <p>No ketone log entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'ketone_add' %}">Log Your First Ketone Entry</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'ketone_add' %}">Log Your First Ketone Entry</a>
 </div>
 {% endif %}
 {% endblock %}

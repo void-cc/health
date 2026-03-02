@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Orthostatic Readings</h2>
   <a href="{% url 'orthostatic_add' %}" class="btn btn-primary">Add Reading</a>
 </div>
@@ -88,9 +88,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-heartbeat"></i></div>
   <p>No orthostatic readings recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'orthostatic_add' %}">Record Your First Orthostatic Reading</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'orthostatic_add' %}">Record Your First Orthostatic Reading</a>
 </div>
 {% endif %}
 {% endblock %}

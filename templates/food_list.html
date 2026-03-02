@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Food Log</h2>
   <a href="{% url 'food_add' %}" class="btn btn-primary">Add Entry</a>
 </div>
@@ -71,9 +71,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-utensils"></i></div>
   <p>No food entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'food_add' %}">Log Your First Food Entry</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'food_add' %}">Log Your First Food Entry</a>
 </div>
 {% endif %}
 {% endblock %}

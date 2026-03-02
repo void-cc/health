@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Bulk Data Editing</h2>
   <a href="{% url 'index' %}" class="btn btn-secondary">Back to Dashboard</a>
 </div>
@@ -66,9 +66,10 @@
   });
 </script>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-clipboard-list"></i></div>
   <p>No blood test records to edit.</p>
-  <a class="btn btn-primary" href="{% url 'add_test' %}">Add a new test</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'add_test' %}">Add a new test</a>
 </div>
 {% endif %}
 {% endblock %}

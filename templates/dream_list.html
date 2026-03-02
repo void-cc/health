@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Dream Journal</h2>
   <a href="{% url 'dream_add' %}" class="btn btn-primary">Add Entry</a>
 </div>
@@ -61,9 +61,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-moon"></i></div>
   <p>No dream entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'dream_add' %}">Log Your First Dream Entry</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'dream_add' %}">Log Your First Dream Entry</a>
 </div>
 {% endif %}
 {% endblock %}

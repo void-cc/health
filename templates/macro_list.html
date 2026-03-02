@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Macronutrient Log</h2>
   <a href="{% url 'macro_add' %}" class="btn btn-primary">Add Entry</a>
 </div>
@@ -67,9 +67,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-clipboard-list"></i></div>
   <p>No macronutrient entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'macro_add' %}">Log Your First Macronutrient Entry</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'macro_add' %}">Log Your First Macronutrient Entry</a>
 </div>
 {% endif %}
 {% endblock %}

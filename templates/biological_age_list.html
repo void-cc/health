@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Biological Age Estimates</h2>
   <a href="{% url 'biological_age_add' %}" class="btn btn-primary">Add Entry</a>
 </div>
@@ -63,9 +63,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-dna"></i></div>
   <p>No biological age estimates recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'biological_age_add' %}">Add Your First Biological Age Estimate</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'biological_age_add' %}">Add Your First Biological Age Estimate</a>
 </div>
 {% endif %}
 {% endblock %}

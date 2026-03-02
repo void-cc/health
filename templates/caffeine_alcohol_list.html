@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-header">
   <h2>Caffeine &amp; Alcohol Log</h2>
   <a href="{% url 'caffeine_alcohol_add' %}" class="btn btn-primary">Add Entry</a>
 </div>
@@ -63,9 +63,10 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-coffee"></i></div>
   <p>No caffeine &amp; alcohol entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'caffeine_alcohol_add' %}">Log Your First Caffeine &amp; Alcohol Entry</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'caffeine_alcohol_add' %}">Log Your First Caffeine &amp; Alcohol Entry</a>
 </div>
 {% endif %}
 {% endblock %}
