@@ -1,0 +1,3 @@
+## 2026-03-02 - Add ARIA Labels to Icon-Only Buttons
+**Learning:** Icon-only buttons (like `+` and `x` for adding and deleting notes) in the Django template views lacked essential accessibility attributes, which is a common oversight in backend-heavy projects. Adding `aria-label` along with `title` makes the UI accessible to screen readers while simultaneously adding a helpful native tooltip for mouse users.
+**Action:** When adding or reviewing interactive UI elements (especially FontAwesome icon buttons), habitually verify that an `aria-label` or visually hidden text exists. Include `title` attributes for dual-purpose accessibility/usability improvements.
