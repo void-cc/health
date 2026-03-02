@@ -17,6 +17,7 @@ from .models import (
     # Phase 7
     UserProfile, FamilyAccount, EncryptionKey, AuditLog,
     APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
+    AnonymizedDataReport, DatabaseScalingConfig, BackupConfiguration,
     # Phase 8
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
@@ -29,7 +30,12 @@ from .models import (
     INTEGRATION_CATEGORIES, INTEGRATION_FEATURE_TYPES,
 )
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import send_mail
+from django.conf import settings
 from datetime import datetime
+from xml.etree.ElementTree import Element, SubElement, tostring
 import csv
 import os
 import io
@@ -1800,10 +1806,12 @@ def sync_log_list(request):
 
 # ===== Phase 6: Sleep & Circadian =====
 
+@login_required
 def sleep_list(request):
     entries = SleepLog.objects.all().order_by('-date')
     return render(request, 'sleep_list.html', {'entries': entries})
 
+@login_required
 def sleep_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1818,10 +1826,12 @@ def sleep_add(request):
             light = request.POST.get('light_sleep_minutes', '').strip()
             awake = request.POST.get('awake_minutes', '').strip()
             quality = request.POST.get('sleep_quality_score', '').strip()
+            bedtime_val = request.POST.get('bedtime', '').strip() or None
+            wake_val = request.POST.get('wake_time', '').strip() or None
             SleepLog.objects.create(
                 date=date,
-                bedtime=request.POST.get('bedtime', ''),
-                wake_time=request.POST.get('wake_time', ''),
+                bedtime=bedtime_val,
+                wake_time=wake_val,
                 total_sleep_minutes=int(total) if total else None,
                 rem_minutes=int(rem) if rem else None,
                 deep_sleep_minutes=int(deep) if deep else None,
@@ -1837,13 +1847,14 @@ def sleep_add(request):
             return redirect('sleep_add')
     return render(request, 'sleep_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def sleep_edit(request, pk):
     entry = get_object_or_404(SleepLog, id=pk)
     if request.method == 'POST':
         try:
             entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.bedtime = request.POST.get('bedtime', '')
-            entry.wake_time = request.POST.get('wake_time', '')
+            entry.bedtime = request.POST.get('bedtime', '').strip() or None
+            entry.wake_time = request.POST.get('wake_time', '').strip() or None
             total = request.POST.get('total_sleep_minutes', '').strip()
             rem = request.POST.get('rem_minutes', '').strip()
             deep = request.POST.get('deep_sleep_minutes', '').strip()
@@ -1865,6 +1876,7 @@ def sleep_edit(request, pk):
             return redirect('sleep_edit', pk=pk)
     return render(request, 'sleep_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def sleep_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(SleepLog, id=pk).delete()
@@ -1874,10 +1886,12 @@ def sleep_delete(request, pk):
 
 # ===== Phase 6: Circadian Rhythm =====
 
+@login_required
 def circadian_list(request):
     entries = CircadianRhythmLog.objects.all().order_by('-date')
     return render(request, 'circadian_list.html', {'entries': entries})
 
+@login_required
 def circadian_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1889,10 +1903,10 @@ def circadian_add(request):
             light_exp = request.POST.get('light_exposure_minutes', '').strip()
             CircadianRhythmLog.objects.create(
                 date=date,
-                wake_time=request.POST.get('wake_time', ''),
-                sleep_onset=request.POST.get('sleep_onset', ''),
-                peak_energy_time=request.POST.get('peak_energy_time', ''),
-                lowest_energy_time=request.POST.get('lowest_energy_time', ''),
+                wake_time=request.POST.get('wake_time', '').strip() or None,
+                sleep_onset=request.POST.get('sleep_onset', '').strip() or None,
+                peak_energy_time=request.POST.get('peak_energy_time', '').strip() or None,
+                lowest_energy_time=request.POST.get('lowest_energy_time', '').strip() or None,
                 light_exposure_minutes=int(light_exp) if light_exp else None,
                 notes=request.POST.get('notes', ''),
             )
@@ -1903,15 +1917,16 @@ def circadian_add(request):
             return redirect('circadian_add')
     return render(request, 'circadian_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def circadian_edit(request, pk):
     entry = get_object_or_404(CircadianRhythmLog, id=pk)
     if request.method == 'POST':
         try:
             entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.wake_time = request.POST.get('wake_time', '')
-            entry.sleep_onset = request.POST.get('sleep_onset', '')
-            entry.peak_energy_time = request.POST.get('peak_energy_time', '')
-            entry.lowest_energy_time = request.POST.get('lowest_energy_time', '')
+            entry.wake_time = request.POST.get('wake_time', '').strip() or None
+            entry.sleep_onset = request.POST.get('sleep_onset', '').strip() or None
+            entry.peak_energy_time = request.POST.get('peak_energy_time', '').strip() or None
+            entry.lowest_energy_time = request.POST.get('lowest_energy_time', '').strip() or None
             light_exp = request.POST.get('light_exposure_minutes', '').strip()
             entry.light_exposure_minutes = int(light_exp) if light_exp else None
             entry.notes = request.POST.get('notes', '')
@@ -1923,6 +1938,7 @@ def circadian_edit(request, pk):
             return redirect('circadian_edit', pk=pk)
     return render(request, 'circadian_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def circadian_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(CircadianRhythmLog, id=pk).delete()
@@ -1932,10 +1948,12 @@ def circadian_delete(request, pk):
 
 # ===== Phase 6: Dream Journal =====
 
+@login_required
 def dream_list(request):
     entries = DreamJournal.objects.all().order_by('-date')
     return render(request, 'dream_list.html', {'entries': entries})
 
+@login_required
 def dream_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1959,6 +1977,7 @@ def dream_add(request):
             return redirect('dream_add')
     return render(request, 'dream_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def dream_edit(request, pk):
     entry = get_object_or_404(DreamJournal, id=pk)
     if request.method == 'POST':
@@ -1977,6 +1996,7 @@ def dream_edit(request, pk):
             return redirect('dream_edit', pk=pk)
     return render(request, 'dream_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def dream_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(DreamJournal, id=pk).delete()
@@ -1986,10 +2006,12 @@ def dream_delete(request, pk):
 
 # ===== Phase 6: Macronutrient Log =====
 
+@login_required
 def macro_list(request):
     entries = MacronutrientLog.objects.all().order_by('-date')
     return render(request, 'macro_list.html', {'entries': entries})
 
+@login_required
 def macro_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2019,6 +2041,7 @@ def macro_add(request):
             return redirect('macro_add')
     return render(request, 'macro_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def macro_edit(request, pk):
     entry = get_object_or_404(MacronutrientLog, id=pk)
     if request.method == 'POST':
@@ -2043,6 +2066,7 @@ def macro_edit(request, pk):
             return redirect('macro_edit', pk=pk)
     return render(request, 'macro_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def macro_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MacronutrientLog, id=pk).delete()
@@ -2052,10 +2076,12 @@ def macro_delete(request, pk):
 
 # ===== Phase 6: Micronutrient Log =====
 
+@login_required
 def micro_list(request):
     entries = MicronutrientLog.objects.all().order_by('-date')
     return render(request, 'micro_list.html', {'entries': entries})
 
+@login_required
 def micro_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2070,6 +2096,7 @@ def micro_add(request):
                 nutrient_name=request.POST.get('nutrient_name', ''),
                 amount=float(amount) if amount else None,
                 unit=request.POST.get('unit', ''),
+                deficiency_risk=request.POST.get('deficiency_risk', ''),
                 notes=request.POST.get('notes', ''),
             )
             messages.success(request, 'Micronutrient log added!')
@@ -2079,6 +2106,7 @@ def micro_add(request):
             return redirect('micro_add')
     return render(request, 'micro_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def micro_edit(request, pk):
     entry = get_object_or_404(MicronutrientLog, id=pk)
     if request.method == 'POST':
@@ -2088,6 +2116,7 @@ def micro_edit(request, pk):
             amount = request.POST.get('amount', '').strip()
             entry.amount = float(amount) if amount else None
             entry.unit = request.POST.get('unit', '')
+            entry.deficiency_risk = request.POST.get('deficiency_risk', '')
             entry.notes = request.POST.get('notes', '')
             entry.save()
             messages.success(request, 'Micronutrient log updated!')
@@ -2097,6 +2126,7 @@ def micro_edit(request, pk):
             return redirect('micro_edit', pk=pk)
     return render(request, 'micro_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def micro_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MicronutrientLog, id=pk).delete()
@@ -2106,10 +2136,12 @@ def micro_delete(request, pk):
 
 # ===== Phase 6: Food Entry =====
 
+@login_required
 def food_list(request):
     entries = FoodEntry.objects.all().order_by('-date')
     return render(request, 'food_list.html', {'entries': entries})
 
+@login_required
 def food_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2132,6 +2164,7 @@ def food_add(request):
                 carbohydrate_grams=float(carbs) if carbs else None,
                 fat_grams=float(fat) if fat else None,
                 source=request.POST.get('source', ''),
+                food_database_id=request.POST.get('food_database_id', ''),
                 notes=request.POST.get('notes', ''),
             )
             messages.success(request, 'Food entry added!')
@@ -2141,6 +2174,7 @@ def food_add(request):
             return redirect('food_add')
     return render(request, 'food_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def food_edit(request, pk):
     entry = get_object_or_404(FoodEntry, id=pk)
     if request.method == 'POST':
@@ -2158,6 +2192,7 @@ def food_edit(request, pk):
             entry.carbohydrate_grams = float(carbs) if carbs else None
             entry.fat_grams = float(fat) if fat else None
             entry.source = request.POST.get('source', '')
+            entry.food_database_id = request.POST.get('food_database_id', '')
             entry.notes = request.POST.get('notes', '')
             entry.save()
             messages.success(request, 'Food entry updated!')
@@ -2167,6 +2202,7 @@ def food_edit(request, pk):
             return redirect('food_edit', pk=pk)
     return render(request, 'food_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def food_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(FoodEntry, id=pk).delete()
@@ -2176,10 +2212,12 @@ def food_delete(request, pk):
 
 # ===== Phase 6: Fasting Log =====
 
+@login_required
 def fasting_list(request):
     entries = FastingLog.objects.all().order_by('-date')
     return render(request, 'fasting_list.html', {'entries': entries})
 
+@login_required
 def fasting_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2192,8 +2230,8 @@ def fasting_add(request):
             actual = request.POST.get('actual_hours', '').strip()
             FastingLog.objects.create(
                 date=date,
-                fast_start=request.POST.get('fast_start', ''),
-                fast_end=request.POST.get('fast_end', ''),
+                fast_start=request.POST.get('fast_start', '').strip() or None,
+                fast_end=request.POST.get('fast_end', '').strip() or None,
                 target_hours=float(target) if target else None,
                 actual_hours=float(actual) if actual else None,
                 notes=request.POST.get('notes', ''),
@@ -2205,13 +2243,14 @@ def fasting_add(request):
             return redirect('fasting_add')
     return render(request, 'fasting_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def fasting_edit(request, pk):
     entry = get_object_or_404(FastingLog, id=pk)
     if request.method == 'POST':
         try:
             entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.fast_start = request.POST.get('fast_start', '')
-            entry.fast_end = request.POST.get('fast_end', '')
+            entry.fast_start = request.POST.get('fast_start', '').strip() or None
+            entry.fast_end = request.POST.get('fast_end', '').strip() or None
             target = request.POST.get('target_hours', '').strip()
             actual = request.POST.get('actual_hours', '').strip()
             entry.target_hours = float(target) if target else None
@@ -2225,6 +2264,7 @@ def fasting_edit(request, pk):
             return redirect('fasting_edit', pk=pk)
     return render(request, 'fasting_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def fasting_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(FastingLog, id=pk).delete()
@@ -2234,10 +2274,12 @@ def fasting_delete(request, pk):
 
 # ===== Phase 6: Caffeine & Alcohol Log =====
 
+@login_required
 def caffeine_alcohol_list(request):
     entries = CaffeineAlcoholLog.objects.all().order_by('-date')
     return render(request, 'caffeine_alcohol_list.html', {'entries': entries})
 
+@login_required
 def caffeine_alcohol_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2252,7 +2294,7 @@ def caffeine_alcohol_add(request):
                 substance=request.POST.get('substance', ''),
                 amount_mg=float(amount) if amount else None,
                 drink_name=request.POST.get('drink_name', ''),
-                time_consumed=request.POST.get('time_consumed', ''),
+                time_consumed=request.POST.get('time_consumed', '').strip() or None,
                 notes=request.POST.get('notes', ''),
             )
             messages.success(request, 'Caffeine/alcohol log added!')
@@ -2262,6 +2304,7 @@ def caffeine_alcohol_add(request):
             return redirect('caffeine_alcohol_add')
     return render(request, 'caffeine_alcohol_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def caffeine_alcohol_edit(request, pk):
     entry = get_object_or_404(CaffeineAlcoholLog, id=pk)
     if request.method == 'POST':
@@ -2271,7 +2314,7 @@ def caffeine_alcohol_edit(request, pk):
             amount = request.POST.get('amount_mg', '').strip()
             entry.amount_mg = float(amount) if amount else None
             entry.drink_name = request.POST.get('drink_name', '')
-            entry.time_consumed = request.POST.get('time_consumed', '')
+            entry.time_consumed = request.POST.get('time_consumed', '').strip() or None
             entry.notes = request.POST.get('notes', '')
             entry.save()
             messages.success(request, 'Caffeine/alcohol log updated!')
@@ -2281,6 +2324,7 @@ def caffeine_alcohol_edit(request, pk):
             return redirect('caffeine_alcohol_edit', pk=pk)
     return render(request, 'caffeine_alcohol_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def caffeine_alcohol_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(CaffeineAlcoholLog, id=pk).delete()
@@ -2559,6 +2603,239 @@ def api_rate_limit_delete(request, pk):
         get_object_or_404(APIRateLimitConfig, id=pk).delete()
         messages.success(request, 'API rate limit config deleted!')
     return redirect('api_rate_limit_list')
+
+
+# ===== Phase 7: Encryption Keys =====
+
+def encryption_key_list(request):
+    entries = EncryptionKey.objects.all().order_by('-created_at')
+    return render(request, 'encryption_key_list.html', {'entries': entries})
+
+def encryption_key_add(request):
+    if request.method == 'POST':
+        try:
+            EncryptionKey.objects.create(
+                key_identifier=request.POST.get('key_identifier', ''),
+                public_key=request.POST.get('public_key', ''),
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'Encryption key added!')
+            return redirect('encryption_key_list')
+        except Exception:
+            messages.error(request, 'Error adding encryption key.')
+            return redirect('encryption_key_add')
+    return render(request, 'encryption_key_form.html', {'editing': False})
+
+def encryption_key_edit(request, pk):
+    entry = get_object_or_404(EncryptionKey, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.key_identifier = request.POST.get('key_identifier', '')
+            entry.public_key = request.POST.get('public_key', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'Encryption key updated!')
+            return redirect('encryption_key_list')
+        except Exception:
+            messages.error(request, 'Error updating encryption key.')
+            return redirect('encryption_key_edit', pk=pk)
+    return render(request, 'encryption_key_form.html', {'entry': entry, 'editing': True})
+
+def encryption_key_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(EncryptionKey, id=pk).delete()
+        messages.success(request, 'Encryption key deleted!')
+    return redirect('encryption_key_list')
+
+
+# ===== Phase 7: Audit Logs =====
+
+def audit_log_list(request):
+    entries = AuditLog.objects.all().order_by('-created_at')
+    return render(request, 'audit_log_list.html', {'entries': entries})
+
+def audit_log_add(request):
+    if request.method == 'POST':
+        try:
+            AuditLog.objects.create(
+                action=request.POST.get('action', ''),
+                details=request.POST.get('details', ''),
+                ip_address=request.POST.get('ip_address', '') or None,
+            )
+            messages.success(request, 'Audit log added!')
+            return redirect('audit_log_list')
+        except Exception:
+            messages.error(request, 'Error adding audit log.')
+            return redirect('audit_log_add')
+    return render(request, 'audit_log_form.html', {'editing': False})
+
+def audit_log_edit(request, pk):
+    entry = get_object_or_404(AuditLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.action = request.POST.get('action', '')
+            entry.details = request.POST.get('details', '')
+            entry.ip_address = request.POST.get('ip_address', '') or None
+            entry.save()
+            messages.success(request, 'Audit log updated!')
+            return redirect('audit_log_list')
+        except Exception:
+            messages.error(request, 'Error updating audit log.')
+            return redirect('audit_log_edit', pk=pk)
+    return render(request, 'audit_log_form.html', {'entry': entry, 'editing': True})
+
+def audit_log_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(AuditLog, id=pk).delete()
+        messages.success(request, 'Audit log deleted!')
+    return redirect('audit_log_list')
+
+
+# ===== Phase 7: Anonymized Data Reports =====
+
+def anonymized_data_list(request):
+    entries = AnonymizedDataReport.objects.all().order_by('-generated_at')
+    return render(request, 'anonymized_data_list.html', {'entries': entries})
+
+def anonymized_data_add(request):
+    if request.method == 'POST':
+        try:
+            total = request.POST.get('total_records', '').strip()
+            AnonymizedDataReport.objects.create(
+                report_title=request.POST.get('report_title', ''),
+                report_type=request.POST.get('report_type', ''),
+                total_records=int(total) if total else 0,
+                anonymization_method=request.POST.get('anonymization_method', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Anonymized data report added!')
+            return redirect('anonymized_data_list')
+        except Exception:
+            messages.error(request, 'Error adding anonymized data report.')
+            return redirect('anonymized_data_add')
+    return render(request, 'anonymized_data_form.html', {'editing': False})
+
+def anonymized_data_edit(request, pk):
+    entry = get_object_or_404(AnonymizedDataReport, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.report_title = request.POST.get('report_title', '')
+            entry.report_type = request.POST.get('report_type', '')
+            total = request.POST.get('total_records', '').strip()
+            entry.total_records = int(total) if total else 0
+            entry.anonymization_method = request.POST.get('anonymization_method', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Anonymized data report updated!')
+            return redirect('anonymized_data_list')
+        except Exception:
+            messages.error(request, 'Error updating anonymized data report.')
+            return redirect('anonymized_data_edit', pk=pk)
+    return render(request, 'anonymized_data_form.html', {'entry': entry, 'editing': True})
+
+def anonymized_data_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(AnonymizedDataReport, id=pk).delete()
+        messages.success(request, 'Anonymized data report deleted!')
+    return redirect('anonymized_data_list')
+
+
+# ===== Phase 7: Database Scaling Config =====
+
+def database_scaling_list(request):
+    entries = DatabaseScalingConfig.objects.all().order_by('-created_at')
+    return render(request, 'database_scaling_list.html', {'entries': entries})
+
+def database_scaling_add(request):
+    if request.method == 'POST':
+        try:
+            max_conn = request.POST.get('max_connections', '').strip()
+            DatabaseScalingConfig.objects.create(
+                config_name=request.POST.get('config_name', ''),
+                scaling_type=request.POST.get('scaling_type', ''),
+                is_active=request.POST.get('is_active') == 'on',
+                max_connections=int(max_conn) if max_conn else 100,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Database scaling config added!')
+            return redirect('database_scaling_list')
+        except Exception:
+            messages.error(request, 'Error adding database scaling config.')
+            return redirect('database_scaling_add')
+    return render(request, 'database_scaling_form.html', {'editing': False})
+
+def database_scaling_edit(request, pk):
+    entry = get_object_or_404(DatabaseScalingConfig, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.config_name = request.POST.get('config_name', '')
+            entry.scaling_type = request.POST.get('scaling_type', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            max_conn = request.POST.get('max_connections', '').strip()
+            entry.max_connections = int(max_conn) if max_conn else 100
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Database scaling config updated!')
+            return redirect('database_scaling_list')
+        except Exception:
+            messages.error(request, 'Error updating database scaling config.')
+            return redirect('database_scaling_edit', pk=pk)
+    return render(request, 'database_scaling_form.html', {'entry': entry, 'editing': True})
+
+def database_scaling_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(DatabaseScalingConfig, id=pk).delete()
+        messages.success(request, 'Database scaling config deleted!')
+    return redirect('database_scaling_list')
+
+
+# ===== Phase 7: Backup Configuration =====
+
+def backup_config_list(request):
+    entries = BackupConfiguration.objects.all().order_by('-created_at')
+    return render(request, 'backup_config_list.html', {'entries': entries})
+
+def backup_config_add(request):
+    if request.method == 'POST':
+        try:
+            ret = request.POST.get('retention_days', '').strip()
+            BackupConfiguration.objects.create(
+                backup_name=request.POST.get('backup_name', ''),
+                frequency=request.POST.get('frequency', ''),
+                retention_days=int(ret) if ret else 30,
+                is_active=request.POST.get('is_active') == 'on',
+                storage_location=request.POST.get('storage_location', ''),
+            )
+            messages.success(request, 'Backup configuration added!')
+            return redirect('backup_config_list')
+        except Exception:
+            messages.error(request, 'Error adding backup configuration.')
+            return redirect('backup_config_add')
+    return render(request, 'backup_config_form.html', {'editing': False})
+
+def backup_config_edit(request, pk):
+    entry = get_object_or_404(BackupConfiguration, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.backup_name = request.POST.get('backup_name', '')
+            entry.frequency = request.POST.get('frequency', '')
+            ret = request.POST.get('retention_days', '').strip()
+            entry.retention_days = int(ret) if ret else 30
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.storage_location = request.POST.get('storage_location', '')
+            entry.save()
+            messages.success(request, 'Backup configuration updated!')
+            return redirect('backup_config_list')
+        except Exception:
+            messages.error(request, 'Error updating backup configuration.')
+            return redirect('backup_config_edit', pk=pk)
+    return render(request, 'backup_config_form.html', {'entry': entry, 'editing': True})
+
+def backup_config_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(BackupConfiguration, id=pk).delete()
+        messages.success(request, 'Backup configuration deleted!')
+    return redirect('backup_config_list')
 
 
 # ===== Phase 8: Medication Schedule =====
@@ -2901,15 +3178,14 @@ def secure_viewing_link_list(request):
 def secure_viewing_link_add(request):
     if request.method == 'POST':
         try:
-            access_count = request.POST.get('access_count', '').strip()
+            token = SecureViewingLink.generate_token()
             SecureViewingLink.objects.create(
-                token=request.POST.get('token', ''),
+                token=token,
                 data_types=request.POST.get('data_types', ''),
                 expires_at=request.POST.get('expires_at', '') or None,
                 is_active=request.POST.get('is_active') == 'on',
-                access_count=int(access_count) if access_count else 0,
             )
-            messages.success(request, 'Secure viewing link added!')
+            messages.success(request, 'Secure viewing link created!')
             return redirect('secure_viewing_link_list')
         except Exception:
             messages.error(request, 'Error adding secure viewing link.')
@@ -2920,12 +3196,9 @@ def secure_viewing_link_edit(request, pk):
     entry = get_object_or_404(SecureViewingLink, id=pk)
     if request.method == 'POST':
         try:
-            access_count = request.POST.get('access_count', '').strip()
-            entry.token = request.POST.get('token', '')
             entry.data_types = request.POST.get('data_types', '')
             entry.expires_at = request.POST.get('expires_at', '') or None
             entry.is_active = request.POST.get('is_active') == 'on'
-            entry.access_count = int(access_count) if access_count else 0
             entry.save()
             messages.success(request, 'Secure viewing link updated!')
             return redirect('secure_viewing_link_list')
@@ -2939,6 +3212,27 @@ def secure_viewing_link_delete(request, pk):
         get_object_or_404(SecureViewingLink, id=pk).delete()
         messages.success(request, 'Secure viewing link deleted!')
     return redirect('secure_viewing_link_list')
+
+
+def secure_link_shared_view(request, token):
+    """Public view for accessing shared health data via secure link."""
+    link = get_object_or_404(SecureViewingLink, token=token)
+    if not link.is_valid:
+        return render(request, 'secure_link_expired.html', {'link': link})
+    link.access_count += 1
+    link.save(update_fields=['access_count'])
+    data_types = [dt.strip() for dt in link.data_types.split(',') if dt.strip()] if link.data_types else []
+    context = {'link': link, 'data': {}}
+    if not data_types or 'blood_tests' in data_types:
+        context['data']['blood_tests'] = list(BloodTest.objects.all().order_by('-date')[:20].values(
+            'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max'))
+    if not data_types or 'vitals' in data_types:
+        context['data']['vitals'] = list(VitalSign.objects.all().order_by('-date')[:20].values(
+            'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt', 'respiratory_rate', 'spo2'))
+    if not data_types or 'medications' in data_types:
+        context['data']['medications'] = list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
+            'medication_name', 'dosage', 'frequency', 'start_date', 'end_date'))
+    return render(request, 'secure_link_shared_view.html', context)
 
 
 # ===== Phase 9: Practitioner Access =====
@@ -2973,6 +3267,8 @@ def practitioner_access_edit(request, pk):
             entry.specialty = request.POST.get('specialty', '')
             entry.access_status = request.POST.get('access_status', '')
             entry.expires_at = request.POST.get('expires_at', '') or None
+            if entry.access_status == 'approved' and not entry.granted_at:
+                entry.granted_at = timezone.now()
             entry.save()
             messages.success(request, 'Practitioner access updated!')
             return redirect('practitioner_access_list')
@@ -2986,6 +3282,54 @@ def practitioner_access_delete(request, pk):
         get_object_or_404(PractitionerAccess, id=pk).delete()
         messages.success(request, 'Practitioner access deleted!')
     return redirect('practitioner_access_list')
+
+
+def practitioner_portal(request):
+    """Dedicated portal for practitioners to request access and view patient data."""
+    context = {'access_entries': [], 'error': None}
+    if request.method == 'POST':
+        email = request.POST.get('practitioner_email', '').strip()
+        if email:
+            entries = PractitionerAccess.objects.filter(
+                practitioner_email=email, access_status='approved'
+            )
+            if entries.exists():
+                data = {
+                    'blood_tests': list(BloodTest.objects.all().order_by('-date')[:20].values(
+                        'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max')),
+                    'vitals': list(VitalSign.objects.all().order_by('-date')[:20].values(
+                        'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt',
+                        'respiratory_rate', 'spo2')),
+                    'medications': list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
+                        'medication_name', 'dosage', 'frequency', 'start_date', 'end_date')),
+                }
+                context['access_entries'] = entries
+                context['patient_data'] = data
+            else:
+                context['error'] = 'No approved access found for this email address.'
+        else:
+            context['error'] = 'Please provide a valid email address.'
+    return render(request, 'practitioner_portal.html', context)
+
+
+def practitioner_request_access(request):
+    """Allow a practitioner to request access to patient data."""
+    if request.method == 'POST':
+        name = request.POST.get('practitioner_name', '').strip()
+        email = request.POST.get('practitioner_email', '').strip()
+        specialty = request.POST.get('specialty', '').strip()
+        if name and email:
+            PractitionerAccess.objects.create(
+                practitioner_name=name,
+                practitioner_email=email,
+                specialty=specialty,
+                access_status='pending',
+            )
+            messages.success(request, 'Access request submitted. Awaiting patient approval.')
+            return redirect('practitioner_portal')
+        else:
+            messages.error(request, 'Name and email are required.')
+    return render(request, 'practitioner_request_access.html')
 
 
 # ===== Phase 9: Intake Summary =====
@@ -3035,7 +3379,94 @@ def intake_summary_delete(request, pk):
     return redirect('intake_summary_list')
 
 
+def intake_summary_generate(request):
+    """Auto-generate an intake summary from existing health data."""
+    blood_tests = BloodTest.objects.all().order_by('-date')[:10]
+    vitals = VitalSign.objects.all().order_by('-date').first()
+    medications = MedicationSchedule.objects.all().order_by('-start_date')
+
+    summary_lines = []
+    if vitals:
+        parts = []
+        if vitals.systolic_bp and vitals.diastolic_bp:
+            parts.append(f"BP: {vitals.systolic_bp}/{vitals.diastolic_bp} mmHg")
+        if vitals.heart_rate:
+            parts.append(f"HR: {vitals.heart_rate} bpm")
+        if vitals.bbt:
+            parts.append(f"Temp: {vitals.bbt}°C")
+        if vitals.spo2:
+            parts.append(f"SpO2: {vitals.spo2}%")
+        if parts:
+            summary_lines.append("Latest Vitals: " + ", ".join(parts))
+
+    if blood_tests:
+        test_strs = [f"{t.test_name}: {t.value} {t.unit}" for t in blood_tests[:5]]
+        summary_lines.append("Recent Labs: " + "; ".join(test_strs))
+
+    med_list = [f"{m.medication_name} ({m.dosage}, {m.frequency})" for m in medications if m.medication_name]
+
+    conditions_text = ""
+    out_of_range = []
+    for t in blood_tests:
+        if t.normal_min is not None and t.normal_max is not None:
+            if t.value < t.normal_min or t.value > t.normal_max:
+                out_of_range.append(f"{t.test_name}: {t.value} {t.unit} (range: {t.normal_min}-{t.normal_max})")
+    if out_of_range:
+        conditions_text = "Out-of-range results: " + "; ".join(out_of_range)
+
+    title = f"Intake Summary - {timezone.now().strftime('%Y-%m-%d')}"
+    summary = IntakeSummary.objects.create(
+        title=title,
+        summary_text="\n".join(summary_lines) if summary_lines else "No health data available.",
+        conditions=conditions_text,
+        medications="; ".join(med_list) if med_list else "None recorded",
+        allergies="",
+    )
+    messages.success(request, f'Intake summary "{summary.title}" generated from health data!')
+    return redirect('intake_summary_list')
+
+
 # ===== Phase 9: Data Export Request =====
+
+def _collect_export_data():
+    """Collect all health data for export."""
+    data = {
+        'blood_tests': list(BloodTest.objects.all().order_by('-date').values(
+            'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max', 'category')),
+        'vitals': list(VitalSign.objects.all().order_by('-date').values(
+            'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt',
+            'respiratory_rate', 'spo2')),
+        'medications': list(MedicationSchedule.objects.all().order_by('-start_date').values(
+            'medication_name', 'dosage', 'frequency', 'start_date', 'end_date')),
+        'body_composition': list(BodyComposition.objects.all().order_by('-date').values(
+            'date', 'body_fat_percentage', 'skeletal_muscle_mass', 'waist_circumference',
+            'hip_circumference', 'waist_to_hip_ratio')),
+        'sleep_logs': list(SleepLog.objects.all().order_by('-date').values(
+            'date', 'total_sleep_minutes', 'deep_sleep_minutes', 'rem_minutes',
+            'sleep_quality_score')),
+    }
+    # Convert date objects to strings for JSON serialization
+    for key in data:
+        for record in data[key]:
+            for field, value in record.items():
+                if hasattr(value, 'isoformat'):
+                    record[field] = value.isoformat()
+    return data
+
+
+def _data_to_xml(data):
+    """Convert health data dictionary to XML string."""
+    root = Element('health_data')
+    root.set('exported_at', timezone.now().isoformat())
+    for section_name, records in data.items():
+        section = SubElement(root, section_name)
+        for record in records:
+            entry = SubElement(section, 'entry')
+            for field, value in record.items():
+                field_elem = SubElement(entry, field)
+                field_elem.text = str(value) if value is not None else ''
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(root, encoding='unicode')
+
 
 def data_export_list(request):
     entries = DataExportRequest.objects.all().order_by('-requested_at')
@@ -3044,12 +3475,13 @@ def data_export_list(request):
 def data_export_add(request):
     if request.method == 'POST':
         try:
-            DataExportRequest.objects.create(
-                export_format=request.POST.get('export_format', ''),
-                status=request.POST.get('status', ''),
-                file_path=request.POST.get('file_path', ''),
+            export_format = request.POST.get('export_format', 'json')
+            export_req = DataExportRequest.objects.create(
+                export_format=export_format,
+                status='completed',
+                completed_at=timezone.now(),
             )
-            messages.success(request, 'Data export request added!')
+            messages.success(request, f'Data export ({export_format.upper()}) created! Use the download button to get your data.')
             return redirect('data_export_list')
         except Exception:
             messages.error(request, 'Error adding data export request.')
@@ -3076,6 +3508,23 @@ def data_export_delete(request, pk):
         get_object_or_404(DataExportRequest, id=pk).delete()
         messages.success(request, 'Data export request deleted!')
     return redirect('data_export_list')
+
+
+def data_export_download(request, pk):
+    """Download exported health data in the requested format (JSON or XML)."""
+    export_req = get_object_or_404(DataExportRequest, id=pk)
+    data = _collect_export_data()
+
+    if export_req.export_format == 'xml':
+        xml_content = _data_to_xml(data)
+        response = HttpResponse(xml_content, content_type='application/xml')
+        response['Content-Disposition'] = f'attachment; filename="health_export_{export_req.pk}.xml"'
+        return response
+    else:
+        json_content = json.dumps(data, indent=2, default=str)
+        response = HttpResponse(json_content, content_type='application/json')
+        response['Content-Disposition'] = f'attachment; filename="health_export_{export_req.pk}.json"'
+        return response
 
 
 # ===== Phase 9: Stakeholder Email =====
@@ -3120,6 +3569,69 @@ def stakeholder_email_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(StakeholderEmail, id=pk).delete()
         messages.success(request, 'Stakeholder email deleted!')
+    return redirect('stakeholder_email_list')
+
+
+def _build_health_summary_text():
+    """Build a plain-text health summary for stakeholder emails."""
+    lines = ["Health Summary Report", "=" * 40, ""]
+
+    vitals = VitalSign.objects.all().order_by('-date').first()
+    if vitals:
+        lines.append("Latest Vitals:")
+        if vitals.systolic_bp and vitals.diastolic_bp:
+            lines.append(f"  Blood Pressure: {vitals.systolic_bp}/{vitals.diastolic_bp} mmHg")
+        if vitals.heart_rate:
+            lines.append(f"  Heart Rate: {vitals.heart_rate} bpm")
+        if vitals.bbt:
+            lines.append(f"  Temperature: {vitals.bbt}°C")
+        if vitals.spo2:
+            lines.append(f"  Oxygen Saturation: {vitals.spo2}%")
+        lines.append("")
+
+    blood_tests = BloodTest.objects.all().order_by('-date')[:5]
+    if blood_tests:
+        lines.append("Recent Lab Results:")
+        for t in blood_tests:
+            status = ""
+            if t.normal_min is not None and t.normal_max is not None:
+                if t.value < t.normal_min or t.value > t.normal_max:
+                    status = " [OUT OF RANGE]"
+            lines.append(f"  {t.test_name}: {t.value} {t.unit}{status}")
+        lines.append("")
+
+    medications = MedicationSchedule.objects.all().order_by('-start_date')
+    if medications:
+        lines.append("Current Medications:")
+        for m in medications:
+            lines.append(f"  {m.medication_name} - {m.dosage} ({m.frequency})")
+        lines.append("")
+
+    lines.append(f"Report generated: {timezone.now().strftime('%Y-%m-%d %H:%M UTC')}")
+    return "\n".join(lines)
+
+
+def stakeholder_email_send(request, pk):
+    """Send a health summary email to a specific stakeholder."""
+    entry = get_object_or_404(StakeholderEmail, id=pk)
+    if not entry.is_active:
+        messages.error(request, 'This stakeholder email is not active.')
+        return redirect('stakeholder_email_list')
+
+    summary_text = _build_health_summary_text()
+    try:
+        send_mail(
+            subject=f'Health Summary for {entry.recipient_name}',
+            message=summary_text,
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@healthtracker.local'),
+            recipient_list=[entry.recipient_email],
+            fail_silently=False,
+        )
+        entry.last_sent = timezone.now()
+        entry.save(update_fields=['last_sent'])
+        messages.success(request, f'Health summary sent to {entry.recipient_email}!')
+    except Exception as e:
+        messages.error(request, f'Error sending email: {e}')
     return redirect('stakeholder_email_list')
 
 

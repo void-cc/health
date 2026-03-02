@@ -46,7 +46,18 @@
 
     <div class="mb-3">
       <label for="source" class="form-label">Source:</label>
-      <input type="text" class="form-control" name="source" id="source" value="{% if editing and entry.source %}{{ entry.source }}{% endif %}" />
+      <select class="form-control" name="source" id="source">
+        <option value="">-- Select Source --</option>
+        <option value="manual" {% if editing and entry.source == 'manual' %}selected{% endif %}>Manual</option>
+        <option value="barcode_scan" {% if editing and entry.source == 'barcode_scan' %}selected{% endif %}>Barcode Scan</option>
+        <option value="usda" {% if editing and entry.source == 'usda' %}selected{% endif %}>USDA</option>
+        <option value="openfoodfacts" {% if editing and entry.source == 'openfoodfacts' %}selected{% endif %}>OpenFoodFacts</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="food_database_id" class="form-label">Food Database ID:</label>
+      <input type="text" class="form-control" name="food_database_id" id="food_database_id" placeholder="e.g., USDA FDC ID or OpenFoodFacts ID" value="{% if editing and entry.food_database_id %}{{ entry.food_database_id }}{% endif %}" />
     </div>
 
     <div class="mb-3">

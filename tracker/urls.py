@@ -205,6 +205,36 @@ urlpatterns = [
     path('rate-limits/edit/<int:pk>/', views.api_rate_limit_edit, name='api_rate_limit_edit'),
     path('rate-limits/delete/<int:pk>/', views.api_rate_limit_delete, name='api_rate_limit_delete'),
 
+    # Phase 7: Encryption Keys
+    path('encryption-keys/', views.encryption_key_list, name='encryption_key_list'),
+    path('encryption-keys/add/', views.encryption_key_add, name='encryption_key_add'),
+    path('encryption-keys/edit/<int:pk>/', views.encryption_key_edit, name='encryption_key_edit'),
+    path('encryption-keys/delete/<int:pk>/', views.encryption_key_delete, name='encryption_key_delete'),
+
+    # Phase 7: Audit Logs
+    path('audit-logs/', views.audit_log_list, name='audit_log_list'),
+    path('audit-logs/add/', views.audit_log_add, name='audit_log_add'),
+    path('audit-logs/edit/<int:pk>/', views.audit_log_edit, name='audit_log_edit'),
+    path('audit-logs/delete/<int:pk>/', views.audit_log_delete, name='audit_log_delete'),
+
+    # Phase 7: Anonymized Data Reports
+    path('anonymized-data/', views.anonymized_data_list, name='anonymized_data_list'),
+    path('anonymized-data/add/', views.anonymized_data_add, name='anonymized_data_add'),
+    path('anonymized-data/edit/<int:pk>/', views.anonymized_data_edit, name='anonymized_data_edit'),
+    path('anonymized-data/delete/<int:pk>/', views.anonymized_data_delete, name='anonymized_data_delete'),
+
+    # Phase 7: Database Scaling Config
+    path('database-scaling/', views.database_scaling_list, name='database_scaling_list'),
+    path('database-scaling/add/', views.database_scaling_add, name='database_scaling_add'),
+    path('database-scaling/edit/<int:pk>/', views.database_scaling_edit, name='database_scaling_edit'),
+    path('database-scaling/delete/<int:pk>/', views.database_scaling_delete, name='database_scaling_delete'),
+
+    # Phase 7: Backup Configuration
+    path('backup-config/', views.backup_config_list, name='backup_config_list'),
+    path('backup-config/add/', views.backup_config_add, name='backup_config_add'),
+    path('backup-config/edit/<int:pk>/', views.backup_config_edit, name='backup_config_edit'),
+    path('backup-config/delete/<int:pk>/', views.backup_config_delete, name='backup_config_delete'),
+
     # Phase 8: Medication Schedule
     path('medications/', views.medication_schedule_list, name='medication_schedule_list'),
     path('medications/add/', views.medication_schedule_add, name='medication_schedule_add'),
@@ -246,30 +276,36 @@ urlpatterns = [
     path('secure-links/add/', views.secure_viewing_link_add, name='secure_viewing_link_add'),
     path('secure-links/edit/<int:pk>/', views.secure_viewing_link_edit, name='secure_viewing_link_edit'),
     path('secure-links/delete/<int:pk>/', views.secure_viewing_link_delete, name='secure_viewing_link_delete'),
+    path('share/<str:token>/', views.secure_link_shared_view, name='secure_link_shared_view'),
 
     # Phase 9: Practitioner Access
     path('practitioners/', views.practitioner_access_list, name='practitioner_access_list'),
     path('practitioners/add/', views.practitioner_access_add, name='practitioner_access_add'),
     path('practitioners/edit/<int:pk>/', views.practitioner_access_edit, name='practitioner_access_edit'),
     path('practitioners/delete/<int:pk>/', views.practitioner_access_delete, name='practitioner_access_delete'),
+    path('practitioner-portal/', views.practitioner_portal, name='practitioner_portal'),
+    path('practitioner-portal/request/', views.practitioner_request_access, name='practitioner_request_access'),
 
     # Phase 9: Intake Summaries
     path('intake-summaries/', views.intake_summary_list, name='intake_summary_list'),
     path('intake-summaries/add/', views.intake_summary_add, name='intake_summary_add'),
     path('intake-summaries/edit/<int:pk>/', views.intake_summary_edit, name='intake_summary_edit'),
     path('intake-summaries/delete/<int:pk>/', views.intake_summary_delete, name='intake_summary_delete'),
+    path('intake-summaries/generate/', views.intake_summary_generate, name='intake_summary_generate'),
 
     # Phase 9: Data Export
     path('exports/', views.data_export_list, name='data_export_list'),
     path('exports/add/', views.data_export_add, name='data_export_add'),
     path('exports/edit/<int:pk>/', views.data_export_edit, name='data_export_edit'),
     path('exports/delete/<int:pk>/', views.data_export_delete, name='data_export_delete'),
+    path('exports/download/<int:pk>/', views.data_export_download, name='data_export_download'),
 
     # Phase 9: Stakeholder Emails
     path('stakeholder-emails/', views.stakeholder_email_list, name='stakeholder_email_list'),
     path('stakeholder-emails/add/', views.stakeholder_email_add, name='stakeholder_email_add'),
     path('stakeholder-emails/edit/<int:pk>/', views.stakeholder_email_edit, name='stakeholder_email_edit'),
     path('stakeholder-emails/delete/<int:pk>/', views.stakeholder_email_delete, name='stakeholder_email_delete'),
+    path('stakeholder-emails/send/<int:pk>/', views.stakeholder_email_send, name='stakeholder_email_send'),
 
     # Phase 10-12: Integration Config
     path('integrations/', views.integration_config_list, name='integration_config_list'),

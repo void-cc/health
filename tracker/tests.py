@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from tracker.models import (
     BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
     UserProfile, SecurityLog, UserSession, PrivacyPreference,
+    SecureViewingLink, PractitionerAccess, IntakeSummary,
+    DataExportRequest, StakeholderEmail, MedicationSchedule,
 )
 from datetime import date
 import json
@@ -1826,6 +1828,7 @@ from tracker.models import (
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
     UserProfile, FamilyAccount, EncryptionKey, AuditLog,
     APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
+    AnonymizedDataReport, DatabaseScalingConfig, BackupConfiguration,
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
     HealthGoal, CriticalAlert,
@@ -1918,6 +1921,62 @@ class Phase6ModelTests(TestCase):
         c = CaffeineAlcoholLog.objects.create(date=date(2026, 3, 1), substance='caffeine')
         self.assertIn('Caffeine', str(c))
 
+    def test_calculate_quality_score_full(self):
+        s = SleepLog.objects.create(
+            date=date(2026, 3, 1), total_sleep_minutes=420,
+            rem_minutes=105, deep_sleep_minutes=84, awake_minutes=30,
+        )
+        score = s.calculate_quality_score()
+        self.assertIsNotNone(score)
+        self.assertGreater(score, 0)
+        self.assertLessEqual(score, 100)
+
+    def test_calculate_quality_score_none(self):
+        s = SleepLog.objects.create(date=date(2026, 3, 1))
+        self.assertIsNone(s.calculate_quality_score())
+
+    def test_calculate_quality_score_zero_total(self):
+        s = SleepLog.objects.create(date=date(2026, 3, 1), total_sleep_minutes=0)
+        self.assertIsNone(s.calculate_quality_score())
+
+    def test_sleep_trend_insufficient_data(self):
+        s = SleepLog.objects.create(date=date(2026, 3, 1), total_sleep_minutes=420, awake_minutes=30)
+        self.assertIsNone(s.sleep_trend)
+
+    def test_optimal_sleep_window_with_data(self):
+        from datetime import time
+        CircadianRhythmLog.objects.create(
+            date=date(2026, 2, 25), sleep_onset=time(23, 0), wake_time=time(7, 0),
+        )
+        CircadianRhythmLog.objects.create(
+            date=date(2026, 2, 26), sleep_onset=time(23, 30), wake_time=time(7, 30),
+        )
+        c = CircadianRhythmLog.objects.create(date=date(2026, 2, 27))
+        window = c.optimal_sleep_window
+        self.assertIsNotNone(window)
+        self.assertIn('suggested_bedtime', window)
+        self.assertIn('suggested_wake_time', window)
+
+    def test_optimal_sleep_window_no_data(self):
+        c = CircadianRhythmLog.objects.create(date=date(2026, 3, 1))
+        # No entries with sleep_onset and wake_time
+        self.assertIsNone(c.optimal_sleep_window)
+
+    def test_micronutrient_deficiency_risk_field(self):
+        m = MicronutrientLog.objects.create(
+            date=date(2026, 3, 1), nutrient_name='Vitamin D', amount=400, unit='IU',
+            deficiency_risk='high',
+        )
+        self.assertEqual(m.deficiency_risk, 'high')
+
+    def test_food_entry_database_id_field(self):
+        f = FoodEntry.objects.create(
+            date=date(2026, 3, 1), food_name='Apple',
+            food_database_id='usda:171688', source='usda',
+        )
+        self.assertEqual(f.food_database_id, 'usda:171688')
+        self.assertEqual(f.source, 'usda')
+
 
 class Phase7ModelTests(TestCase):
     """Test model creation and __str__ for Phase 7 models."""
@@ -1953,6 +2012,32 @@ class Phase7ModelTests(TestCase):
     def test_api_rate_limit_str(self):
         ar = APIRateLimitConfig.objects.create(endpoint='/api/v1/data')
         self.assertIn('/api/v1/data', str(ar))
+
+    def test_anonymized_data_report_str(self):
+        adr = AnonymizedDataReport.objects.create(
+            report_title='Q1 Health Stats', report_type='population_health',
+        )
+        self.assertIn('Q1 Health Stats', str(adr))
+
+    def test_database_scaling_config_str(self):
+        dsc = DatabaseScalingConfig.objects.create(
+            config_name='Primary Replica', scaling_type='read_replica',
+        )
+        s = str(dsc)
+        self.assertIn('Primary Replica', s)
+        self.assertIn('Read Replica', s)
+
+    def test_backup_configuration_str(self):
+        bc = BackupConfiguration.objects.create(
+            backup_name='Nightly DB Backup', frequency='daily',
+        )
+        s = str(bc)
+        self.assertIn('Nightly DB Backup', s)
+        self.assertIn('Daily', s)
+
+    def test_audit_log_str(self):
+        al = AuditLog.objects.create(action='user_login')
+        self.assertIn('user_login', str(al))
 
 
 class Phase8ModelTests(TestCase):
@@ -2073,6 +2158,8 @@ class Phase5To12StatusCodeTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     # Phase 5
     def test_wearable_device_list(self):
@@ -2170,6 +2257,36 @@ class Phase5To12StatusCodeTests(TestCase):
     def test_api_rate_limit_add(self):
         self.assertEqual(self.client.get(reverse('api_rate_limit_add')).status_code, 200)
 
+    def test_encryption_key_list(self):
+        self.assertEqual(self.client.get(reverse('encryption_key_list')).status_code, 200)
+
+    def test_encryption_key_add(self):
+        self.assertEqual(self.client.get(reverse('encryption_key_add')).status_code, 200)
+
+    def test_audit_log_list(self):
+        self.assertEqual(self.client.get(reverse('audit_log_list')).status_code, 200)
+
+    def test_audit_log_add(self):
+        self.assertEqual(self.client.get(reverse('audit_log_add')).status_code, 200)
+
+    def test_anonymized_data_list(self):
+        self.assertEqual(self.client.get(reverse('anonymized_data_list')).status_code, 200)
+
+    def test_anonymized_data_add(self):
+        self.assertEqual(self.client.get(reverse('anonymized_data_add')).status_code, 200)
+
+    def test_database_scaling_list(self):
+        self.assertEqual(self.client.get(reverse('database_scaling_list')).status_code, 200)
+
+    def test_database_scaling_add(self):
+        self.assertEqual(self.client.get(reverse('database_scaling_add')).status_code, 200)
+
+    def test_backup_config_list(self):
+        self.assertEqual(self.client.get(reverse('backup_config_list')).status_code, 200)
+
+    def test_backup_config_add(self):
+        self.assertEqual(self.client.get(reverse('backup_config_add')).status_code, 200)
+
     # Phase 8
     def test_medication_schedule_list(self):
         self.assertEqual(self.client.get(reverse('medication_schedule_list')).status_code, 200)
@@ -2257,6 +2374,8 @@ class Phase5To12CRUDTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='crudtestuser', password='testpass123', email='crud@example.com')
+        self.client.login(username='crudtestuser', password='testpass123')
 
     # ----- WearableDevice -----
     def test_wearable_device_add_post(self):
@@ -2401,6 +2520,122 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(FoodEntry.objects.count(), 0)
 
+    # ----- CircadianRhythmLog -----
+    def test_circadian_add_post(self):
+        response = self.client.post(reverse('circadian_add'), {
+            'date': '2026-03-01',
+            'wake_time': '07:00',
+            'sleep_onset': '23:00',
+            'light_exposure_minutes': '60',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(CircadianRhythmLog.objects.count(), 1)
+
+    def test_circadian_edit_post(self):
+        c = CircadianRhythmLog.objects.create(date=date(2026, 3, 1), light_exposure_minutes=60)
+        response = self.client.post(reverse('circadian_edit', kwargs={'pk': c.pk}), {
+            'date': '2026-03-01',
+            'light_exposure_minutes': '90',
+        })
+        self.assertEqual(response.status_code, 302)
+        c.refresh_from_db()
+        self.assertEqual(c.light_exposure_minutes, 90)
+
+    def test_circadian_delete_post(self):
+        c = CircadianRhythmLog.objects.create(date=date(2026, 3, 1))
+        response = self.client.post(reverse('circadian_delete', kwargs={'pk': c.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(CircadianRhythmLog.objects.count(), 0)
+
+    # ----- DreamJournal -----
+    def test_dream_add_post(self):
+        response = self.client.post(reverse('dream_add'), {
+            'date': '2026-03-01',
+            'dream_description': 'Flying over mountains',
+            'lucidity_level': '3',
+            'mood_on_waking': 'happy',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DreamJournal.objects.count(), 1)
+
+    def test_dream_edit_post(self):
+        d = DreamJournal.objects.create(date=date(2026, 3, 1), dream_description='Old dream')
+        response = self.client.post(reverse('dream_edit', kwargs={'pk': d.pk}), {
+            'date': '2026-03-01',
+            'dream_description': 'Updated dream',
+            'mood_on_waking': 'calm',
+        })
+        self.assertEqual(response.status_code, 302)
+        d.refresh_from_db()
+        self.assertEqual(d.dream_description, 'Updated dream')
+
+    def test_dream_delete_post(self):
+        d = DreamJournal.objects.create(date=date(2026, 3, 1))
+        response = self.client.post(reverse('dream_delete', kwargs={'pk': d.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DreamJournal.objects.count(), 0)
+
+    # ----- FastingLog -----
+    def test_fasting_add_post(self):
+        response = self.client.post(reverse('fasting_add'), {
+            'date': '2026-03-01',
+            'target_hours': '16',
+            'actual_hours': '16',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(FastingLog.objects.count(), 1)
+
+    def test_fasting_edit_post(self):
+        f = FastingLog.objects.create(date=date(2026, 3, 1), target_hours=16, actual_hours=14)
+        response = self.client.post(reverse('fasting_edit', kwargs={'pk': f.pk}), {
+            'date': '2026-03-01',
+            'target_hours': '16',
+            'actual_hours': '16',
+        })
+        self.assertEqual(response.status_code, 302)
+        f.refresh_from_db()
+        self.assertEqual(f.actual_hours, 16.0)
+
+    def test_fasting_delete_post(self):
+        f = FastingLog.objects.create(date=date(2026, 3, 1))
+        response = self.client.post(reverse('fasting_delete', kwargs={'pk': f.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(FastingLog.objects.count(), 0)
+
+    # ----- CaffeineAlcoholLog -----
+    def test_caffeine_alcohol_add_post(self):
+        response = self.client.post(reverse('caffeine_alcohol_add'), {
+            'date': '2026-03-01',
+            'substance': 'caffeine',
+            'amount_mg': '200',
+            'drink_name': 'Coffee',
+            'time_consumed': '08:00',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(CaffeineAlcoholLog.objects.count(), 1)
+
+    def test_caffeine_alcohol_edit_post(self):
+        c = CaffeineAlcoholLog.objects.create(
+            date=date(2026, 3, 1), substance='caffeine', amount_mg=200,
+        )
+        response = self.client.post(reverse('caffeine_alcohol_edit', kwargs={'pk': c.pk}), {
+            'date': '2026-03-01',
+            'substance': 'caffeine',
+            'amount_mg': '300',
+            'drink_name': 'Espresso',
+        })
+        self.assertEqual(response.status_code, 302)
+        c.refresh_from_db()
+        self.assertEqual(c.amount_mg, 300.0)
+
+    def test_caffeine_alcohol_delete_post(self):
+        c = CaffeineAlcoholLog.objects.create(
+            date=date(2026, 3, 1), substance='caffeine',
+        )
+        response = self.client.post(reverse('caffeine_alcohol_delete', kwargs={'pk': c.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(CaffeineAlcoholLog.objects.count(), 0)
+
     # ----- UserProfile (Phase 7) -----
     def test_user_profile_add_post(self):
         response = self.client.post(reverse('user_profile_add'), {
@@ -2427,6 +2662,154 @@ class Phase5To12CRUDTests(TestCase):
         response = self.client.post(reverse('user_profile_delete', kwargs={'pk': p.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(UserProfile.objects.filter(user__username='testuser').count(), 0)
+
+    # ----- EncryptionKey (Phase 7) -----
+    def test_encryption_key_add_post(self):
+        response = self.client.post(reverse('encryption_key_add'), {
+            'key_identifier': 'key-test-001',
+            'public_key': 'test-public-key-data',
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(EncryptionKey.objects.count(), 1)
+
+    def test_encryption_key_edit_post(self):
+        ek = EncryptionKey.objects.create(key_identifier='key-001', public_key='data')
+        response = self.client.post(reverse('encryption_key_edit', kwargs={'pk': ek.pk}), {
+            'key_identifier': 'key-002',
+            'public_key': 'updated-data',
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        ek.refresh_from_db()
+        self.assertEqual(ek.key_identifier, 'key-002')
+
+    def test_encryption_key_delete_post(self):
+        ek = EncryptionKey.objects.create(key_identifier='key-001', public_key='data')
+        response = self.client.post(reverse('encryption_key_delete', kwargs={'pk': ek.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(EncryptionKey.objects.count(), 0)
+
+    # ----- AuditLog (Phase 7) -----
+    def test_audit_log_add_post(self):
+        response = self.client.post(reverse('audit_log_add'), {
+            'action': 'user_login',
+            'details': 'User logged in successfully',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AuditLog.objects.count(), 1)
+
+    def test_audit_log_edit_post(self):
+        al = AuditLog.objects.create(action='user_login', details='test')
+        response = self.client.post(reverse('audit_log_edit', kwargs={'pk': al.pk}), {
+            'action': 'user_logout',
+            'details': 'updated',
+        })
+        self.assertEqual(response.status_code, 302)
+        al.refresh_from_db()
+        self.assertEqual(al.action, 'user_logout')
+
+    def test_audit_log_delete_post(self):
+        al = AuditLog.objects.create(action='user_login')
+        response = self.client.post(reverse('audit_log_delete', kwargs={'pk': al.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AuditLog.objects.count(), 0)
+
+    # ----- AnonymizedDataReport (Phase 7) -----
+    def test_anonymized_data_add_post(self):
+        response = self.client.post(reverse('anonymized_data_add'), {
+            'report_title': 'Q1 Stats',
+            'report_type': 'population_health',
+            'total_records': '1000',
+            'anonymization_method': 'k-anonymity',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AnonymizedDataReport.objects.count(), 1)
+
+    def test_anonymized_data_edit_post(self):
+        adr = AnonymizedDataReport.objects.create(
+            report_title='Q1 Stats', report_type='population_health', total_records=1000,
+        )
+        response = self.client.post(reverse('anonymized_data_edit', kwargs={'pk': adr.pk}), {
+            'report_title': 'Q2 Stats',
+            'report_type': 'trend_analysis',
+            'total_records': '2000',
+        })
+        self.assertEqual(response.status_code, 302)
+        adr.refresh_from_db()
+        self.assertEqual(adr.report_title, 'Q2 Stats')
+
+    def test_anonymized_data_delete_post(self):
+        adr = AnonymizedDataReport.objects.create(
+            report_title='Q1 Stats', report_type='population_health',
+        )
+        response = self.client.post(reverse('anonymized_data_delete', kwargs={'pk': adr.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AnonymizedDataReport.objects.count(), 0)
+
+    # ----- DatabaseScalingConfig (Phase 7) -----
+    def test_database_scaling_add_post(self):
+        response = self.client.post(reverse('database_scaling_add'), {
+            'config_name': 'Primary Replica',
+            'scaling_type': 'read_replica',
+            'max_connections': '200',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DatabaseScalingConfig.objects.count(), 1)
+
+    def test_database_scaling_edit_post(self):
+        dsc = DatabaseScalingConfig.objects.create(
+            config_name='Primary Replica', scaling_type='read_replica',
+        )
+        response = self.client.post(reverse('database_scaling_edit', kwargs={'pk': dsc.pk}), {
+            'config_name': 'Shard Config',
+            'scaling_type': 'sharding',
+            'max_connections': '500',
+        })
+        self.assertEqual(response.status_code, 302)
+        dsc.refresh_from_db()
+        self.assertEqual(dsc.config_name, 'Shard Config')
+
+    def test_database_scaling_delete_post(self):
+        dsc = DatabaseScalingConfig.objects.create(
+            config_name='Primary Replica', scaling_type='read_replica',
+        )
+        response = self.client.post(reverse('database_scaling_delete', kwargs={'pk': dsc.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DatabaseScalingConfig.objects.count(), 0)
+
+    # ----- BackupConfiguration (Phase 7) -----
+    def test_backup_config_add_post(self):
+        response = self.client.post(reverse('backup_config_add'), {
+            'backup_name': 'Nightly Backup',
+            'frequency': 'daily',
+            'retention_days': '30',
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(BackupConfiguration.objects.count(), 1)
+
+    def test_backup_config_edit_post(self):
+        bc = BackupConfiguration.objects.create(
+            backup_name='Nightly Backup', frequency='daily',
+        )
+        response = self.client.post(reverse('backup_config_edit', kwargs={'pk': bc.pk}), {
+            'backup_name': 'Weekly Backup',
+            'frequency': 'weekly',
+            'retention_days': '60',
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        bc.refresh_from_db()
+        self.assertEqual(bc.backup_name, 'Weekly Backup')
+
+    def test_backup_config_delete_post(self):
+        bc = BackupConfiguration.objects.create(
+            backup_name='Nightly Backup', frequency='daily',
+        )
+        response = self.client.post(reverse('backup_config_delete', kwargs={'pk': bc.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(BackupConfiguration.objects.count(), 0)
 
     # ----- MedicationSchedule -----
     def test_medication_schedule_add_post(self):
@@ -2730,3 +3113,465 @@ class Phase11SubTaskModelTests(TestCase):
         ist.save()
         ist.refresh_from_db()
         self.assertEqual(ist.status, 'completed')
+        self.assertEqual(IntegrationSubTask.objects.count(), 0)
+
+
+class Phase9SecureViewingLinkTests(TestCase):
+    """Test secure viewing link token generation, expiration, and public share view."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_auto_token_generation(self):
+        """Tokens should be auto-generated when creating a link."""
+        from django.utils import timezone
+        from datetime import timedelta
+        expires = (timezone.now() + timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M')
+        response = self.client.post(reverse('secure_viewing_link_add'), {
+            'data_types': 'blood_tests,vitals',
+            'expires_at': expires,
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(SecureViewingLink.objects.count(), 1)
+        link = SecureViewingLink.objects.first()
+        self.assertTrue(len(link.token) > 20)
+        self.assertTrue(link.is_active)
+
+    def test_token_uniqueness(self):
+        """Each generated token should be unique."""
+        token1 = SecureViewingLink.generate_token()
+        token2 = SecureViewingLink.generate_token()
+        self.assertNotEqual(token1, token2)
+
+    def test_is_valid_property(self):
+        """is_valid should return True for active, non-expired links."""
+        from django.utils import timezone
+        from datetime import timedelta
+        valid_link = SecureViewingLink.objects.create(
+            token='valid-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True,
+        )
+        self.assertTrue(valid_link.is_valid)
+
+    def test_is_expired_property(self):
+        """is_expired should return True for expired links."""
+        from django.utils import timezone
+        from datetime import timedelta
+        expired_link = SecureViewingLink.objects.create(
+            token='expired-token', expires_at=timezone.now() - timedelta(hours=1),
+            is_active=True,
+        )
+        self.assertTrue(expired_link.is_expired)
+        self.assertFalse(expired_link.is_valid)
+
+    def test_inactive_link_not_valid(self):
+        """Inactive links should not be valid."""
+        from django.utils import timezone
+        from datetime import timedelta
+        inactive_link = SecureViewingLink.objects.create(
+            token='inactive-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=False,
+        )
+        self.assertFalse(inactive_link.is_valid)
+
+    def test_shared_view_valid_link(self):
+        """Public share view should work for valid links."""
+        from django.utils import timezone
+        from datetime import timedelta
+        link = SecureViewingLink.objects.create(
+            token='share-test-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True,
+        )
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'share-test-token'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Shared Health Data')
+        link.refresh_from_db()
+        self.assertEqual(link.access_count, 1)
+
+    def test_shared_view_increments_access_count(self):
+        """Each view should increment access count."""
+        from django.utils import timezone
+        from datetime import timedelta
+        link = SecureViewingLink.objects.create(
+            token='count-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True,
+        )
+        self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'count-token'}))
+        self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'count-token'}))
+        link.refresh_from_db()
+        self.assertEqual(link.access_count, 2)
+
+    def test_shared_view_expired_link(self):
+        """Expired link should show expired page."""
+        from django.utils import timezone
+        from datetime import timedelta
+        SecureViewingLink.objects.create(
+            token='expired-share-token', expires_at=timezone.now() - timedelta(hours=1),
+            is_active=True,
+        )
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'expired-share-token'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Expired')
+
+    def test_shared_view_inactive_link(self):
+        """Inactive link should show expired page."""
+        from django.utils import timezone
+        from datetime import timedelta
+        SecureViewingLink.objects.create(
+            token='inactive-share-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=False,
+        )
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'inactive-share-token'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'deactivated')
+
+    def test_shared_view_with_data(self):
+        """Shared view should display health data when available."""
+        from django.utils import timezone
+        from datetime import timedelta
+        BloodTest.objects.create(test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1))
+        link = SecureViewingLink.objects.create(
+            token='data-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True, data_types='blood_tests',
+        )
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'data-token'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Glucose')
+
+    def test_shared_view_invalid_token_404(self):
+        """Non-existent tokens should return 404."""
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'nonexistent'}))
+        self.assertEqual(response.status_code, 404)
+
+    def test_edit_link(self):
+        """Editing should not change the token."""
+        from django.utils import timezone
+        from datetime import timedelta
+        link = SecureViewingLink.objects.create(
+            token='edit-test-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True,
+        )
+        new_expires = (timezone.now() + timedelta(hours=48)).strftime('%Y-%m-%dT%H:%M')
+        self.client.post(reverse('secure_viewing_link_edit', kwargs={'pk': link.pk}), {
+            'data_types': 'vitals',
+            'expires_at': new_expires,
+            'is_active': 'on',
+        })
+        link.refresh_from_db()
+        self.assertEqual(link.token, 'edit-test-token')
+        self.assertEqual(link.data_types, 'vitals')
+
+
+class Phase9PractitionerPortalTests(TestCase):
+    """Test practitioner portal and access request workflow."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_portal_page_loads(self):
+        response = self.client.get(reverse('practitioner_portal'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Practitioner Portal')
+
+    def test_request_access_page_loads(self):
+        response = self.client.get(reverse('practitioner_request_access'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Request Patient Data Access')
+
+    def test_submit_access_request(self):
+        response = self.client.post(reverse('practitioner_request_access'), {
+            'practitioner_name': 'Dr. Smith',
+            'practitioner_email': 'smith@hospital.com',
+            'specialty': 'Cardiology',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PractitionerAccess.objects.count(), 1)
+        pa = PractitionerAccess.objects.first()
+        self.assertEqual(pa.access_status, 'pending')
+        self.assertEqual(pa.practitioner_name, 'Dr. Smith')
+
+    def test_portal_with_approved_access(self):
+        """Portal should show patient data for approved practitioners."""
+        from django.utils import timezone
+        PractitionerAccess.objects.create(
+            practitioner_name='Dr. Jones',
+            practitioner_email='jones@hospital.com',
+            access_status='approved',
+            granted_at=timezone.now(),
+        )
+        response = self.client.post(reverse('practitioner_portal'), {
+            'practitioner_email': 'jones@hospital.com',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Approved Access Records')
+
+    def test_portal_with_no_access(self):
+        """Portal should show error for unapproved emails."""
+        response = self.client.post(reverse('practitioner_portal'), {
+            'practitioner_email': 'unknown@hospital.com',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No approved access found')
+
+    def test_portal_with_pending_access(self):
+        """Pending access should not grant portal data."""
+        PractitionerAccess.objects.create(
+            practitioner_name='Dr. Pending',
+            practitioner_email='pending@hospital.com',
+            access_status='pending',
+        )
+        response = self.client.post(reverse('practitioner_portal'), {
+            'practitioner_email': 'pending@hospital.com',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No approved access found')
+
+    def test_approve_practitioner_sets_granted_at(self):
+        """Approving a practitioner should set granted_at timestamp."""
+        pa = PractitionerAccess.objects.create(
+            practitioner_name='Dr. New',
+            practitioner_email='new@hospital.com',
+            access_status='pending',
+        )
+        self.assertIsNone(pa.granted_at)
+        self.client.post(reverse('practitioner_access_edit', kwargs={'pk': pa.pk}), {
+            'practitioner_name': 'Dr. New',
+            'practitioner_email': 'new@hospital.com',
+            'specialty': 'General',
+            'access_status': 'approved',
+        })
+        pa.refresh_from_db()
+        self.assertEqual(pa.access_status, 'approved')
+        self.assertIsNotNone(pa.granted_at)
+
+    def test_request_access_requires_name_and_email(self):
+        """Access request without name/email should not create entry."""
+        response = self.client.post(reverse('practitioner_request_access'), {
+            'practitioner_name': '',
+            'practitioner_email': '',
+        })
+        self.assertEqual(PractitionerAccess.objects.count(), 0)
+
+
+class Phase9IntakeSummaryGenerateTests(TestCase):
+    """Test automated intake summary generation."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_generate_empty_data(self):
+        """Generate should work even with no health data."""
+        response = self.client.get(reverse('intake_summary_generate'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(IntakeSummary.objects.count(), 1)
+        summary = IntakeSummary.objects.first()
+        self.assertIn('Intake Summary', summary.title)
+        self.assertIn('No health data available', summary.summary_text)
+
+    def test_generate_with_blood_tests(self):
+        """Generate should include blood test data."""
+        BloodTest.objects.create(
+            test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1),
+            normal_min=70, normal_max=100,
+        )
+        BloodTest.objects.create(
+            test_name='Cholesterol', value=250, unit='mg/dL', date=date(2026, 3, 1),
+            normal_min=100, normal_max=200,
+        )
+        response = self.client.get(reverse('intake_summary_generate'))
+        self.assertEqual(response.status_code, 302)
+        summary = IntakeSummary.objects.first()
+        self.assertIn('Glucose', summary.summary_text)
+        self.assertIn('Cholesterol', summary.conditions)
+
+    def test_generate_with_vitals(self):
+        """Generate should include vital signs."""
+        VitalSign.objects.create(
+            date=date(2026, 3, 1), systolic_bp=120, diastolic_bp=80,
+            heart_rate=72, bbt=36.6,
+        )
+        response = self.client.get(reverse('intake_summary_generate'))
+        self.assertEqual(response.status_code, 302)
+        summary = IntakeSummary.objects.first()
+        self.assertIn('BP: 120/80', summary.summary_text)
+        self.assertIn('HR: 72', summary.summary_text)
+
+    def test_generate_with_medications(self):
+        """Generate should include medications."""
+        MedicationSchedule.objects.create(
+            medication_name='Aspirin', dosage='100mg',
+            frequency='daily', start_date=date(2026, 3, 1),
+        )
+        response = self.client.get(reverse('intake_summary_generate'))
+        self.assertEqual(response.status_code, 302)
+        summary = IntakeSummary.objects.first()
+        self.assertIn('Aspirin', summary.medications)
+
+    def test_generate_out_of_range(self):
+        """Generate should flag out-of-range results."""
+        BloodTest.objects.create(
+            test_name='TSH', value=8.5, unit='mIU/L', date=date(2026, 3, 1),
+            normal_min=0.5, normal_max=4.5,
+        )
+        self.client.get(reverse('intake_summary_generate'))
+        summary = IntakeSummary.objects.first()
+        self.assertIn('Out-of-range', summary.conditions)
+        self.assertIn('TSH', summary.conditions)
+
+
+class Phase9DataExportTests(TestCase):
+    """Test comprehensive data export in JSON and XML formats."""
+
+    def setUp(self):
+        self.client = Client()
+        BloodTest.objects.create(
+            test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1),
+        )
+        VitalSign.objects.create(
+            date=date(2026, 3, 1), systolic_bp=120, diastolic_bp=80, heart_rate=72,
+        )
+
+    def test_create_export_request(self):
+        response = self.client.post(reverse('data_export_add'), {
+            'export_format': 'json',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DataExportRequest.objects.count(), 1)
+        export = DataExportRequest.objects.first()
+        self.assertEqual(export.status, 'completed')
+        self.assertIsNotNone(export.completed_at)
+
+    def test_json_download(self):
+        """JSON export should return valid JSON with health data."""
+        export = DataExportRequest.objects.create(
+            export_format='json', status='completed',
+        )
+        response = self.client.get(reverse('data_export_download', kwargs={'pk': export.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/json')
+        self.assertIn('attachment', response['Content-Disposition'])
+        data = json.loads(response.content)
+        self.assertIn('blood_tests', data)
+        self.assertIn('vitals', data)
+        self.assertEqual(len(data['blood_tests']), 1)
+        self.assertEqual(data['blood_tests'][0]['test_name'], 'Glucose')
+
+    def test_xml_download(self):
+        """XML export should return valid XML with health data."""
+        export = DataExportRequest.objects.create(
+            export_format='xml', status='completed',
+        )
+        response = self.client.get(reverse('data_export_download', kwargs={'pk': export.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/xml')
+        self.assertIn('attachment', response['Content-Disposition'])
+        content = response.content.decode()
+        self.assertIn('<?xml', content)
+        self.assertIn('<health_data', content)
+        self.assertIn('<blood_tests>', content)
+        self.assertIn('Glucose', content)
+
+    def test_download_nonexistent_export(self):
+        """Downloading non-existent export should return 404."""
+        response = self.client.get(reverse('data_export_download', kwargs={'pk': 99999}))
+        self.assertEqual(response.status_code, 404)
+
+    def test_json_export_contains_all_sections(self):
+        """JSON export should contain all data sections."""
+        export = DataExportRequest.objects.create(
+            export_format='json', status='completed',
+        )
+        response = self.client.get(reverse('data_export_download', kwargs={'pk': export.pk}))
+        data = json.loads(response.content)
+        for section in ['blood_tests', 'vitals', 'medications', 'body_composition', 'sleep_logs']:
+            self.assertIn(section, data)
+
+    def test_xml_export_filename(self):
+        """XML export filename should include the export ID."""
+        export = DataExportRequest.objects.create(
+            export_format='xml', status='completed',
+        )
+        response = self.client.get(reverse('data_export_download', kwargs={'pk': export.pk}))
+        self.assertIn(f'health_export_{export.pk}.xml', response['Content-Disposition'])
+
+
+class Phase9StakeholderEmailTests(TestCase):
+    """Test stakeholder email sending functionality."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_send_email_to_active_stakeholder(self):
+        """Sending to active stakeholder should succeed."""
+        from django.core import mail
+        se = StakeholderEmail.objects.create(
+            recipient_name='Jane Doe',
+            recipient_email='jane@example.com',
+            frequency='monthly',
+            is_active=True,
+        )
+        response = self.client.get(reverse('stakeholder_email_send', kwargs={'pk': se.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Health Summary', mail.outbox[0].subject)
+        self.assertIn('jane@example.com', mail.outbox[0].to)
+        se.refresh_from_db()
+        self.assertIsNotNone(se.last_sent)
+
+    def test_send_email_to_inactive_stakeholder(self):
+        """Sending to inactive stakeholder should fail gracefully."""
+        from django.core import mail
+        se = StakeholderEmail.objects.create(
+            recipient_name='John Doe',
+            recipient_email='john@example.com',
+            frequency='monthly',
+            is_active=False,
+        )
+        response = self.client.get(reverse('stakeholder_email_send', kwargs={'pk': se.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_send_email_contains_health_data(self):
+        """Email should contain health summary data."""
+        from django.core import mail
+        VitalSign.objects.create(
+            date=date(2026, 3, 1), systolic_bp=120, diastolic_bp=80, heart_rate=72,
+        )
+        BloodTest.objects.create(
+            test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1),
+        )
+        se = StakeholderEmail.objects.create(
+            recipient_name='Care Team',
+            recipient_email='careteam@example.com',
+            frequency='monthly',
+            is_active=True,
+        )
+        self.client.get(reverse('stakeholder_email_send', kwargs={'pk': se.pk}))
+        self.assertEqual(len(mail.outbox), 1)
+        body = mail.outbox[0].body
+        self.assertIn('Blood Pressure: 120/80', body)
+        self.assertIn('Glucose', body)
+        self.assertIn('Health Summary Report', body)
+
+    def test_send_email_flags_out_of_range(self):
+        """Email should flag out-of-range values."""
+        from django.core import mail
+        BloodTest.objects.create(
+            test_name='Cholesterol', value=280, unit='mg/dL', date=date(2026, 3, 1),
+            normal_min=100, normal_max=200,
+        )
+        se = StakeholderEmail.objects.create(
+            recipient_name='Family',
+            recipient_email='family@example.com',
+            frequency='monthly',
+            is_active=True,
+        )
+        self.client.get(reverse('stakeholder_email_send', kwargs={'pk': se.pk}))
+        body = mail.outbox[0].body
+        self.assertIn('OUT OF RANGE', body)
+
+    def test_send_nonexistent_stakeholder(self):
+        """Sending to nonexistent stakeholder should return 404."""
+        response = self.client.get(reverse('stakeholder_email_send', kwargs={'pk': 99999}))
+        self.assertEqual(response.status_code, 404)

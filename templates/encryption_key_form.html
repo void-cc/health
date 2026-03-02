@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Encryption Key</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="key_identifier" class="form-label">Key Identifier:</label>
+      <input type="text" class="form-control" name="key_identifier" id="key_identifier" value="{% if editing and entry.key_identifier %}{{ entry.key_identifier }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="public_key" class="form-label">Public Key:</label>
+      <textarea class="form-control" name="public_key" id="public_key" rows="4">{% if editing and entry.public_key %}{{ entry.public_key }}{% endif %}</textarea>
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" name="is_active" id="is_active" {% if editing and entry.is_active %}checked{% elif not editing %}checked{% endif %} />
+      <label for="is_active" class="form-check-label">Active</label>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'encryption_key_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

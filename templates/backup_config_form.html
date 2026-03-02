@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Backup Configuration</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="backup_name" class="form-label">Backup Name:</label>
+      <input type="text" class="form-control" name="backup_name" id="backup_name" value="{% if editing and entry.backup_name %}{{ entry.backup_name }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="frequency" class="form-label">Frequency:</label>
+      <select class="form-select" name="frequency" id="frequency">
+        <option value="hourly" {% if editing and entry.frequency == 'hourly' %}selected{% endif %}>Hourly</option>
+        <option value="daily" {% if editing and entry.frequency == 'daily' %}selected{% endif %}>Daily</option>
+        <option value="weekly" {% if editing and entry.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
+        <option value="monthly" {% if editing and entry.frequency == 'monthly' %}selected{% endif %}>Monthly</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="retention_days" class="form-label">Retention Days:</label>
+      <input type="number" class="form-control" name="retention_days" id="retention_days" min="1" value="{% if editing %}{{ entry.retention_days }}{% else %}30{% endif %}" />
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" name="is_active" id="is_active" {% if editing and entry.is_active %}checked{% elif not editing %}checked{% endif %} />
+      <label for="is_active" class="form-check-label">Active</label>
+    </div>
+    <div class="mb-3">
+      <label for="storage_location" class="form-label">Storage Location:</label>
+      <input type="text" class="form-control" name="storage_location" id="storage_location" value="{% if editing and entry.storage_location %}{{ entry.storage_location }}{% endif %}" />
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'backup_config_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

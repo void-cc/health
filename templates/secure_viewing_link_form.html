@@ -1,27 +1,31 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container my-5">
-  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Secure Viewing Link</h2>
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Create{% endif %} Secure Viewing Link</h2>
   <form method="POST">
     {% csrf_token %}
     <div class="mb-3">
-      <label for="token" class="form-label">Token:</label>
-      <input type="text" class="form-control" name="token" id="token" value="{% if editing and entry.token %}{{ entry.token }}{% endif %}" />
-    </div>
-    <div class="mb-3">
-      <label for="data_types" class="form-label">Data Types:</label>
-      <input type="text" class="form-control" name="data_types" id="data_types" value="{% if editing and entry.data_types %}{{ entry.data_types }}{% endif %}" />
+      <label for="data_types" class="form-label">Data Types (comma-separated, e.g. blood_tests,vitals,medications):</label>
+      <input type="text" class="form-control" name="data_types" id="data_types" value="{% if editing and entry.data_types %}{{ entry.data_types }}{% endif %}" placeholder="blood_tests,vitals,medications" />
     </div>
     <div class="mb-3">
       <label for="expires_at" class="form-label">Expires At:</label>
-      <input type="datetime-local" class="form-control" name="expires_at" id="expires_at" value="{% if editing and entry.expires_at %}{{ entry.expires_at|date:'Y-m-d\TH:i' }}{% endif %}" />
+      <input type="datetime-local" class="form-control" name="expires_at" id="expires_at" value="{% if editing and entry.expires_at %}{{ entry.expires_at|date:'Y-m-d\TH:i' }}{% endif %}" required />
     </div>
     <div class="mb-3 form-check">
       <input type="checkbox" class="form-check-input" name="is_active" id="is_active" {% if editing and entry.is_active %}checked{% elif not editing %}checked{% endif %}>
       <label for="is_active" class="form-check-label">Active</label>
     </div>
+    {% if editing and entry.token %}
+    <div class="mb-3">
+      <label class="form-label">Share URL:</label>
+      <div class="input-group">
+        <input type="text" class="form-control" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'secure_link_shared_view' token=entry.token %}" />
+      </div>
+    </div>
+    {% endif %}
     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Create Link{% endif %}</button>
       <a href="{% url 'secure_viewing_link_list' %}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
