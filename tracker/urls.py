@@ -205,6 +205,36 @@ urlpatterns = [
     path('rate-limits/edit/<int:pk>/', views.api_rate_limit_edit, name='api_rate_limit_edit'),
     path('rate-limits/delete/<int:pk>/', views.api_rate_limit_delete, name='api_rate_limit_delete'),
 
+    # Phase 7: Encryption Keys
+    path('encryption-keys/', views.encryption_key_list, name='encryption_key_list'),
+    path('encryption-keys/add/', views.encryption_key_add, name='encryption_key_add'),
+    path('encryption-keys/edit/<int:pk>/', views.encryption_key_edit, name='encryption_key_edit'),
+    path('encryption-keys/delete/<int:pk>/', views.encryption_key_delete, name='encryption_key_delete'),
+
+    # Phase 7: Audit Logs
+    path('audit-logs/', views.audit_log_list, name='audit_log_list'),
+    path('audit-logs/add/', views.audit_log_add, name='audit_log_add'),
+    path('audit-logs/edit/<int:pk>/', views.audit_log_edit, name='audit_log_edit'),
+    path('audit-logs/delete/<int:pk>/', views.audit_log_delete, name='audit_log_delete'),
+
+    # Phase 7: Anonymized Data Reports
+    path('anonymized-data/', views.anonymized_data_list, name='anonymized_data_list'),
+    path('anonymized-data/add/', views.anonymized_data_add, name='anonymized_data_add'),
+    path('anonymized-data/edit/<int:pk>/', views.anonymized_data_edit, name='anonymized_data_edit'),
+    path('anonymized-data/delete/<int:pk>/', views.anonymized_data_delete, name='anonymized_data_delete'),
+
+    # Phase 7: Database Scaling Config
+    path('database-scaling/', views.database_scaling_list, name='database_scaling_list'),
+    path('database-scaling/add/', views.database_scaling_add, name='database_scaling_add'),
+    path('database-scaling/edit/<int:pk>/', views.database_scaling_edit, name='database_scaling_edit'),
+    path('database-scaling/delete/<int:pk>/', views.database_scaling_delete, name='database_scaling_delete'),
+
+    # Phase 7: Backup Configuration
+    path('backup-config/', views.backup_config_list, name='backup_config_list'),
+    path('backup-config/add/', views.backup_config_add, name='backup_config_add'),
+    path('backup-config/edit/<int:pk>/', views.backup_config_edit, name='backup_config_edit'),
+    path('backup-config/delete/<int:pk>/', views.backup_config_delete, name='backup_config_delete'),
+
     # Phase 8: Medication Schedule
     path('medications/', views.medication_schedule_list, name='medication_schedule_list'),
     path('medications/add/', views.medication_schedule_add, name='medication_schedule_add'),

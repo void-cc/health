@@ -17,6 +17,7 @@ from .models import (
     # Phase 7
     UserProfile, FamilyAccount, EncryptionKey, AuditLog,
     APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
+    AnonymizedDataReport, DatabaseScalingConfig, BackupConfiguration,
     # Phase 8
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
@@ -2559,6 +2560,239 @@ def api_rate_limit_delete(request, pk):
         get_object_or_404(APIRateLimitConfig, id=pk).delete()
         messages.success(request, 'API rate limit config deleted!')
     return redirect('api_rate_limit_list')
+
+
+# ===== Phase 7: Encryption Keys =====
+
+def encryption_key_list(request):
+    entries = EncryptionKey.objects.all().order_by('-created_at')
+    return render(request, 'encryption_key_list.html', {'entries': entries})
+
+def encryption_key_add(request):
+    if request.method == 'POST':
+        try:
+            EncryptionKey.objects.create(
+                key_identifier=request.POST.get('key_identifier', ''),
+                public_key=request.POST.get('public_key', ''),
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'Encryption key added!')
+            return redirect('encryption_key_list')
+        except Exception:
+            messages.error(request, 'Error adding encryption key.')
+            return redirect('encryption_key_add')
+    return render(request, 'encryption_key_form.html', {'editing': False})
+
+def encryption_key_edit(request, pk):
+    entry = get_object_or_404(EncryptionKey, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.key_identifier = request.POST.get('key_identifier', '')
+            entry.public_key = request.POST.get('public_key', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'Encryption key updated!')
+            return redirect('encryption_key_list')
+        except Exception:
+            messages.error(request, 'Error updating encryption key.')
+            return redirect('encryption_key_edit', pk=pk)
+    return render(request, 'encryption_key_form.html', {'entry': entry, 'editing': True})
+
+def encryption_key_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(EncryptionKey, id=pk).delete()
+        messages.success(request, 'Encryption key deleted!')
+    return redirect('encryption_key_list')
+
+
+# ===== Phase 7: Audit Logs =====
+
+def audit_log_list(request):
+    entries = AuditLog.objects.all().order_by('-created_at')
+    return render(request, 'audit_log_list.html', {'entries': entries})
+
+def audit_log_add(request):
+    if request.method == 'POST':
+        try:
+            AuditLog.objects.create(
+                action=request.POST.get('action', ''),
+                details=request.POST.get('details', ''),
+                ip_address=request.POST.get('ip_address', '') or None,
+            )
+            messages.success(request, 'Audit log added!')
+            return redirect('audit_log_list')
+        except Exception:
+            messages.error(request, 'Error adding audit log.')
+            return redirect('audit_log_add')
+    return render(request, 'audit_log_form.html', {'editing': False})
+
+def audit_log_edit(request, pk):
+    entry = get_object_or_404(AuditLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.action = request.POST.get('action', '')
+            entry.details = request.POST.get('details', '')
+            entry.ip_address = request.POST.get('ip_address', '') or None
+            entry.save()
+            messages.success(request, 'Audit log updated!')
+            return redirect('audit_log_list')
+        except Exception:
+            messages.error(request, 'Error updating audit log.')
+            return redirect('audit_log_edit', pk=pk)
+    return render(request, 'audit_log_form.html', {'entry': entry, 'editing': True})
+
+def audit_log_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(AuditLog, id=pk).delete()
+        messages.success(request, 'Audit log deleted!')
+    return redirect('audit_log_list')
+
+
+# ===== Phase 7: Anonymized Data Reports =====
+
+def anonymized_data_list(request):
+    entries = AnonymizedDataReport.objects.all().order_by('-generated_at')
+    return render(request, 'anonymized_data_list.html', {'entries': entries})
+
+def anonymized_data_add(request):
+    if request.method == 'POST':
+        try:
+            total = request.POST.get('total_records', '').strip()
+            AnonymizedDataReport.objects.create(
+                report_title=request.POST.get('report_title', ''),
+                report_type=request.POST.get('report_type', ''),
+                total_records=int(total) if total else 0,
+                anonymization_method=request.POST.get('anonymization_method', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Anonymized data report added!')
+            return redirect('anonymized_data_list')
+        except Exception:
+            messages.error(request, 'Error adding anonymized data report.')
+            return redirect('anonymized_data_add')
+    return render(request, 'anonymized_data_form.html', {'editing': False})
+
+def anonymized_data_edit(request, pk):
+    entry = get_object_or_404(AnonymizedDataReport, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.report_title = request.POST.get('report_title', '')
+            entry.report_type = request.POST.get('report_type', '')
+            total = request.POST.get('total_records', '').strip()
+            entry.total_records = int(total) if total else 0
+            entry.anonymization_method = request.POST.get('anonymization_method', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Anonymized data report updated!')
+            return redirect('anonymized_data_list')
+        except Exception:
+            messages.error(request, 'Error updating anonymized data report.')
+            return redirect('anonymized_data_edit', pk=pk)
+    return render(request, 'anonymized_data_form.html', {'entry': entry, 'editing': True})
+
+def anonymized_data_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(AnonymizedDataReport, id=pk).delete()
+        messages.success(request, 'Anonymized data report deleted!')
+    return redirect('anonymized_data_list')
+
+
+# ===== Phase 7: Database Scaling Config =====
+
+def database_scaling_list(request):
+    entries = DatabaseScalingConfig.objects.all().order_by('-created_at')
+    return render(request, 'database_scaling_list.html', {'entries': entries})
+
+def database_scaling_add(request):
+    if request.method == 'POST':
+        try:
+            max_conn = request.POST.get('max_connections', '').strip()
+            DatabaseScalingConfig.objects.create(
+                config_name=request.POST.get('config_name', ''),
+                scaling_type=request.POST.get('scaling_type', ''),
+                is_active=request.POST.get('is_active') == 'on',
+                max_connections=int(max_conn) if max_conn else 100,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Database scaling config added!')
+            return redirect('database_scaling_list')
+        except Exception:
+            messages.error(request, 'Error adding database scaling config.')
+            return redirect('database_scaling_add')
+    return render(request, 'database_scaling_form.html', {'editing': False})
+
+def database_scaling_edit(request, pk):
+    entry = get_object_or_404(DatabaseScalingConfig, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.config_name = request.POST.get('config_name', '')
+            entry.scaling_type = request.POST.get('scaling_type', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            max_conn = request.POST.get('max_connections', '').strip()
+            entry.max_connections = int(max_conn) if max_conn else 100
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Database scaling config updated!')
+            return redirect('database_scaling_list')
+        except Exception:
+            messages.error(request, 'Error updating database scaling config.')
+            return redirect('database_scaling_edit', pk=pk)
+    return render(request, 'database_scaling_form.html', {'entry': entry, 'editing': True})
+
+def database_scaling_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(DatabaseScalingConfig, id=pk).delete()
+        messages.success(request, 'Database scaling config deleted!')
+    return redirect('database_scaling_list')
+
+
+# ===== Phase 7: Backup Configuration =====
+
+def backup_config_list(request):
+    entries = BackupConfiguration.objects.all().order_by('-created_at')
+    return render(request, 'backup_config_list.html', {'entries': entries})
+
+def backup_config_add(request):
+    if request.method == 'POST':
+        try:
+            ret = request.POST.get('retention_days', '').strip()
+            BackupConfiguration.objects.create(
+                backup_name=request.POST.get('backup_name', ''),
+                frequency=request.POST.get('frequency', ''),
+                retention_days=int(ret) if ret else 30,
+                is_active=request.POST.get('is_active') == 'on',
+                storage_location=request.POST.get('storage_location', ''),
+            )
+            messages.success(request, 'Backup configuration added!')
+            return redirect('backup_config_list')
+        except Exception:
+            messages.error(request, 'Error adding backup configuration.')
+            return redirect('backup_config_add')
+    return render(request, 'backup_config_form.html', {'editing': False})
+
+def backup_config_edit(request, pk):
+    entry = get_object_or_404(BackupConfiguration, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.backup_name = request.POST.get('backup_name', '')
+            entry.frequency = request.POST.get('frequency', '')
+            ret = request.POST.get('retention_days', '').strip()
+            entry.retention_days = int(ret) if ret else 30
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.storage_location = request.POST.get('storage_location', '')
+            entry.save()
+            messages.success(request, 'Backup configuration updated!')
+            return redirect('backup_config_list')
+        except Exception:
+            messages.error(request, 'Error updating backup configuration.')
+            return redirect('backup_config_edit', pk=pk)
+    return render(request, 'backup_config_form.html', {'entry': entry, 'editing': True})
+
+def backup_config_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(BackupConfiguration, id=pk).delete()
+        messages.success(request, 'Backup configuration deleted!')
+    return redirect('backup_config_list')
 
 
 # ===== Phase 8: Medication Schedule =====
