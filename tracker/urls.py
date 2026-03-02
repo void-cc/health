@@ -331,4 +331,45 @@ urlpatterns = [
 
     # Phase 11: Interoperability Dashboard
     path('phase11/', views.phase11_dashboard, name='phase11_dashboard'),
+
+    # Phase 12: Continuous Monitoring & Alerts
+    path('phase12/', views.phase12_dashboard, name='phase12_dashboard'),
+
+    # Phase 12: Monitoring Rules
+    path('monitoring-rules/', views.monitoring_rule_list, name='monitoring_rule_list'),
+    path('monitoring-rules/add/', views.monitoring_rule_add, name='monitoring_rule_add'),
+    path('monitoring-rules/edit/<int:pk>/', views.monitoring_rule_edit, name='monitoring_rule_edit'),
+    path('monitoring-rules/delete/<int:pk>/', views.monitoring_rule_delete, name='monitoring_rule_delete'),
+
+    # Phase 12: Monitoring Events
+    path('monitoring-events/', views.monitoring_event_list, name='monitoring_event_list'),
+    path('monitoring-events/acknowledge/<int:pk>/', views.monitoring_event_acknowledge, name='monitoring_event_acknowledge'),
+
+    # Phase 12: Anomaly Detection
+    path('anomaly-detection/', views.anomaly_detection_list, name='anomaly_detection_list'),
+    path('anomaly-detection/run/', views.anomaly_detection_run, name='anomaly_detection_run'),
+    path('anomaly-detection/resolve/<int:pk>/', views.anomaly_detection_resolve, name='anomaly_detection_resolve'),
+
+    # Phase 12: Data Pipelines
+    path('data-pipelines/', views.data_pipeline_list, name='data_pipeline_list'),
+    path('data-pipelines/add/', views.data_pipeline_add, name='data_pipeline_add'),
+    path('data-pipelines/edit/<int:pk>/', views.data_pipeline_edit, name='data_pipeline_edit'),
+    path('data-pipelines/delete/<int:pk>/', views.data_pipeline_delete, name='data_pipeline_delete'),
+    path('data-pipelines/run/<int:pk>/', views.data_pipeline_run, name='data_pipeline_run'),
+
+    # Phase 12: Predictive Models
+    path('predictive-models/', views.predictive_model_list, name='predictive_model_list'),
+    path('predictive-models/add/', views.predictive_model_add, name='predictive_model_add'),
+    path('predictive-models/edit/<int:pk>/', views.predictive_model_edit, name='predictive_model_edit'),
+    path('predictive-models/delete/<int:pk>/', views.predictive_model_delete, name='predictive_model_delete'),
+
+    # Phase 12: Secure Storage
+    path('secure-storage/', views.secure_storage_list, name='secure_storage_list'),
+    path('secure-storage/add/', views.secure_storage_add, name='secure_storage_add'),
+    path('secure-storage/edit/<int:pk>/', views.secure_storage_edit, name='secure_storage_edit'),
+    path('secure-storage/delete/<int:pk>/', views.secure_storage_delete, name='secure_storage_delete'),
+
+    # Phase 12: Export Hub
+    path('export-hub/', views.export_hub, name='export_hub'),
+    path('export-hub/generate/', views.export_hub_generate, name='export_hub_generate'),
 ]

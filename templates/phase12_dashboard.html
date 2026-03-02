@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-4">
+  <h2 class="mb-4"><i class="fas fa-satellite-dish me-2"></i>Phase 12: Continuous Monitoring & Alerts</h2>
+
+  <!-- Quick Actions -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body d-flex flex-wrap gap-2">
+          <a href="{% url 'monitoring_rule_list' %}" class="btn btn-outline-primary"><i class="fas fa-cogs me-1"></i> Monitoring Rules</a>
+          <a href="{% url 'monitoring_event_list' %}" class="btn btn-outline-info"><i class="fas fa-stream me-1"></i> Events</a>
+          <a href="{% url 'anomaly_detection_list' %}" class="btn btn-outline-warning"><i class="fas fa-search-plus me-1"></i> Anomaly Detection</a>
+          <a href="{% url 'data_pipeline_list' %}" class="btn btn-outline-success"><i class="fas fa-project-diagram me-1"></i> Data Pipelines</a>
+          <a href="{% url 'predictive_model_list' %}" class="btn btn-outline-secondary"><i class="fas fa-brain me-1"></i> Predictive Models</a>
+          <a href="{% url 'secure_storage_list' %}" class="btn btn-outline-dark"><i class="fas fa-lock me-1"></i> Secure Storage</a>
+          <a href="{% url 'export_hub' %}" class="btn btn-outline-primary"><i class="fas fa-file-export me-1"></i> Export Hub</a>
+          <form method="POST" action="{% url 'anomaly_detection_run' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning"><i class="fas fa-radar me-1"></i> Run Anomaly Scan</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Cards Row 1 - Sub-task Progress -->
+  <h5 class="text-muted mb-3">Sub-task Progress</h5>
+  <div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-3">
+      <div class="card text-white bg-primary h-100 shadow-sm">
+        <div class="card-body text-center">
+          <h6 class="card-title">Total Sub-tasks</h6>
+          <p class="card-text display-6">{{ total }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+      <div class="card text-white bg-success h-100 shadow-sm">
+        <div class="card-body text-center">
+          <h6 class="card-title">Completed</h6>
+          <p class="card-text display-6">{{ completed }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+      <div class="card text-white bg-warning h-100 shadow-sm">
+        <div class="card-body text-center">
+          <h6 class="card-title">In Progress</h6>
+          <p class="card-text display-6">{{ in_progress }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+      <div class="card text-white bg-secondary h-100 shadow-sm">
+        <div class="card-body text-center">
+          <h6 class="card-title">Pending</h6>
+          <p class="card-text display-6">{{ pending }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Cards Row 2 - System Status -->
+  <h5 class="text-muted mb-3">System Status</h5>
+  <div class="row mb-4">
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+      <div class="card border-start border-primary border-4 h-100 shadow-sm">
+        <div class="card-body text-center">
+          <i class="fas fa-cogs fa-2x text-primary mb-2"></i>
+          <h6>Active Rules</h6>
+          <p class="display-6 mb-0">{{ active_rules }}</p>
+          <small class="text-muted">of {{ total_rules }} total</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+      <div class="card border-start border-danger border-4 h-100 shadow-sm">
+        <div class="card-body text-center">
+          <i class="fas fa-bell fa-2x text-danger mb-2"></i>
+          <h6>Unread Alerts</h6>
+          <p class="display-6 mb-0">{{ unacknowledged_events }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+      <div class="card border-start border-warning border-4 h-100 shadow-sm">
+        <div class="card-body text-center">
+          <i class="fas fa-search-plus fa-2x text-warning mb-2"></i>
+          <h6>Open Anomalies</h6>
+          <p class="display-6 mb-0">{{ open_anomalies }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+      <div class="card border-start border-success border-4 h-100 shadow-sm">
+        <div class="card-body text-center">
+          <i class="fas fa-project-diagram fa-2x text-success mb-2"></i>
+          <h6>Pipelines</h6>
+          <p class="display-6 mb-0">{{ active_pipelines }}</p>
+          {% if running_pipelines %}<small class="text-info">{{ running_pipelines }} running</small>{% endif %}
+          {% if failed_pipelines %}<small class="text-danger">{{ failed_pipelines }} failed</small>{% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+      <div class="card border-start border-info border-4 h-100 shadow-sm">
+        <div class="card-body text-center">
+          <i class="fas fa-brain fa-2x text-info mb-2"></i>
+          <h6>Active Models</h6>
+          <p class="display-6 mb-0">{{ active_models }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+      <div class="card border-start border-dark border-4 h-100 shadow-sm">
+        <div class="card-body text-center">
+          <i class="fas fa-lock fa-2x text-dark mb-2"></i>
+          <h6>Storage Vaults</h6>
+          <p class="display-6 mb-0">{{ active_vaults }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature Type Progress -->
+  {% if feature_summary %}
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Progress by Feature Type</h5></div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Feature Type</th>
+              <th>Total</th>
+              <th>Completed</th>
+              <th>In Progress</th>
+              <th>Pending</th>
+              <th>Progress</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ft_label, stats in feature_summary.items %}
+            <tr>
+              <td><strong>{{ ft_label }}</strong></td>
+              <td>{{ stats.total }}</td>
+              <td><span class="badge bg-success">{{ stats.completed }}</span></td>
+              <td><span class="badge bg-warning text-dark">{{ stats.in_progress }}</span></td>
+              <td><span class="badge bg-secondary">{{ stats.pending }}</span></td>
+              <td>
+                <div class="progress" style="min-width: 120px; height: 20px;">
+                  {% if stats.total > 0 %}
+                  <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio stats.completed stats.total 100 %}%">
+                    {% widthratio stats.completed stats.total 100 %}%
+                  </div>
+                  {% if stats.in_progress %}
+                  <div class="progress-bar bg-warning" role="progressbar" style="width: {% widthratio stats.in_progress stats.total 100 %}%"></div>
+                  {% endif %}
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row">
+    <!-- Recent Events -->
+    <div class="col-lg-6 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-stream me-2"></i>Recent Events</h5>
+          <a href="{% url 'monitoring_event_list' %}" class="btn btn-sm btn-light">View All</a>
+        </div>
+        <div class="card-body p-0">
+          {% if recent_events %}
+          <div class="list-group list-group-flush">
+            {% for event in recent_events %}
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <small class="text-muted">{{ event.created_at|timesince }} ago</small><br>
+                <strong>{{ event.get_category_display }}</strong> — {{ event.metric_name|default:event.get_event_type_display }}
+              </div>
+              {% if event.status == 'critical' %}
+              <span class="badge bg-danger">Critical</span>
+              {% elif event.status == 'warning' %}
+              <span class="badge bg-warning text-dark">Warning</span>
+              {% elif event.status == 'resolved' %}
+              <span class="badge bg-success">Resolved</span>
+              {% else %}
+              <span class="badge bg-secondary">Normal</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="p-3 text-muted text-center">No monitoring events yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Anomalies -->
+    <div class="col-lg-6 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-search-plus me-2"></i>Open Anomalies</h5>
+          <a href="{% url 'anomaly_detection_list' %}" class="btn btn-sm btn-light">View All</a>
+        </div>
+        <div class="card-body p-0">
+          {% if recent_anomalies %}
+          <div class="list-group list-group-flush">
+            {% for anomaly in recent_anomalies %}
+            <div class="list-group-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <strong>{{ anomaly.metric_name }}</strong>
+                  <span class="badge bg-{% if anomaly.severity == 'critical' %}danger{% elif anomaly.severity == 'high' %}warning{% else %}info{% endif %} ms-1">{{ anomaly.get_severity_display }}</span><br>
+                  <small class="text-muted">{{ anomaly.get_anomaly_type_display }} — {{ anomaly.detected_at|timesince }} ago</small>
+                </div>
+                <div class="text-end">
+                  {% if anomaly.deviation_percent %}<span class="text-danger fw-bold">{{ anomaly.deviation_percent }}%</span><br>{% endif %}
+                  <small>Expected: {{ anomaly.expected_value|default:"N/A" }} | Actual: {{ anomaly.actual_value }}</small>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="p-3 text-muted text-center">No open anomalies — all clear!</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -121,6 +121,19 @@ SIDEBAR_CONFIG = [
         ],
     },
     {
+        "category": "Continuous Monitoring",
+        "items": [
+            {"label": "Monitoring Dashboard", "icon": "fa-satellite-dish", "url_name": "phase12_dashboard", "match": ["phase12_dashboard"]},
+            {"label": "Monitoring Rules", "icon": "fa-cogs", "url_name": "monitoring_rule_list", "match": ["monitoring_rule"]},
+            {"label": "Monitoring Events", "icon": "fa-stream", "url_name": "monitoring_event_list", "match": ["monitoring_event"]},
+            {"label": "Anomaly Detection", "icon": "fa-search-plus", "url_name": "anomaly_detection_list", "match": ["anomaly_detection"]},
+            {"label": "Data Pipelines", "icon": "fa-project-diagram", "url_name": "data_pipeline_list", "match": ["data_pipeline"]},
+            {"label": "Predictive Models", "icon": "fa-brain", "url_name": "predictive_model_list", "match": ["predictive_model"]},
+            {"label": "Secure Storage", "icon": "fa-vault", "url_name": "secure_storage_list", "match": ["secure_storage"]},
+            {"label": "Export Hub", "icon": "fa-file-export", "url_name": "export_hub", "match": ["export_hub"]},
+        ],
+    },
+    {
         "category": "Data Management",
         "items": [
             {"label": "Import Data", "icon": "fa-file-upload", "url_name": "import_data", "match": ["import_data"]},

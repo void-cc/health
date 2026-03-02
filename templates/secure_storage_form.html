@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-4">
+  <h2 class="mb-4">{% if editing %}<i class="fas fa-edit me-2"></i>Edit Secure Storage Vault{% else %}<i class="fas fa-plus me-2"></i>Add Secure Storage Vault{% endif %}</h2>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="name" class="form-label">Vault Name</label>
+            <input type="text" class="form-control" id="name" name="name" value="{{ entry.name|default:'' }}" required>
+          </div>
+          <div class="col-md-3 mb-3">
+            <label for="category" class="form-label">Category</label>
+            <select class="form-select" id="category" name="category" required>
+              <option value="">Select Category</option>
+              {% for value, label in categories %}
+              <option value="{{ value }}" {% if entry.category == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3 mb-3">
+            <label for="encryption_type" class="form-label">Encryption Type</label>
+            <select class="form-select" id="encryption_type" name="encryption_type">
+              <option value="aes256" {% if entry.encryption_type == 'aes256' %}selected{% endif %}>AES-256</option>
+              <option value="rsa" {% if entry.encryption_type == 'rsa' %}selected{% endif %}>RSA</option>
+              <option value="hybrid" {% if entry.encryption_type == 'hybrid' %}selected{% endif %}>Hybrid (AES+RSA)</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="status" class="form-label">Status</label>
+          <select class="form-select" id="status" name="status">
+            <option value="active" {% if entry.status == 'active' or not editing %}selected{% endif %}>Active</option>
+            <option value="locked" {% if entry.status == 'locked' %}selected{% endif %}>Locked</option>
+            <option value="archived" {% if entry.status == 'archived' %}selected{% endif %}>Archived</option>
+          </select>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">{% if editing %}Update{% else %}Create{% endif %} Vault</button>
+          <a href="{% url 'secure_storage_list' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

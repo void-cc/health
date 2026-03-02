@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-project-diagram me-2"></i>Data Pipelines</h2>
+    <div>
+      <a href="{% url 'phase12_dashboard' %}" class="btn btn-outline-secondary me-2"><i class="fas fa-arrow-left me-1"></i> Dashboard</a>
+      <a href="{% url 'data_pipeline_add' %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i> Add Pipeline</a>
+    </div>
+  </div>
+
+  {% if entries %}
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Source</th>
+          <th>Destination</th>
+          <th>Frequency</th>
+          <th>Status</th>
+          <th>Records</th>
+          <th>Last Run</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr>
+          <td><strong>{{ entry.name }}</strong></td>
+          <td>{{ entry.get_category_display }}</td>
+          <td><small>{{ entry.source_description|default:"-" }}</small></td>
+          <td><small>{{ entry.destination_description|default:"-" }}</small></td>
+          <td><span class="badge bg-info">{{ entry.get_frequency_display }}</span></td>
+          <td>
+            {% if entry.status == 'running' %}
+            <span class="badge bg-primary"><i class="fas fa-spinner fa-spin me-1"></i>Running</span>
+            {% elif entry.status == 'completed' %}
+            <span class="badge bg-success">Completed</span>
+            {% elif entry.status == 'failed' %}
+            <span class="badge bg-danger">Failed</span>
+            {% elif entry.status == 'paused' %}
+            <span class="badge bg-warning text-dark">Paused</span>
+            {% else %}
+            <span class="badge bg-secondary">Idle</span>
+            {% endif %}
+          </td>
+          <td>{{ entry.records_processed }}</td>
+          <td><small>{{ entry.last_run|default:"Never" }}</small></td>
+          <td>
+            <form method="POST" action="{% url 'data_pipeline_run' pk=entry.id %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-success" title="Run Pipeline"><i class="fas fa-play"></i></button>
+            </form>
+            <a href="{% url 'data_pipeline_edit' pk=entry.id %}" class="btn btn-sm btn-secondary"><i class="fas fa-edit"></i></a>
+            <form method="POST" action="{% url 'data_pipeline_delete' pk=entry.id %}" class="d-inline" onsubmit="return confirm('Delete this pipeline?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>No data pipelines configured yet.
+    <a href="{% url 'data_pipeline_add' %}" class="alert-link">Create your first pipeline</a>.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

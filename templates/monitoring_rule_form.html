@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-4">
+  <h2 class="mb-4">{% if editing %}<i class="fas fa-edit me-2"></i>Edit Monitoring Rule{% else %}<i class="fas fa-plus me-2"></i>Add Monitoring Rule{% endif %}</h2>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="name" class="form-label">Rule Name</label>
+            <input type="text" class="form-control" id="name" name="name" value="{{ entry.name|default:'' }}" required>
+          </div>
+          <div class="col-md-3 mb-3">
+            <label for="category" class="form-label">Category</label>
+            <select class="form-select" id="category" name="category" required>
+              <option value="">Select Category</option>
+              {% for value, label in categories %}
+              <option value="{{ value }}" {% if entry.category == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3 mb-3">
+            <label for="feature_type" class="form-label">Feature Type</label>
+            <select class="form-select" id="feature_type" name="feature_type" required>
+              <option value="">Select Feature Type</option>
+              {% for value, label in feature_types %}
+              <option value="{{ value }}" {% if entry.feature_type == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label for="metric_name" class="form-label">Metric Name</label>
+            <input type="text" class="form-control" id="metric_name" name="metric_name" value="{{ entry.metric_name|default:'' }}" required placeholder="e.g., Heart Rate, Blood Glucose">
+          </div>
+          <div class="col-md-3 mb-3">
+            <label for="condition" class="form-label">Condition</label>
+            <select class="form-select" id="condition" name="condition">
+              <option value="gt" {% if entry.condition == 'gt' %}selected{% endif %}>Greater Than</option>
+              <option value="lt" {% if entry.condition == 'lt' %}selected{% endif %}>Less Than</option>
+              <option value="eq" {% if entry.condition == 'eq' %}selected{% endif %}>Equal To</option>
+              <option value="gte" {% if entry.condition == 'gte' %}selected{% endif %}>Greater Than or Equal</option>
+              <option value="lte" {% if entry.condition == 'lte' %}selected{% endif %}>Less Than or Equal</option>
+              <option value="neq" {% if entry.condition == 'neq' %}selected{% endif %}>Not Equal To</option>
+            </select>
+          </div>
+          <div class="col-md-2 mb-3">
+            <label for="threshold" class="form-label">Threshold</label>
+            <input type="number" step="any" class="form-control" id="threshold" name="threshold" value="{{ entry.threshold|default:'' }}" required>
+          </div>
+          <div class="col-md-3 mb-3">
+            <label for="severity" class="form-label">Severity</label>
+            <select class="form-select" id="severity" name="severity">
+              <option value="low" {% if entry.severity == 'low' %}selected{% endif %}>Low</option>
+              <option value="medium" {% if entry.severity == 'medium' %}selected{% endif %}>Medium</option>
+              <option value="high" {% if entry.severity == 'high' %}selected{% endif %}>High</option>
+              <option value="critical" {% if entry.severity == 'critical' %}selected{% endif %}>Critical</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label for="cooldown_minutes" class="form-label">Cooldown (minutes)</label>
+            <input type="number" class="form-control" id="cooldown_minutes" name="cooldown_minutes" value="{{ entry.cooldown_minutes|default:'60' }}">
+            <div class="form-text">Minimum time between repeated alerts for this rule.</div>
+          </div>
+          <div class="col-md-4 mb-3 d-flex align-items-end gap-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if entry.is_active or not editing %}checked{% endif %}>
+              <label class="form-check-label" for="is_active">Active</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="notification_enabled" name="notification_enabled" {% if entry.notification_enabled or not editing %}checked{% endif %}>
+              <label class="form-check-label" for="notification_enabled">Notifications</label>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">{% if editing %}Update{% else %}Create{% endif %} Rule</button>
+          <a href="{% url 'monitoring_rule_list' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-file-export me-2"></i>Export Hub</h2>
+    <a href="{% url 'phase12_dashboard' %}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i> Dashboard</a>
+  </div>
+
+  <!-- Generate Export -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-primary text-white"><h5 class="mb-0"><i class="fas fa-download me-2"></i>Generate Integration Export</h5></div>
+    <div class="card-body">
+      <form method="POST" action="{% url 'export_hub_generate' %}" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-5">
+          <label for="category" class="form-label">Integration Category</label>
+          <select class="form-select" name="category" id="category" required>
+            <option value="">Select Category</option>
+            {% for value, label in categories %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="export_format" class="form-label">Export Format</label>
+          <select class="form-select" name="export_format" id="export_format">
+            <option value="json">JSON</option>
+            <option value="csv">CSV</option>
+            <option value="xml">XML</option>
+            <option value="pdf">PDF</option>
+          </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100"><i class="fas fa-file-export me-1"></i> Generate Export</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Active Export Integrations -->
+  {% if integrations %}
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header"><h5 class="mb-0"><i class="fas fa-plug me-2"></i>Active Export Integrations</h5></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Category</th>
+              <th>Feature Type</th>
+              <th>Status</th>
+              <th>Last Run</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ic in integrations %}
+            <tr>
+              <td>{{ ic.get_category_display }}</td>
+              <td>{{ ic.get_feature_type_display }}</td>
+              <td><span class="badge bg-success">Enabled</span></td>
+              <td>{{ ic.last_run|default:"Never" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Recent Exports -->
+  <div class="card shadow-sm">
+    <div class="card-header"><h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Exports</h5></div>
+    <div class="card-body p-0">
+      {% if exports %}
+      <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Requested</th>
+              <th>Format</th>
+              <th>Status</th>
+              <th>File</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for export in exports %}
+            <tr>
+              <td><small>{{ export.requested_at|timesince }} ago</small></td>
+              <td><span class="badge bg-info">{{ export.get_export_format_display }}</span></td>
+              <td>
+                {% if export.status == 'completed' %}
+                <span class="badge bg-success">Completed</span>
+                {% elif export.status == 'processing' %}
+                <span class="badge bg-primary">Processing</span>
+                {% elif export.status == 'failed' %}
+                <span class="badge bg-danger">Failed</span>
+                {% else %}
+                <span class="badge bg-secondary">Pending</span>
+                {% endif %}
+              </td>
+              <td><small>{{ export.file_path|default:"-" }}</small></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="p-3 text-muted text-center">No exports generated yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

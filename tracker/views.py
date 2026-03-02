@@ -28,6 +28,9 @@ from .models import (
     # Phase 10-12
     IntegrationConfig, IntegrationSubTask,
     INTEGRATION_CATEGORIES, INTEGRATION_FEATURE_TYPES,
+    # Phase 12
+    MonitoringRule, MonitoringEvent, AnomalyDetectionResult,
+    DataPipelineConfig, PredictiveModel, SecureStorageVault,
 )
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
@@ -4023,3 +4026,417 @@ def phase11_dashboard(request):
         'category_summary': category_summary,
     }
     return render(request, 'phase11_dashboard.html', context)
+
+
+# ===== Phase 12: Continuous Monitoring & Alerts =====
+
+def phase12_dashboard(request):
+    """Central dashboard for Phase 12: Continuous Monitoring & Alerts."""
+    # Phase 12 sub-tasks
+    all_phase12 = IntegrationSubTask.objects.filter(phase=12)
+    total = all_phase12.count()
+    completed = all_phase12.filter(status='completed').count()
+    in_progress = all_phase12.filter(status='in_progress').count()
+    pending = all_phase12.filter(status='pending').count()
+
+    # Active monitoring rules
+    active_rules = MonitoringRule.objects.filter(is_active=True).count()
+    total_rules = MonitoringRule.objects.count()
+
+    # Recent events
+    recent_events = MonitoringEvent.objects.all()[:10]
+    unacknowledged_events = MonitoringEvent.objects.filter(acknowledged=False).exclude(status='normal').count()
+
+    # Anomaly detection
+    open_anomalies = AnomalyDetectionResult.objects.filter(is_resolved=False).count()
+    recent_anomalies = AnomalyDetectionResult.objects.filter(is_resolved=False)[:5]
+
+    # Data pipelines
+    active_pipelines = DataPipelineConfig.objects.filter(is_active=True).count()
+    running_pipelines = DataPipelineConfig.objects.filter(status='running').count()
+    failed_pipelines = DataPipelineConfig.objects.filter(status='failed').count()
+
+    # Predictive models
+    active_models = PredictiveModel.objects.filter(status='active').count()
+
+    # Secure storage
+    active_vaults = SecureStorageVault.objects.filter(status='active').count()
+
+    # Feature type summary for Phase 12
+    feature_summary = {}
+    for ft_key, ft_label in INTEGRATION_FEATURE_TYPES:
+        ft_tasks = all_phase12.filter(feature_type=ft_key)
+        count = ft_tasks.count()
+        if count > 0:
+            feature_summary[ft_label] = {
+                'total': count,
+                'completed': ft_tasks.filter(status='completed').count(),
+                'in_progress': ft_tasks.filter(status='in_progress').count(),
+                'pending': ft_tasks.filter(status='pending').count(),
+            }
+
+    context = {
+        'total': total,
+        'completed': completed,
+        'in_progress': in_progress,
+        'pending': pending,
+        'active_rules': active_rules,
+        'total_rules': total_rules,
+        'recent_events': recent_events,
+        'unacknowledged_events': unacknowledged_events,
+        'open_anomalies': open_anomalies,
+        'recent_anomalies': recent_anomalies,
+        'active_pipelines': active_pipelines,
+        'running_pipelines': running_pipelines,
+        'failed_pipelines': failed_pipelines,
+        'active_models': active_models,
+        'active_vaults': active_vaults,
+        'feature_summary': feature_summary,
+    }
+    return render(request, 'phase12_dashboard.html', context)
+
+
+# ----- Monitoring Rules CRUD -----
+
+def monitoring_rule_list(request):
+    entries = MonitoringRule.objects.all()
+    return render(request, 'monitoring_rule_list.html', {'entries': entries})
+
+def monitoring_rule_add(request):
+    if request.method == 'POST':
+        try:
+            threshold = request.POST.get('threshold', '').strip()
+            cooldown = request.POST.get('cooldown_minutes', '60').strip()
+            MonitoringRule.objects.create(
+                name=request.POST.get('name', ''),
+                category=request.POST.get('category', ''),
+                feature_type=request.POST.get('feature_type', ''),
+                metric_name=request.POST.get('metric_name', ''),
+                condition=request.POST.get('condition', 'gt'),
+                threshold=float(threshold) if threshold else 0,
+                severity=request.POST.get('severity', 'medium'),
+                is_active=request.POST.get('is_active') == 'on',
+                notification_enabled=request.POST.get('notification_enabled') == 'on',
+                cooldown_minutes=int(cooldown) if cooldown else 60,
+            )
+            messages.success(request, 'Monitoring rule created!')
+            return redirect('monitoring_rule_list')
+        except Exception:
+            messages.error(request, 'Error creating monitoring rule.')
+            return redirect('monitoring_rule_add')
+    return render(request, 'monitoring_rule_form.html', {
+        'editing': False,
+        'categories': INTEGRATION_CATEGORIES,
+        'feature_types': INTEGRATION_FEATURE_TYPES,
+    })
+
+def monitoring_rule_edit(request, pk):
+    entry = get_object_or_404(MonitoringRule, id=pk)
+    if request.method == 'POST':
+        try:
+            threshold = request.POST.get('threshold', '').strip()
+            cooldown = request.POST.get('cooldown_minutes', '60').strip()
+            entry.name = request.POST.get('name', '')
+            entry.category = request.POST.get('category', '')
+            entry.feature_type = request.POST.get('feature_type', '')
+            entry.metric_name = request.POST.get('metric_name', '')
+            entry.condition = request.POST.get('condition', 'gt')
+            entry.threshold = float(threshold) if threshold else 0
+            entry.severity = request.POST.get('severity', 'medium')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.notification_enabled = request.POST.get('notification_enabled') == 'on'
+            entry.cooldown_minutes = int(cooldown) if cooldown else 60
+            entry.save()
+            messages.success(request, 'Monitoring rule updated!')
+            return redirect('monitoring_rule_list')
+        except Exception:
+            messages.error(request, 'Error updating monitoring rule.')
+            return redirect('monitoring_rule_edit', pk=pk)
+    return render(request, 'monitoring_rule_form.html', {
+        'entry': entry,
+        'editing': True,
+        'categories': INTEGRATION_CATEGORIES,
+        'feature_types': INTEGRATION_FEATURE_TYPES,
+    })
+
+def monitoring_rule_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(MonitoringRule, id=pk).delete()
+        messages.success(request, 'Monitoring rule deleted!')
+    return redirect('monitoring_rule_list')
+
+
+# ----- Monitoring Events -----
+
+def monitoring_event_list(request):
+    entries = MonitoringEvent.objects.all()
+    category_filter = request.GET.get('category', '')
+    status_filter = request.GET.get('status', '')
+    event_type_filter = request.GET.get('event_type', '')
+    if category_filter:
+        entries = entries.filter(category=category_filter)
+    if status_filter:
+        entries = entries.filter(status=status_filter)
+    if event_type_filter:
+        entries = entries.filter(event_type=event_type_filter)
+    context = {
+        'entries': entries[:100],
+        'categories': INTEGRATION_CATEGORIES,
+        'event_types': MonitoringEvent.EVENT_TYPES,
+        'status_choices': MonitoringEvent.STATUS_CHOICES,
+        'category_filter': category_filter,
+        'status_filter': status_filter,
+        'event_type_filter': event_type_filter,
+    }
+    return render(request, 'monitoring_event_list.html', context)
+
+def monitoring_event_acknowledge(request, pk):
+    if request.method == 'POST':
+        event = get_object_or_404(MonitoringEvent, id=pk)
+        event.acknowledged = True
+        event.save()
+        messages.success(request, 'Event acknowledged.')
+    return redirect('monitoring_event_list')
+
+
+# ----- Anomaly Detection -----
+
+def anomaly_detection_list(request):
+    entries = AnomalyDetectionResult.objects.all()
+    show_resolved = request.GET.get('show_resolved', '')
+    if not show_resolved:
+        entries = entries.filter(is_resolved=False)
+    context = {
+        'entries': entries[:100],
+        'show_resolved': show_resolved,
+    }
+    return render(request, 'anomaly_detection_list.html', context)
+
+def anomaly_detection_run(request):
+    if request.method == 'POST':
+        results = AnomalyDetectionResult.run_anomaly_scan()
+        if results:
+            messages.success(request, f'{len(results)} anomaly(ies) detected.')
+        else:
+            messages.info(request, 'No anomalies detected — all metrics look normal.')
+    return redirect('anomaly_detection_list')
+
+def anomaly_detection_resolve(request, pk):
+    if request.method == 'POST':
+        anomaly = get_object_or_404(AnomalyDetectionResult, id=pk)
+        anomaly.is_resolved = True
+        anomaly.resolved_at = timezone.now()
+        anomaly.save()
+        messages.success(request, 'Anomaly marked as resolved.')
+    return redirect('anomaly_detection_list')
+
+
+# ----- Data Pipelines -----
+
+def data_pipeline_list(request):
+    entries = DataPipelineConfig.objects.all()
+    return render(request, 'data_pipeline_list.html', {'entries': entries})
+
+def data_pipeline_add(request):
+    if request.method == 'POST':
+        try:
+            DataPipelineConfig.objects.create(
+                name=request.POST.get('name', ''),
+                category=request.POST.get('category', ''),
+                feature_type=request.POST.get('feature_type', 'data_pipeline'),
+                source_description=request.POST.get('source_description', ''),
+                destination_description=request.POST.get('destination_description', ''),
+                frequency=request.POST.get('frequency', 'daily'),
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'Data pipeline created!')
+            return redirect('data_pipeline_list')
+        except Exception:
+            messages.error(request, 'Error creating data pipeline.')
+            return redirect('data_pipeline_add')
+    return render(request, 'data_pipeline_form.html', {
+        'editing': False,
+        'categories': INTEGRATION_CATEGORIES,
+        'feature_types': INTEGRATION_FEATURE_TYPES,
+    })
+
+def data_pipeline_edit(request, pk):
+    entry = get_object_or_404(DataPipelineConfig, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.name = request.POST.get('name', '')
+            entry.category = request.POST.get('category', '')
+            entry.feature_type = request.POST.get('feature_type', 'data_pipeline')
+            entry.source_description = request.POST.get('source_description', '')
+            entry.destination_description = request.POST.get('destination_description', '')
+            entry.frequency = request.POST.get('frequency', 'daily')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'Data pipeline updated!')
+            return redirect('data_pipeline_list')
+        except Exception:
+            messages.error(request, 'Error updating data pipeline.')
+            return redirect('data_pipeline_edit', pk=pk)
+    return render(request, 'data_pipeline_form.html', {
+        'entry': entry,
+        'editing': True,
+        'categories': INTEGRATION_CATEGORIES,
+        'feature_types': INTEGRATION_FEATURE_TYPES,
+    })
+
+def data_pipeline_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(DataPipelineConfig, id=pk).delete()
+        messages.success(request, 'Data pipeline deleted!')
+    return redirect('data_pipeline_list')
+
+def data_pipeline_run(request, pk):
+    entry = get_object_or_404(DataPipelineConfig, id=pk)
+    if request.method == 'POST':
+        success, msg = entry.run_pipeline()
+        if success:
+            messages.success(request, msg)
+        else:
+            messages.error(request, msg)
+    return redirect('data_pipeline_list')
+
+
+# ----- Predictive Models -----
+
+def predictive_model_list(request):
+    entries = PredictiveModel.objects.all()
+    return render(request, 'predictive_model_list.html', {'entries': entries})
+
+def predictive_model_add(request):
+    if request.method == 'POST':
+        try:
+            accuracy = request.POST.get('accuracy_score', '').strip()
+            PredictiveModel.objects.create(
+                name=request.POST.get('name', ''),
+                category=request.POST.get('category', ''),
+                model_type=request.POST.get('model_type', 'regression'),
+                status=request.POST.get('status', 'draft'),
+                target_metric=request.POST.get('target_metric', ''),
+                accuracy_score=float(accuracy) if accuracy else None,
+                description=request.POST.get('description', ''),
+            )
+            messages.success(request, 'Predictive model created!')
+            return redirect('predictive_model_list')
+        except Exception:
+            messages.error(request, 'Error creating predictive model.')
+            return redirect('predictive_model_add')
+    return render(request, 'predictive_model_form.html', {
+        'editing': False,
+        'categories': INTEGRATION_CATEGORIES,
+    })
+
+def predictive_model_edit(request, pk):
+    entry = get_object_or_404(PredictiveModel, id=pk)
+    if request.method == 'POST':
+        try:
+            accuracy = request.POST.get('accuracy_score', '').strip()
+            entry.name = request.POST.get('name', '')
+            entry.category = request.POST.get('category', '')
+            entry.model_type = request.POST.get('model_type', 'regression')
+            entry.status = request.POST.get('status', 'draft')
+            entry.target_metric = request.POST.get('target_metric', '')
+            entry.accuracy_score = float(accuracy) if accuracy else None
+            entry.description = request.POST.get('description', '')
+            entry.save()
+            messages.success(request, 'Predictive model updated!')
+            return redirect('predictive_model_list')
+        except Exception:
+            messages.error(request, 'Error updating predictive model.')
+            return redirect('predictive_model_edit', pk=pk)
+    return render(request, 'predictive_model_form.html', {
+        'entry': entry,
+        'editing': True,
+        'categories': INTEGRATION_CATEGORIES,
+    })
+
+def predictive_model_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(PredictiveModel, id=pk).delete()
+        messages.success(request, 'Predictive model deleted!')
+    return redirect('predictive_model_list')
+
+
+# ----- Secure Storage Vaults -----
+
+def secure_storage_list(request):
+    entries = SecureStorageVault.objects.all()
+    return render(request, 'secure_storage_list.html', {'entries': entries})
+
+def secure_storage_add(request):
+    if request.method == 'POST':
+        try:
+            SecureStorageVault.objects.create(
+                name=request.POST.get('name', ''),
+                category=request.POST.get('category', ''),
+                encryption_type=request.POST.get('encryption_type', 'aes256'),
+                status=request.POST.get('status', 'active'),
+            )
+            messages.success(request, 'Secure storage vault created!')
+            return redirect('secure_storage_list')
+        except Exception:
+            messages.error(request, 'Error creating secure storage vault.')
+            return redirect('secure_storage_add')
+    return render(request, 'secure_storage_form.html', {
+        'editing': False,
+        'categories': INTEGRATION_CATEGORIES,
+    })
+
+def secure_storage_edit(request, pk):
+    entry = get_object_or_404(SecureStorageVault, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.name = request.POST.get('name', '')
+            entry.category = request.POST.get('category', '')
+            entry.encryption_type = request.POST.get('encryption_type', 'aes256')
+            entry.status = request.POST.get('status', 'active')
+            entry.save()
+            messages.success(request, 'Secure storage vault updated!')
+            return redirect('secure_storage_list')
+        except Exception:
+            messages.error(request, 'Error updating secure storage vault.')
+            return redirect('secure_storage_edit', pk=pk)
+    return render(request, 'secure_storage_form.html', {
+        'entry': entry,
+        'editing': True,
+        'categories': INTEGRATION_CATEGORIES,
+    })
+
+def secure_storage_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(SecureStorageVault, id=pk).delete()
+        messages.success(request, 'Secure storage vault deleted!')
+    return redirect('secure_storage_list')
+
+
+# ----- Integration Export Hub -----
+
+def export_hub(request):
+    """Enhanced export hub combining data exports with integration-specific exports."""
+    exports = DataExportRequest.objects.all().order_by('-requested_at')[:20]
+    integrations = IntegrationConfig.objects.filter(feature_type='export', is_enabled=True)
+    categories = INTEGRATION_CATEGORIES
+    context = {
+        'exports': exports,
+        'integrations': integrations,
+        'categories': categories,
+    }
+    return render(request, 'export_hub.html', context)
+
+def export_hub_generate(request):
+    """Generate an export for a specific integration category."""
+    if request.method == 'POST':
+        export_format = request.POST.get('export_format', 'json')
+        category = request.POST.get('category', '')
+        export = DataExportRequest.objects.create(
+            export_format=export_format,
+            status='completed',
+            completed_at=timezone.now(),
+            file_path=f'exports/{category}_{export_format}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.{export_format}',
+        )
+        messages.success(request, f'Export generated: {export.file_path}')
+    return redirect('export_hub')

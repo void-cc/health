@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-stream me-2"></i>Monitoring Events</h2>
+    <a href="{% url 'phase12_dashboard' %}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i> Dashboard</a>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <form method="GET" class="row g-3">
+        <div class="col-md-4">
+          <label for="category" class="form-label">Category</label>
+          <select class="form-select" name="category" id="category">
+            <option value="">All Categories</option>
+            {% for value, label in categories %}
+            <option value="{{ value }}" {% if category_filter == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="event_type" class="form-label">Event Type</label>
+          <select class="form-select" name="event_type" id="event_type">
+            <option value="">All Types</option>
+            {% for value, label in event_types %}
+            <option value="{{ value }}" {% if event_type_filter == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="status" class="form-label">Status</label>
+          <select class="form-select" name="status" id="status">
+            <option value="">All Statuses</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">Filter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if entries %}
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Time</th>
+          <th>Category</th>
+          <th>Type</th>
+          <th>Metric</th>
+          <th>Value</th>
+          <th>Status</th>
+          <th>Message</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr class="{% if entry.status == 'critical' %}table-danger{% elif entry.status == 'warning' %}table-warning{% endif %}">
+          <td><small>{{ entry.created_at|timesince }} ago</small></td>
+          <td>{{ entry.get_category_display }}</td>
+          <td><span class="badge bg-info">{{ entry.get_event_type_display }}</span></td>
+          <td>{{ entry.metric_name|default:"-" }}</td>
+          <td>{{ entry.metric_value|default:"-" }}</td>
+          <td>
+            {% if entry.status == 'critical' %}
+            <span class="badge bg-danger">Critical</span>
+            {% elif entry.status == 'warning' %}
+            <span class="badge bg-warning text-dark">Warning</span>
+            {% elif entry.status == 'resolved' %}
+            <span class="badge bg-success">Resolved</span>
+            {% else %}
+            <span class="badge bg-secondary">Normal</span>
+            {% endif %}
+          </td>
+          <td><small>{{ entry.message|truncatewords:10 }}</small></td>
+          <td>
+            {% if not entry.acknowledged and entry.status != 'normal' %}
+            <form method="POST" action="{% url 'monitoring_event_acknowledge' pk=entry.id %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-success" title="Acknowledge"><i class="fas fa-check"></i></button>
+            </form>
+            {% elif entry.acknowledged %}
+            <span class="text-success"><i class="fas fa-check-circle"></i></span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>No monitoring events recorded yet.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

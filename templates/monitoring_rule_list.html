@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-cogs me-2"></i>Monitoring Rules</h2>
+    <div>
+      <a href="{% url 'phase12_dashboard' %}" class="btn btn-outline-secondary me-2"><i class="fas fa-arrow-left me-1"></i> Dashboard</a>
+      <a href="{% url 'monitoring_rule_add' %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i> Add Rule</a>
+    </div>
+  </div>
+
+  {% if entries %}
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Metric</th>
+          <th>Condition</th>
+          <th>Threshold</th>
+          <th>Severity</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr>
+          <td><strong>{{ entry.name }}</strong></td>
+          <td>{{ entry.get_category_display }}</td>
+          <td>{{ entry.metric_name }}</td>
+          <td>{{ entry.get_condition_display }}</td>
+          <td>{{ entry.threshold }}</td>
+          <td>
+            <span class="badge bg-{% if entry.severity == 'critical' %}danger{% elif entry.severity == 'high' %}warning{% elif entry.severity == 'medium' %}info{% else %}secondary{% endif %}">
+              {{ entry.get_severity_display }}
+            </span>
+          </td>
+          <td>
+            {% if entry.is_active %}
+            <span class="badge bg-success">Active</span>
+            {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+            {% if entry.notification_enabled %}
+            <i class="fas fa-bell text-primary ms-1" title="Notifications enabled"></i>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'monitoring_rule_edit' pk=entry.id %}" class="btn btn-sm btn-secondary"><i class="fas fa-edit"></i></a>
+            <form method="POST" action="{% url 'monitoring_rule_delete' pk=entry.id %}" class="d-inline" onsubmit="return confirm('Delete this rule?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>No monitoring rules configured yet.
+    <a href="{% url 'monitoring_rule_add' %}" class="alert-link">Create your first rule</a>.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
