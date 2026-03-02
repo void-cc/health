@@ -2299,6 +2299,8 @@ def user_profile_add(request):
         try:
             username = request.POST.get('username', '')
             user = User.objects.create_user(username=username)
+            user.set_unusable_password()
+            user.save()
             UserProfile.objects.create(
                 user=user,
                 role=request.POST.get('role', 'user'),
