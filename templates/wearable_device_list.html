@@ -25,6 +25,12 @@
         <td>{% if entry.is_active %}Yes{% else %}No{% endif %}</td>
         <td>{% if entry.last_synced %}{{ entry.last_synced }}{% else %}-{% endif %}</td>
         <td>
+          <form action="{% url 'wearable_device_sync' pk=entry.id %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-success" {% if not entry.is_active %}disabled{% endif %}>
+              <i class="fas fa-sync"></i> Sync
+            </button>
+          </form>
           <a href="{% url 'wearable_device_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
             <i class="fas fa-edit"></i> Edit
           </a>

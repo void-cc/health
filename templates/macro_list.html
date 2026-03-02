@@ -17,6 +17,7 @@
         <th>Calories</th>
         <th>Fiber (g)</th>
         <th>Total Macros</th>
+        <th>Macro Ratios</th>
         <th>Notes</th>
         <th>Actions</th>
       </tr>
@@ -31,6 +32,7 @@
         <td>{% if entry.calories is not None %}{{ entry.calories }}{% else %}-{% endif %}</td>
         <td>{% if entry.fiber_grams is not None %}{{ entry.fiber_grams }}{% else %}-{% endif %}</td>
         <td>{% if entry.total_macros_grams is not None %}{{ entry.total_macros_grams }}{% else %}-{% endif %}</td>
+        <td>{% if entry.macro_ratios %}P:{{ entry.macro_ratios.protein_pct }}% C:{{ entry.macro_ratios.carb_pct }}% F:{{ entry.macro_ratios.fat_pct }}%{% else %}-{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'macro_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">

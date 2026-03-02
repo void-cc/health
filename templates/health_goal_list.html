@@ -42,7 +42,7 @@
           </div>
           {% else %}-{% endif %}
         </td>
-        <td>{% if entry.status %}{{ entry.status }}{% else %}-{% endif %}</td>
+        <td>{% if entry.status %}{% if entry.status == 'completed' %}<span class="badge bg-success">{{ entry.status }}</span>{% elif entry.is_past_due %}<span class="badge bg-danger">{{ entry.status }} (Past Due)</span>{% elif entry.status == 'paused' %}<span class="badge bg-secondary">{{ entry.status }}</span>{% else %}<span class="badge bg-primary">{{ entry.status }}</span>{% endif %}{% else %}-{% endif %}</td>
         <td>{% if entry.start_date %}{{ entry.start_date|date:"Y-m-d" }}{% else %}-{% endif %}</td>
         <td>{% if entry.target_date %}{{ entry.target_date|date:"Y-m-d" }}{% else %}-{% endif %}</td>
         <td>
