@@ -116,17 +116,17 @@ class FitbitClient(BaseOAuthClient):
             )
             for entry in body_data.get('weight', []):
                 entry_date = datetime.strptime(entry['date'], '%Y-%m-%d').date()
-                defaults = {}
+                # Store weight in VitalSign
                 if entry.get('weight'):
-                    defaults['weight_kg'] = entry['weight']
-                if entry.get('bmi'):
-                    defaults['bmi'] = entry['bmi']
+                    VitalSign.objects.update_or_create(
+                        date=entry_date,
+                        defaults={'weight': entry['weight']},
+                    )
+                # Store body fat in BodyComposition
                 if entry.get('fat'):
-                    defaults['body_fat_percentage'] = entry['fat']
-                if defaults:
                     _, created = BodyComposition.objects.update_or_create(
                         date=entry_date,
-                        defaults=defaults,
+                        defaults={'body_fat_percentage': entry['fat']},
                     )
                     if created:
                         records += 1

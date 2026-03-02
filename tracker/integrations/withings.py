@@ -100,7 +100,7 @@ class WithingsClient(BaseOAuthClient):
         records = 0
         # Withings measure type mapping
         TYPE_MAP = {
-            1: 'weight_kg',
+            1: 'weight',
             6: 'body_fat_percentage',
             8: 'fat_mass_kg',
             76: 'muscle_mass_kg',
@@ -118,19 +118,24 @@ class WithingsClient(BaseOAuthClient):
                     values[field] = value
 
             if values:
-                defaults = {}
-                if 'weight_kg' in values:
-                    defaults['weight_kg'] = values['weight_kg']
+                # Store weight in VitalSign
+                if 'weight' in values:
+                    from tracker.models import VitalSign
+                    VitalSign.objects.update_or_create(
+                        date=meas_date,
+                        defaults={'weight': values['weight']},
+                    )
+
+                # Store body composition data
+                bc_defaults = {}
                 if 'body_fat_percentage' in values:
-                    defaults['body_fat_percentage'] = values['body_fat_percentage']
+                    bc_defaults['body_fat_percentage'] = values['body_fat_percentage']
                 if 'muscle_mass_kg' in values:
-                    defaults['muscle_mass_kg'] = values['muscle_mass_kg']
-                if 'bone_mass_kg' in values:
-                    defaults['bone_density'] = values['bone_mass_kg']
-                if defaults:
+                    bc_defaults['skeletal_muscle_mass'] = values['muscle_mass_kg']
+                if bc_defaults:
                     _, created = BodyComposition.objects.update_or_create(
                         date=meas_date,
-                        defaults=defaults,
+                        defaults=bc_defaults,
                     )
                     if created:
                         records += 1

@@ -92,7 +92,6 @@ class GoogleFitClient(BaseOAuthClient):
             weight_data = self.api_get(device, '/dataSources/'
                 'derived:com.google.weight:com.google.android.gms:merge_weight'
                 f'/datasets/{start_ns}-{end_ns}')
-            from tracker.models import BodyComposition
             for point in weight_data.get('point', []):
                 values = point.get('value', [])
                 if values:
@@ -102,9 +101,9 @@ class GoogleFitClient(BaseOAuthClient):
                         start_time_ns / 1e9, tz=timezone.utc
                     ).date()
                     if weight:
-                        _, created = BodyComposition.objects.update_or_create(
+                        _, created = VitalSign.objects.update_or_create(
                             date=point_date,
-                            defaults={'weight_kg': weight},
+                            defaults={'weight': weight},
                         )
                         if created:
                             records += 1

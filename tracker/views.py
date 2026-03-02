@@ -1762,10 +1762,13 @@ def global_search(request):
 def wearable_device_list(request):
     entries = WearableDevice.objects.all().order_by('-created_at')
     from tracker.integrations.registry import is_oauth_platform, get_client
+    client_cache = {}
     for entry in entries:
         entry.supports_oauth = is_oauth_platform(entry.platform)
         entry.has_token = bool(entry.access_token)
-        client = get_client(entry.platform)
+        if entry.platform not in client_cache:
+            client_cache[entry.platform] = get_client(entry.platform)
+        client = client_cache[entry.platform]
         if client:
             config = client.get_oauth_config()
             entry.is_configured = bool(config.client_id and config.client_secret)
@@ -1843,6 +1846,10 @@ def wearable_connect(request, pk):
     request.session[f'oauth_device_id_{device.platform}'] = device.pk
 
     auth_url = client.get_authorization_url(callback_url, state=state)
+    # For Garmin OAuth 1.0a, store request tokens in session for the callback
+    if hasattr(client, '_request_token'):
+        request.session[f'oauth_request_token_{device.platform}'] = client._request_token
+        request.session[f'oauth_request_token_secret_{device.platform}'] = client._request_token_secret
     return redirect(auth_url)
 
 
@@ -1878,8 +1885,15 @@ def wearable_oauth_callback(request, platform):
         callback_url = request.build_absolute_uri(
             reverse('wearable_oauth_callback', kwargs={'platform': platform})
         )
-        token_data = client.exchange_code_for_token(code, callback_url)
-        client._update_device_tokens(device, token_data)
+        # For Garmin OAuth 1.0a, pass request tokens from session
+        extra_kwargs = {}
+        request_token = request.session.pop(f'oauth_request_token_{platform}', '')
+        request_token_secret = request.session.pop(f'oauth_request_token_secret_{platform}', '')
+        if request_token and request_token_secret:
+            extra_kwargs['request_token'] = request_token
+            extra_kwargs['request_token_secret'] = request_token_secret
+        token_data = client.exchange_code_for_token(code, callback_url, **extra_kwargs)
+        client.update_device_tokens(device, token_data)
         if token_data.get('scope'):
             device.scope = token_data['scope'] if isinstance(token_data['scope'], str) else ' '.join(token_data['scope'])
             device.save(update_fields=['scope'])

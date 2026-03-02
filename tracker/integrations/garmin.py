@@ -42,7 +42,9 @@ class GarminClient(BaseOAuthClient):
     def get_authorization_url(self, redirect_uri, state=None):
         """
         Garmin uses OAuth 1.0a. This returns the authorization URL after
-        obtaining a request token.
+        obtaining a request token. The request token and secret are returned
+        as part of a tuple: (auth_url, request_token, request_token_secret).
+        The caller must store these for the callback exchange.
         """
         from requests_oauthlib import OAuth1Session
         config = self.get_oauth_config()
@@ -52,21 +54,30 @@ class GarminClient(BaseOAuthClient):
                               callback_uri=redirect_uri)
         fetch_response = oauth.fetch_request_token(request_token_url)
 
-        self._request_token = fetch_response.get('oauth_token')
-        self._request_token_secret = fetch_response.get('oauth_token_secret')
+        request_token = fetch_response.get('oauth_token', '')
+        request_token_secret = fetch_response.get('oauth_token_secret', '')
 
-        return oauth.authorization_url(config.authorize_url)
+        auth_url = oauth.authorization_url(config.authorize_url)
+        # Store tokens on instance for the view to retrieve and persist in session
+        self._request_token = request_token
+        self._request_token_secret = request_token_secret
+        return auth_url
 
-    def exchange_code_for_token(self, code, redirect_uri):
+    def exchange_code_for_token(self, code, redirect_uri,
+                                request_token='', request_token_secret=''):
         """Garmin OAuth 1.0a token exchange using verifier."""
         from requests_oauthlib import OAuth1Session
         config = self.get_oauth_config()
 
+        if not request_token or not request_token_secret:
+            raise ValueError("Garmin OAuth 1.0a requires request_token and "
+                             "request_token_secret for token exchange.")
+
         oauth = OAuth1Session(
             config.client_id,
             client_secret=config.client_secret,
-            resource_owner_key=getattr(self, '_request_token', ''),
-            resource_owner_secret=getattr(self, '_request_token_secret', ''),
+            resource_owner_key=request_token,
+            resource_owner_secret=request_token_secret,
             verifier=code,
         )
         token_response = oauth.fetch_access_token(config.token_url)

@@ -55,7 +55,7 @@ class BaseOAuthClient:
             params['state'] = state
         return f"{config.authorize_url}?{urlencode(params)}"
 
-    def exchange_code_for_token(self, code, redirect_uri):
+    def exchange_code_for_token(self, code, redirect_uri, **kwargs):
         """Exchange an authorization code for access and refresh tokens."""
         config = self.get_oauth_config()
         data = {
@@ -93,10 +93,10 @@ class BaseOAuthClient:
                 raise ValueError(f"Token expired for {device} and no refresh token available.")
             logger.info("Refreshing token for %s", device)
             token_data = self.refresh_access_token(device.refresh_token)
-            self._update_device_tokens(device, token_data)
+            self.update_device_tokens(device, token_data)
         return device.access_token
 
-    def _update_device_tokens(self, device, token_data):
+    def update_device_tokens(self, device, token_data):
         """Update device with new token data from OAuth response."""
         device.access_token = token_data.get('access_token', '')
         if token_data.get('refresh_token'):
