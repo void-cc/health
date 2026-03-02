@@ -1044,6 +1044,88 @@
   color: var(--text-secondary, #525f7f);
 }
 
+/* ---------- Card Header Variants ---------- */
+.account-card-header-danger {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border-color: #fecaca;
+}
+
+.account-card-header-danger svg {
+  fill: #991b1b;
+}
+
+.account-card-header-danger span {
+  color: #991b1b;
+}
+
+.account-card-header-warning {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-color: #fde68a;
+}
+
+.account-card-header-warning svg {
+  fill: #92400e;
+}
+
+.account-card-header-warning span {
+  color: #92400e;
+}
+
+.account-card-header-spaced {
+  justify-content: space-between;
+}
+
+.account-card-header-spaced > span {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---------- Card Body Variants ---------- */
+.account-card-body-flush {
+  padding: 0;
+}
+
+/* ---------- Button Size Variants ---------- */
+.account-btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.account-btn-xs {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+/* ---------- Table Utilities ---------- */
+.account-table-wrap {
+  overflow-x: auto;
+}
+
+.account-table td.cell-nowrap {
+  white-space: nowrap;
+}
+
+.account-table td.cell-truncate {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted, #8898aa);
+  font-size: 0.8rem;
+}
+
+.account-form-inline {
+  display: inline;
+}
+
+/* ---------- Account Description Text ---------- */
+.account-description {
+  color: var(--text-muted, #8898aa);
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 480px) {
   .auth-card { padding: 2rem 1.25rem; }

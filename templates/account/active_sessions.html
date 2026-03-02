@@ -3,19 +3,19 @@
 <div class="row justify-content-center">
   <div class="col-lg-10">
     <div class="account-card">
-      <div class="account-card-header" style="justify-content:space-between;">
-        <span style="display:flex;align-items:center;gap:0.5rem;">
+      <div class="account-card-header account-card-header-spaced">
+        <span>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="var(--auth-accent)"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
           Active Sessions
         </span>
-        <a href="{% url 'profile' %}" class="account-btn account-btn-ghost" style="padding:0.4rem 0.75rem;font-size:0.8rem;">
+        <a href="{% url 'profile' %}" class="account-btn account-btn-ghost account-btn-sm">
           <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
           Back
         </a>
       </div>
-      <div class="account-card-body" style="padding:0;">
+      <div class="account-card-body account-card-body-flush">
         {% if sessions %}
-          <div style="overflow-x:auto;">
+          <div class="account-table-wrap">
             <table class="account-table">
               <thead>
                 <tr>
@@ -31,15 +31,15 @@
                   <tr {% if session.session_key == current_session_key %}class="active-row"{% endif %}>
                     <td><span class="auth-code">{{ session.ip_address }}</span></td>
                     <td>{{ session.device_type|default:"Unknown" }}</td>
-                    <td style="white-space:nowrap;">{{ session.last_activity|date:"M d, Y H:i" }}</td>
-                    <td style="white-space:nowrap;">{{ session.created_at|date:"M d, Y H:i" }}</td>
+                    <td class="cell-nowrap">{{ session.last_activity|date:"M d, Y H:i" }}</td>
+                    <td class="cell-nowrap">{{ session.created_at|date:"M d, Y H:i" }}</td>
                     <td>
                       {% if session.session_key == current_session_key %}
                         <span class="auth-badge auth-badge-primary">● Current</span>
                       {% else %}
-                        <form method="post" action="{% url 'terminate_session' session.id %}" style="display:inline;">
+                        <form method="post" action="{% url 'terminate_session' session.id %}" class="account-form-inline">
                           {% csrf_token %}
-                          <button type="submit" class="account-btn account-btn-danger" style="padding:0.3rem 0.6rem;font-size:0.78rem;">
+                          <button type="submit" class="account-btn account-btn-danger account-btn-xs">
                             ✗ Terminate
                           </button>
                         </form>
