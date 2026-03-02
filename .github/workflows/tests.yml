@@ -1,0 +1,61 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: ${{ matrix.group.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - name: "Templates & Views"
+            tests: "tracker.tests.TemplateFilterTests tracker.tests.ViewStatusCodeTests tracker.tests.ViewWithDataTests"
+          - name: "Phase 2 - Health Tracking"
+            tests: "tracker.tests.Phase2ModelTests tracker.tests.Phase2StatusCodeTests tracker.tests.Phase2CRUDTests tracker.tests.Phase2VitalsExtensionTests"
+          - name: "Annotations & Dashboard"
+            tests: "tracker.tests.AnnotationTests tracker.tests.BulkEditTests tracker.tests.DashboardWidgetTests tracker.tests.PDFExportTests"
+          - name: "Phase 3 - UI & UX"
+            tests: "tracker.tests.Phase3DarkModeTests tracker.tests.Phase3NavigationTests tracker.tests.Phase3AccessibilityTests tracker.tests.Phase3QuickEntryTests tracker.tests.Phase3PWATests tracker.tests.Phase3GlobalSearchTests tracker.tests.Phase3MedicalTooltipTests tracker.tests.Phase3VoiceInputTests tracker.tests.Phase3OnboardingTests"
+          - name: "Phase 4 - Authentication"
+            tests: "tracker.tests.Phase4RegistrationTests tracker.tests.Phase4LoginTests tracker.tests.Phase4LogoutTests tracker.tests.Phase4ProfileTests tracker.tests.Phase4PasswordChangeTests tracker.tests.Phase4SecurityLogTests tracker.tests.Phase4SessionManagementTests tracker.tests.Phase4PrivacyPreferencesTests tracker.tests.Phase4AccountDeletionTests tracker.tests.Phase4MFATests tracker.tests.Phase4ModelTests tracker.tests.Phase4ProtectedViewTests tracker.tests.Phase4SidebarTests"
+          - name: "Phases 5-12 - Advanced Features"
+            tests: "tracker.tests.Phase5ModelTests tracker.tests.Phase6ModelTests tracker.tests.Phase7ModelTests tracker.tests.Phase8ModelTests tracker.tests.Phase9ModelTests tracker.tests.Phase10_12ModelTests tracker.tests.Phase5To12StatusCodeTests tracker.tests.Phase5To12CRUDTests"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run ${{ matrix.group.name }} tests
+        run: python manage.py test ${{ matrix.group.tests }} --verbosity 2
+
+  parsing:
+    name: Data Parsing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run HL7 & FHIR parsing tests
+        run: python test_hl7_fhir.py
