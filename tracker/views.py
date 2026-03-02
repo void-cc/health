@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.urls import reverse
 from .models import (
     BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
@@ -2290,16 +2291,19 @@ def caffeine_alcohol_delete(request, pk):
 # ===== Phase 7: User Profile =====
 
 def user_profile_list(request):
-    entries = UserProfile.objects.all().order_by('-created_at')
+    entries = UserProfile.objects.select_related('user').all().order_by('-created_at')
     return render(request, 'user_profile_list.html', {'entries': entries})
 
 def user_profile_add(request):
     if request.method == 'POST':
         try:
+            username = request.POST.get('username', '')
+            user = User.objects.create_user(username=username)
+            user.set_unusable_password()
+            user.save()
             UserProfile.objects.create(
-                username=request.POST.get('username', ''),
-                role=request.POST.get('role', ''),
-                is_active=request.POST.get('is_active') == 'on',
+                user=user,
+                role=request.POST.get('role', 'user'),
             )
             messages.success(request, 'User profile added!')
             return redirect('user_profile_list')
@@ -2312,9 +2316,10 @@ def user_profile_edit(request, pk):
     entry = get_object_or_404(UserProfile, id=pk)
     if request.method == 'POST':
         try:
-            entry.username = request.POST.get('username', '')
+            entry.user.username = request.POST.get('username', '')
+            entry.user.is_active = request.POST.get('is_active') == 'on'
+            entry.user.save()
             entry.role = request.POST.get('role', '')
-            entry.is_active = request.POST.get('is_active') == 'on'
             entry.save()
             messages.success(request, 'User profile updated!')
             return redirect('user_profile_list')
@@ -2325,7 +2330,8 @@ def user_profile_edit(request, pk):
 
 def user_profile_delete(request, pk):
     if request.method == 'POST':
-        get_object_or_404(UserProfile, id=pk).delete()
+        profile = get_object_or_404(UserProfile, id=pk)
+        profile.user.delete()
         messages.success(request, 'User profile deleted!')
     return redirect('user_profile_list')
 
