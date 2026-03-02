@@ -792,7 +792,7 @@ class SecureViewingLink(models.Model):
 
     @property
     def is_expired(self):
-        return timezone.now() > self.expires_at
+        return self.expires_at is not None and timezone.now() > self.expires_at
 
     @property
     def is_valid(self):

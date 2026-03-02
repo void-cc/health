@@ -48,7 +48,7 @@
       <tbody>
         {% for entry in access_entries %}
         <tr>
-          <td>Dr. {{ entry.practitioner_name }}</td>
+          <td>{{ entry.practitioner_name }}</td>
           <td>{{ entry.specialty|default:"-" }}</td>
           <td>{{ entry.granted_at|default:"-" }}</td>
           <td>{{ entry.expires_at|default:"No expiry" }}</td>

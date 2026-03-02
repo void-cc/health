@@ -3193,7 +3193,7 @@ def _data_to_xml(data):
             for field, value in record.items():
                 field_elem = SubElement(entry, field)
                 field_elem.text = str(value) if value is not None else ''
-    return tostring(root, encoding='unicode', xml_declaration=False)
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(root, encoding='unicode')
 
 
 def data_export_list(request):
@@ -3244,7 +3244,7 @@ def data_export_download(request, pk):
     data = _collect_export_data()
 
     if export_req.export_format == 'xml':
-        xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + _data_to_xml(data)
+        xml_content = _data_to_xml(data)
         response = HttpResponse(xml_content, content_type='application/xml')
         response['Content-Disposition'] = f'attachment; filename="health_export_{export_req.pk}.xml"'
         return response
@@ -3351,7 +3351,7 @@ def stakeholder_email_send(request, pk):
         send_mail(
             subject=f'Health Summary for {entry.recipient_name}',
             message=summary_text,
-            from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else 'noreply@healthtracker.local',
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@healthtracker.local'),
             recipient_list=[entry.recipient_email],
             fail_silently=False,
         )
