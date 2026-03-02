@@ -39,8 +39,19 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.microsoft",
+    "allauth.socialaccount.providers.apple",
+    "django_otp",
+    "django_otp.plugins.otp_totp",
     "tracker",
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -48,8 +59,11 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+    "tracker.middleware.SessionActivityMiddleware",
 ]
 
 ROOT_URLCONF = "health_tracker.urls"
@@ -120,3 +134,62 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Media files (Uploads)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+# Default primary key field type
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Authentication
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
+
+# django-allauth settings
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+ACCOUNT_LOGIN_METHODS = {"username", "email"}
+ACCOUNT_EMAIL_VERIFICATION = "optional"
+ACCOUNT_LOGIN_ON_SIGNUP = True
+ACCOUNT_LOGOUT_ON_GET = False
+ACCOUNT_SESSION_REMEMBER = True
+
+# OAuth2 SSO Provider Configuration
+# Configure these in Django admin > Social Applications
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "APP": {
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID", ""),
+            "secret": os.environ.get("GOOGLE_CLIENT_SECRET", ""),
+        },
+    },
+    "microsoft": {
+        "APP": {
+            "client_id": os.environ.get("MICROSOFT_CLIENT_ID", ""),
+            "secret": os.environ.get("MICROSOFT_CLIENT_SECRET", ""),
+        },
+    },
+    "apple": {
+        "APP": {
+            "client_id": os.environ.get("APPLE_CLIENT_ID", ""),
+            "secret": os.environ.get("APPLE_CLIENT_SECRET", ""),
+        },
+    },
+}
+
+# Session settings
+SESSION_COOKIE_AGE = 3600  # 1 hour
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_INACTIVITY_TIMEOUT = 1800  # 30 minutes of inactivity
+
+# Email backend (console for development)
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

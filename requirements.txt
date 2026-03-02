@@ -8,3 +8,9 @@ pytesseract
 pdfplumber
 thefuzz
 python-Levenshtein
+
+# Phase 4: Authentication & Profiles
+django-allauth
+django-otp
+qrcode
+Pillow

@@ -1,0 +1,29 @@
+{% extends "account/auth_base.html" %}
+{% block auth_content %}
+<div class="auth-card">
+  <div class="auth-brand">
+    <div class="auth-brand-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+    </div>
+    <h1>Two-Factor Verification</h1>
+    <p>Enter the 6-digit code from your authenticator app</p>
+  </div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="auth-form-group">
+      <label for="id_token">Authentication Code</label>
+      <input type="text" name="token" id="id_token" class="auth-input auth-input-noicon auth-code-input" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required autofocus autocomplete="one-time-code" />
+    </div>
+
+    <button type="submit" class="auth-btn">
+      <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+      Verify
+    </button>
+  </form>
+
+  <div class="auth-footer">
+    <a href="{% url 'login' %}">← Back to Sign In</a>
+  </div>
+</div>
+{% endblock %}

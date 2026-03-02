@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from .models import (
     BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
@@ -36,6 +37,7 @@ import re
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q as models_Q
 
+@login_required
 def index(request):
     tests = BloodTest.objects.all().order_by('-date')
     test_types = set(test.test_name for test in tests)
@@ -102,6 +104,7 @@ def index(request):
     return render(request, 'index.html', context)
 
 
+@login_required
 def history(request):
     tests = BloodTest.objects.all().order_by('-date')
     vitals = VitalSign.objects.all().order_by('-date')
@@ -141,10 +144,12 @@ def history(request):
     return render(request, 'history.html', {'history': history_items})
 
 
+@login_required
 def vitals(request):
     all_vitals = VitalSign.objects.all().order_by('-date')
     return render(request, 'vitals.html', {'vitals': all_vitals})
 
+@login_required
 def add_test(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -196,6 +201,7 @@ def add_test(request):
         test_info = {ti.test_name: {'unit': ti.unit, 'normal_min': ti.normal_min, 'normal_max': ti.normal_max, 'category': ti.category} for ti in test_info_objects}
         return render(request, 'add.html', {'test_info': test_info, 'date': datetime.now().strftime('%Y-%m-%d')})
 
+@login_required
 def add_test_info(request):
     if request.method == 'POST':
         test_name = request.POST.get('test_name')
@@ -237,6 +243,7 @@ def add_test_info(request):
 
     return render(request, 'add_test_info.html')
 
+@login_required
 def delete_test(request, test_id):
     if request.method == 'POST':
         test = get_object_or_404(BloodTest, id=test_id)
@@ -244,6 +251,7 @@ def delete_test(request, test_id):
         messages.success(request, 'Blood test deleted successfully!')
     return redirect('index')
 
+@login_required
 def edit_test(request, test_id):
     test = get_object_or_404(BloodTest, id=test_id)
 
@@ -263,6 +271,7 @@ def edit_test(request, test_id):
 
     return render(request, 'edit.html', {'test': test})
 
+@login_required
 def add_vitals(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -299,6 +308,7 @@ def add_vitals(request):
 
     return render(request, 'add_vitals.html', {'date': datetime.now().strftime('%Y-%m-%d')})
 
+@login_required
 def edit_vitals(request, vital_id):
     vital = get_object_or_404(VitalSign, id=vital_id)
 
@@ -331,6 +341,7 @@ def edit_vitals(request, vital_id):
 
     return render(request, 'edit_vitals.html', {'vital': vital})
 
+@login_required
 def delete_vitals(request, vital_id):
     if request.method == 'POST':
         vital = get_object_or_404(VitalSign, id=vital_id)
@@ -338,6 +349,7 @@ def delete_vitals(request, vital_id):
         messages.success(request, 'Vital sign deleted successfully!')
     return redirect('vitals')
 
+@login_required
 def chart(request, test_name):
     tests = BloodTest.objects.filter(test_name=test_name).order_by('date')
     dates = [test.date.strftime('%Y-%m-%d') for test in tests]
@@ -354,6 +366,7 @@ def chart(request, test_name):
         'tests': tests, 'annotations_map': annotations_map,
     })
 
+@login_required
 def blood_tests_charts(request):
     tests = BloodTest.objects.all().order_by('date')
     charts_data = {}
@@ -372,6 +385,7 @@ def blood_tests_charts(request):
 
     return render(request, 'blood_charts.html', {'charts_data': charts_data})
 
+@login_required
 def blood_tests_boxplots(request):
     tests = BloodTest.objects.all().order_by('date')
     boxplots_data = {}
@@ -387,6 +401,7 @@ def blood_tests_boxplots(request):
 
     return render(request, 'blood_boxplots.html', {'boxplots_data': boxplots_data})
 
+@login_required
 def comparative_bar_charts(request):
     tests = BloodTest.objects.all().order_by('-date')
     latest_tests = {}
@@ -397,6 +412,7 @@ def comparative_bar_charts(request):
 
     return render(request, 'comparative_bar_charts.html', {'latest_tests': latest_tests})
 
+@login_required
 def vitals_charts(request):
     vitals = VitalSign.objects.all().order_by('date')
     weight_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.weight} for v in vitals if v.weight is not None]
@@ -417,6 +433,7 @@ def vitals_charts(request):
         'rr_data': rr_data,
     })
 
+@login_required
 def scatter_plots(request):
     tests = BloodTest.objects.all().order_by('date')
     vitals = VitalSign.objects.all().order_by('date')
@@ -462,6 +479,7 @@ import pdf2image
 import pytesseract
 from thefuzz import process, fuzz
 
+@login_required
 def import_data(request):
     if request.method == 'POST':
         if 'file' not in request.FILES:
@@ -790,6 +808,7 @@ def import_data(request):
 
     return render(request, 'import_data.html')
 
+@login_required
 def export_data(request):
     output = io.StringIO()
     writer = csv.writer(output)
@@ -858,10 +877,12 @@ def export_data(request):
 
 # ===== Phase 2: Body Composition =====
 
+@login_required
 def body_composition_list(request):
     entries = BodyComposition.objects.all().order_by('-date')
     return render(request, 'body_composition_list.html', {'entries': entries})
 
+@login_required
 def body_composition_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -886,6 +907,7 @@ def body_composition_add(request):
             return redirect('body_composition_add')
     return render(request, 'body_composition_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def body_composition_edit(request, pk):
     entry = get_object_or_404(BodyComposition, id=pk)
     if request.method == 'POST':
@@ -905,6 +927,7 @@ def body_composition_edit(request, pk):
             return redirect('body_composition_edit', pk=pk)
     return render(request, 'body_composition_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def body_composition_delete(request, pk):
     if request.method == 'POST':
         entry = get_object_or_404(BodyComposition, id=pk)
@@ -915,10 +938,12 @@ def body_composition_delete(request, pk):
 
 # ===== Phase 2: Hydration Tracking =====
 
+@login_required
 def hydration_list(request):
     entries = HydrationLog.objects.all().order_by('-date')
     return render(request, 'hydration_list.html', {'entries': entries})
 
+@login_required
 def hydration_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -942,6 +967,7 @@ def hydration_add(request):
             return redirect('hydration_add')
     return render(request, 'hydration_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def hydration_edit(request, pk):
     entry = get_object_or_404(HydrationLog, id=pk)
     if request.method == 'POST':
@@ -960,6 +986,7 @@ def hydration_edit(request, pk):
             return redirect('hydration_edit', pk=pk)
     return render(request, 'hydration_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def hydration_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(HydrationLog, id=pk).delete()
@@ -969,10 +996,12 @@ def hydration_delete(request, pk):
 
 # ===== Phase 2: Energy and Fatigue Scoring =====
 
+@login_required
 def energy_list(request):
     entries = EnergyFatigueLog.objects.all().order_by('-date')
     return render(request, 'energy_list.html', {'entries': entries})
 
+@login_required
 def energy_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -993,6 +1022,7 @@ def energy_add(request):
             return redirect('energy_add')
     return render(request, 'energy_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def energy_edit(request, pk):
     entry = get_object_or_404(EnergyFatigueLog, id=pk)
     if request.method == 'POST':
@@ -1008,6 +1038,7 @@ def energy_edit(request, pk):
             return redirect('energy_edit', pk=pk)
     return render(request, 'energy_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def energy_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(EnergyFatigueLog, id=pk).delete()
@@ -1017,11 +1048,13 @@ def energy_delete(request, pk):
 
 # ===== Phase 2: Custom Vital Signs =====
 
+@login_required
 def custom_vitals_list(request):
     definitions = CustomVitalDefinition.objects.all()
     entries = CustomVitalEntry.objects.all().order_by('-date')
     return render(request, 'custom_vitals_list.html', {'definitions': definitions, 'entries': entries})
 
+@login_required
 def custom_vital_define(request):
     if request.method == 'POST':
         name = request.POST.get('name')
@@ -1044,6 +1077,7 @@ def custom_vital_define(request):
             return redirect('custom_vital_define')
     return render(request, 'custom_vital_define.html')
 
+@login_required
 def custom_vital_add_entry(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1072,6 +1106,7 @@ def custom_vital_add_entry(request):
         'editing': False,
     })
 
+@login_required
 def custom_vital_edit_entry(request, pk):
     entry = get_object_or_404(CustomVitalEntry, id=pk)
     if request.method == 'POST':
@@ -1095,6 +1130,7 @@ def custom_vital_edit_entry(request, pk):
         'editing': True,
     })
 
+@login_required
 def custom_vital_delete_entry(request, pk):
     if request.method == 'POST':
         get_object_or_404(CustomVitalEntry, id=pk).delete()
@@ -1104,10 +1140,12 @@ def custom_vital_delete_entry(request, pk):
 
 # ===== Phase 2: Anatomical Pain Mapping =====
 
+@login_required
 def pain_list(request):
     entries = PainLog.objects.all().order_by('-date')
     return render(request, 'pain_list.html', {'entries': entries, 'body_regions': BODY_REGIONS})
 
+@login_required
 def pain_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1133,6 +1171,7 @@ def pain_add(request):
         'editing': False,
     })
 
+@login_required
 def pain_edit(request, pk):
     entry = get_object_or_404(PainLog, id=pk)
     if request.method == 'POST':
@@ -1153,6 +1192,7 @@ def pain_edit(request, pk):
         'editing': True,
     })
 
+@login_required
 def pain_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(PainLog, id=pk).delete()
@@ -1162,10 +1202,12 @@ def pain_delete(request, pk):
 
 # ===== Phase 2: Resting Metabolic Rate =====
 
+@login_required
 def rmr_list(request):
     entries = RestingMetabolicRate.objects.all().order_by('-date')
     return render(request, 'rmr_list.html', {'entries': entries})
 
+@login_required
 def rmr_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1189,6 +1231,7 @@ def rmr_add(request):
             return redirect('rmr_add')
     return render(request, 'rmr_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def rmr_edit(request, pk):
     entry = get_object_or_404(RestingMetabolicRate, id=pk)
     if request.method == 'POST':
@@ -1207,6 +1250,7 @@ def rmr_edit(request, pk):
             return redirect('rmr_edit', pk=pk)
     return render(request, 'rmr_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def rmr_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(RestingMetabolicRate, id=pk).delete()
@@ -1216,10 +1260,12 @@ def rmr_delete(request, pk):
 
 # ===== Phase 2: Orthostatic Tracking =====
 
+@login_required
 def orthostatic_list(request):
     entries = OrthostaticReading.objects.all().order_by('-date')
     return render(request, 'orthostatic_list.html', {'entries': entries})
 
+@login_required
 def orthostatic_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1245,6 +1291,7 @@ def orthostatic_add(request):
             return redirect('orthostatic_add')
     return render(request, 'orthostatic_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def orthostatic_edit(request, pk):
     entry = get_object_or_404(OrthostaticReading, id=pk)
     if request.method == 'POST':
@@ -1265,6 +1312,7 @@ def orthostatic_edit(request, pk):
             return redirect('orthostatic_edit', pk=pk)
     return render(request, 'orthostatic_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def orthostatic_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(OrthostaticReading, id=pk).delete()
@@ -1274,10 +1322,12 @@ def orthostatic_delete(request, pk):
 
 # ===== Phase 2: Reproductive Health =====
 
+@login_required
 def reproductive_list(request):
     entries = ReproductiveHealthLog.objects.all().order_by('-date')
     return render(request, 'reproductive_list.html', {'entries': entries})
 
+@login_required
 def reproductive_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1300,6 +1350,7 @@ def reproductive_add(request):
             return redirect('reproductive_add')
     return render(request, 'reproductive_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def reproductive_edit(request, pk):
     entry = get_object_or_404(ReproductiveHealthLog, id=pk)
     if request.method == 'POST':
@@ -1317,6 +1368,7 @@ def reproductive_edit(request, pk):
             return redirect('reproductive_edit', pk=pk)
     return render(request, 'reproductive_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def reproductive_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(ReproductiveHealthLog, id=pk).delete()
@@ -1326,10 +1378,12 @@ def reproductive_delete(request, pk):
 
 # ===== Phase 2: Symptom Journaling =====
 
+@login_required
 def symptom_list(request):
     entries = SymptomJournal.objects.all().order_by('-date')
     return render(request, 'symptom_list.html', {'entries': entries})
 
+@login_required
 def symptom_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1353,6 +1407,7 @@ def symptom_add(request):
             return redirect('symptom_add')
     return render(request, 'symptom_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def symptom_edit(request, pk):
     entry = get_object_or_404(SymptomJournal, id=pk)
     if request.method == 'POST':
@@ -1370,6 +1425,7 @@ def symptom_edit(request, pk):
             return redirect('symptom_edit', pk=pk)
     return render(request, 'symptom_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def symptom_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(SymptomJournal, id=pk).delete()
@@ -1379,10 +1435,12 @@ def symptom_delete(request, pk):
 
 # ===== Phase 2: Metabolic Monitoring =====
 
+@login_required
 def metabolic_list(request):
     entries = MetabolicLog.objects.all().order_by('-date')
     return render(request, 'metabolic_list.html', {'entries': entries})
 
+@login_required
 def metabolic_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1404,6 +1462,7 @@ def metabolic_add(request):
             return redirect('metabolic_add')
     return render(request, 'metabolic_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def metabolic_edit(request, pk):
     entry = get_object_or_404(MetabolicLog, id=pk)
     if request.method == 'POST':
@@ -1420,6 +1479,7 @@ def metabolic_edit(request, pk):
             return redirect('metabolic_edit', pk=pk)
     return render(request, 'metabolic_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def metabolic_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MetabolicLog, id=pk).delete()
@@ -1429,10 +1489,12 @@ def metabolic_delete(request, pk):
 
 # ===== Phase 2: Ketone Level Tracking =====
 
+@login_required
 def ketone_list(request):
     entries = KetoneLog.objects.all().order_by('-date')
     return render(request, 'ketone_list.html', {'entries': entries})
 
+@login_required
 def ketone_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1454,6 +1516,7 @@ def ketone_add(request):
             return redirect('ketone_add')
     return render(request, 'ketone_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def ketone_edit(request, pk):
     entry = get_object_or_404(KetoneLog, id=pk)
     if request.method == 'POST':
@@ -1470,6 +1533,7 @@ def ketone_edit(request, pk):
             return redirect('ketone_edit', pk=pk)
     return render(request, 'ketone_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def ketone_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(KetoneLog, id=pk).delete()
@@ -1484,6 +1548,7 @@ def _safe_redirect(request, default='index'):
     return redirect(default)
 
 
+@login_required
 def add_annotation(request, model_type, object_id):
     if request.method == 'POST':
         note = request.POST.get('note', '').strip()
@@ -1503,6 +1568,7 @@ def add_annotation(request, model_type, object_id):
     return _safe_redirect(request)
 
 
+@login_required
 def delete_annotation(request, annotation_id):
     if request.method == 'POST':
         annotation = get_object_or_404(DataPointAnnotation, id=annotation_id)
@@ -1513,6 +1579,7 @@ def delete_annotation(request, annotation_id):
 
 # --- Bulk Data Editing Interface ---
 
+@login_required
 def bulk_edit(request):
     if request.method == 'POST':
         updated = 0
@@ -1579,11 +1646,13 @@ def _get_dashboard_widgets():
     return widgets
 
 
+@login_required
 def customize_dashboard(request):
     widgets = _get_dashboard_widgets()
     return render(request, 'customize_dashboard.html', {'widgets': widgets})
 
 
+@login_required
 def update_widgets(request):
     if request.method == 'POST':
         try:
@@ -1608,6 +1677,7 @@ def update_widgets(request):
     return JsonResponse({'status': 'error', 'message': 'POST required'}, status=405)
 
 
+@login_required
 def global_search(request):
     """Phase 3: Global search API endpoint for finding tests, vitals, and journal entries."""
     q = request.GET.get('q', '').strip()

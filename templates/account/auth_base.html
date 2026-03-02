@@ -1,0 +1,25 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="csrf-token" content="{{ csrf_token }}" />
+  <title>Health Tracker</title>
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card-wrapper">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="auth-alert auth-alert-{% if message.tags and message.tags != 'error' %}{{ message.tags }}{% elif message.tags == 'error' %}danger{% else %}info{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% block auth_content %}{% endblock %}
+    </div>
+  </div>
+</body>
+</html>

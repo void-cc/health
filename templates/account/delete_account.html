@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="account-card">
+      <div class="account-card-header" style="background:linear-gradient(135deg,#fee2e2,#fecaca);border-color:#fecaca;">
+        <svg viewBox="0 0 24 24" style="fill:#991b1b;"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+        <span style="color:#991b1b;">Delete Account</span>
+      </div>
+      <div class="account-card-body">
+        <div class="auth-danger-box">
+          ⚠ <strong>Warning:</strong> This action is permanent and cannot be undone. All your data, including health records, vitals, and preferences, will be permanently deleted.
+        </div>
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="auth-alert auth-alert-danger">
+              {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+          {% endif %}
+
+          <div class="account-form-group">
+            <label for="id_confirm_text">
+              Type <strong>DELETE</strong> to confirm account deletion
+            </label>
+            <input type="text" name="confirm_text" id="id_confirm_text" class="account-input {% if form.confirm_text.errors %}is-invalid{% endif %}" placeholder="DELETE" required />
+            {% for error in form.confirm_text.errors %}<div class="auth-error">{{ error }}</div>{% endfor %}
+          </div>
+
+          <div class="account-btn-row">
+            <a href="{% url 'profile' %}" class="account-btn account-btn-ghost">
+              <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+              Cancel
+            </a>
+            <button type="submit" class="account-btn account-btn-danger">
+              <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+              Delete My Account
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

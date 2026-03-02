@@ -1,6 +1,10 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from tracker.models import BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget
+from django.contrib.auth.models import User
+from tracker.models import (
+    BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
+    UserProfile, SecurityLog, UserSession, PrivacyPreference,
+)
 from datetime import date
 import json
 
@@ -26,6 +30,8 @@ class TemplateFilterTests(TestCase):
 class ViewStatusCodeTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_index_page(self):
         response = self.client.get(reverse('index'))
@@ -84,6 +90,8 @@ class ViewStatusCodeTests(TestCase):
 class ViewWithDataTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
         self.test_info = BloodTestInfo.objects.create(
             test_name="Hemoglobin", unit="g/dL",
             normal_min=13.8, normal_max=17.2, category="Blood Count"
@@ -385,6 +393,9 @@ class Phase2StatusCodeTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_body_composition_list(self):
         response = self.client.get(reverse('body_composition_list'))
@@ -484,6 +495,9 @@ class Phase2CRUDTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     # ----- Body Composition -----
     def test_body_composition_add_post(self):
@@ -868,6 +882,9 @@ class Phase2VitalsExtensionTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
         self.vital = VitalSign.objects.create(
             date=date(2026, 3, 1), weight=70.0, heart_rate=72,
             systolic_bp=120, diastolic_bp=80,
@@ -930,6 +947,8 @@ class Phase2VitalsExtensionTests(TestCase):
 class AnnotationTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
         self.blood_test = BloodTest.objects.create(
             test_name="Hemoglobin", value=15.0, unit="g/dL",
             date=date(2026, 1, 15), normal_min=13.8, normal_max=17.2,
@@ -993,6 +1012,8 @@ class AnnotationTests(TestCase):
 class BulkEditTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
         self.test1 = BloodTest.objects.create(
             test_name="Hemoglobin", value=15.0, unit="g/dL",
             date=date(2026, 1, 15), normal_min=13.8, normal_max=17.2,
@@ -1045,6 +1066,8 @@ class BulkEditTests(TestCase):
 class DashboardWidgetTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_customize_dashboard_page(self):
         response = self.client.get(reverse('customize_dashboard'))
@@ -1116,6 +1139,8 @@ class DashboardWidgetTests(TestCase):
 class PDFExportTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_blood_charts_has_pdf_export(self):
         response = self.client.get(reverse('blood_tests_charts'))
@@ -1153,6 +1178,9 @@ class Phase3DarkModeTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_base_template_has_dark_mode_toggle(self):
         response = self.client.get(reverse('index'))
@@ -1176,6 +1204,9 @@ class Phase3NavigationTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_sidebar_present(self):
         response = self.client.get(reverse('index'))
@@ -1205,6 +1236,9 @@ class Phase3AccessibilityTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_skip_to_content_link(self):
         response = self.client.get(reverse('index'))
@@ -1238,6 +1272,9 @@ class Phase3QuickEntryTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_quick_entry_button_present(self):
         response = self.client.get(reverse('index'))
@@ -1262,6 +1299,9 @@ class Phase3PWATests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_manifest_link_present(self):
         response = self.client.get(reverse('index'))
@@ -1281,6 +1321,9 @@ class Phase3GlobalSearchTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
         BloodTest.objects.create(
             test_name="Hemoglobin", value=15.0, unit="g/dL",
             date=date(2026, 1, 15), normal_min=13.8, normal_max=17.2,
@@ -1329,6 +1372,9 @@ class Phase3MedicalTooltipTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_tooltips_on_quick_entry(self):
         response = self.client.get(reverse('index'))
@@ -1345,6 +1391,9 @@ class Phase3VoiceInputTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_voice_button_present(self):
         response = self.client.get(reverse('index'))
@@ -1360,6 +1409,9 @@ class Phase3OnboardingTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
 
     def test_tour_button_present(self):
         response = self.client.get(reverse('index'))
@@ -1370,6 +1422,402 @@ class Phase3OnboardingTests(TestCase):
         self.assertContains(response, 'Start guided tour')
 
 
+# ============================================================================
+# Phase 4: User Authentication and Profile Tests
+# ============================================================================
+
+class Phase4RegistrationTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+    def test_register_page_loads(self):
+        response = self.client.get(reverse('register'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Create your account')
+
+    def test_register_success(self):
+        response = self.client.post(reverse('register'), {
+            'username': 'newuser',
+            'email': 'newuser@example.com',
+            'password1': 'SecureP@ss123!',
+            'password2': 'SecureP@ss123!',
+        })
+        self.assertEqual(response.status_code, 302)  # Redirect after success
+        self.assertTrue(User.objects.filter(username='newuser').exists())
+        # Profile should be auto-created
+        user = User.objects.get(username='newuser')
+        self.assertTrue(UserProfile.objects.filter(user=user).exists())
+        self.assertTrue(PrivacyPreference.objects.filter(user=user).exists())
+
+    def test_register_creates_security_log(self):
+        self.client.post(reverse('register'), {
+            'username': 'newuser',
+            'email': 'newuser@example.com',
+            'password1': 'SecureP@ss123!',
+            'password2': 'SecureP@ss123!',
+        })
+        user = User.objects.get(username='newuser')
+        self.assertTrue(SecurityLog.objects.filter(user=user, action='login').exists())
+
+    def test_register_duplicate_username(self):
+        User.objects.create_user('existing', 'existing@test.com', 'pass123')
+        response = self.client.post(reverse('register'), {
+            'username': 'existing',
+            'email': 'new@test.com',
+            'password1': 'SecureP@ss123!',
+            'password2': 'SecureP@ss123!',
+        })
+        self.assertEqual(response.status_code, 200)  # Re-renders form with errors
+        self.assertEqual(User.objects.filter(username='existing').count(), 1)
+
+    def test_register_redirects_authenticated(self):
+        User.objects.create_user('testuser', 'test@test.com', 'pass123')
+        self.client.login(username='testuser', password='pass123')
+        response = self.client.get(reverse('register'))
+        self.assertEqual(response.status_code, 302)
+
+
+class Phase4LoginTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+
+    def test_login_page_loads(self):
+        response = self.client.get(reverse('login'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Sign in to your account')
+
+    def test_login_success(self):
+        response = self.client.post(reverse('login'), {
+            'username': 'testuser',
+            'password': 'testpass123',
+        })
+        self.assertEqual(response.status_code, 302)
+
+    def test_login_creates_security_log(self):
+        self.client.post(reverse('login'), {
+            'username': 'testuser',
+            'password': 'testpass123',
+        })
+        self.assertTrue(SecurityLog.objects.filter(user=self.user, action='login').exists())
+
+    def test_login_failure_logs_event(self):
+        self.client.post(reverse('login'), {
+            'username': 'testuser',
+            'password': 'wrongpassword',
+        })
+        self.assertTrue(SecurityLog.objects.filter(user=self.user, action='login_failed').exists())
+
+    def test_login_redirects_authenticated(self):
+        self.client.login(username='testuser', password='testpass123')
+        response = self.client.get(reverse('login'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_login_timeout_message(self):
+        response = self.client.get(reverse('login') + '?timeout=1')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'timed out')
+
+
+class Phase4LogoutTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_logout(self):
+        response = self.client.get(reverse('logout'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_logout_creates_security_log(self):
+        self.client.get(reverse('logout'))
+        self.assertTrue(SecurityLog.objects.filter(user=self.user, action='logout').exists())
+
+
+class Phase4ProfileTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_profile_page_loads(self):
+        response = self.client.get(reverse('profile'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_profile_update(self):
+        response = self.client.post(reverse('profile'), {
+            'first_name': 'Test',
+            'last_name': 'User',
+            'email': 'updated@example.com',
+            'biological_sex': 'male',
+            'height_cm': '175.5',
+            'theme_preference': 'dark',
+            'genetic_baseline_info': 'Some info',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, 'Test')
+        self.assertEqual(self.user.email, 'updated@example.com')
+        profile = UserProfile.objects.get(user=self.user)
+        self.assertEqual(profile.biological_sex, 'male')
+        self.assertEqual(profile.height_cm, 175.5)
+
+    def test_profile_update_logs_event(self):
+        self.client.post(reverse('profile'), {
+            'first_name': 'Test',
+            'last_name': 'User',
+            'email': 'test@example.com',
+            'theme_preference': 'system',
+        })
+        self.assertTrue(SecurityLog.objects.filter(user=self.user, action='profile_updated').exists())
+
+    def test_profile_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('profile'))
+        self.assertEqual(response.status_code, 302)
+
+
+class Phase4PasswordChangeTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_change_password_page_loads(self):
+        response = self.client.get(reverse('change_password'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_change_password_success(self):
+        response = self.client.post(reverse('change_password'), {
+            'old_password': 'testpass123',
+            'new_password1': 'NewSecureP@ss456!',
+            'new_password2': 'NewSecureP@ss456!',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(SecurityLog.objects.filter(user=self.user, action='password_changed').exists())
+
+
+class Phase4SecurityLogTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_security_log_page_loads(self):
+        response = self.client.get(reverse('security_log'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_security_log_shows_events(self):
+        SecurityLog.objects.create(
+            user=self.user, action='login',
+            ip_address='192.168.1.1', device_type='Desktop'
+        )
+        response = self.client.get(reverse('security_log'))
+        self.assertContains(response, '192.168.1.1')
+        self.assertContains(response, 'Desktop')
+
+
+class Phase4SessionManagementTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_sessions_page_loads(self):
+        response = self.client.get(reverse('active_sessions'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_terminate_session(self):
+        session = UserSession.objects.create(
+            user=self.user,
+            session_key='test-session-key-123',
+            ip_address='10.0.0.1',
+            is_active=True,
+        )
+        response = self.client.post(reverse('terminate_session', args=[session.pk]))
+        self.assertEqual(response.status_code, 302)
+        session.refresh_from_db()
+        self.assertFalse(session.is_active)
+
+
+class Phase4PrivacyPreferencesTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_privacy_page_loads(self):
+        response = self.client.get(reverse('privacy_preferences'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_privacy_update(self):
+        response = self.client.post(reverse('privacy_preferences'), {
+            'allow_data_sharing': True,
+            'allow_analytics': False,
+            'allow_research_use': False,
+            'data_retention_days': 180,
+            'show_profile_publicly': False,
+        })
+        self.assertEqual(response.status_code, 302)
+        prefs = PrivacyPreference.objects.get(user=self.user)
+        self.assertTrue(prefs.allow_data_sharing)
+        self.assertEqual(prefs.data_retention_days, 180)
+
+
+class Phase4AccountDeletionTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='deleteuser', password='testpass123', email='delete@example.com'
+        )
+        UserProfile.objects.create(user=self.user)
+        self.client.login(username='deleteuser', password='testpass123')
+
+    def test_delete_page_loads(self):
+        response = self.client.get(reverse('delete_account'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'DELETE')
+
+    def test_delete_account_success(self):
+        response = self.client.post(reverse('delete_account'), {
+            'confirm_text': 'DELETE',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(User.objects.filter(username='deleteuser').exists())
+
+    def test_delete_account_wrong_confirmation(self):
+        response = self.client.post(reverse('delete_account'), {
+            'confirm_text': 'WRONG',
+        })
+        self.assertEqual(response.status_code, 200)  # Re-renders form
+        self.assertTrue(User.objects.filter(username='deleteuser').exists())
+
+
+class Phase4MFATests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_mfa_setup_page_loads(self):
+        response = self.client.get(reverse('mfa_setup'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'svg')  # QR code
+
+    def test_mfa_disable_page_loads(self):
+        response = self.client.get(reverse('mfa_disable'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_mfa_verify_redirects_without_session(self):
+        response = self.client.get(reverse('mfa_verify'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_mfa_setup_creates_device(self):
+        from django_otp.plugins.otp_totp.models import TOTPDevice
+        self.client.get(reverse('mfa_setup'))
+        self.assertTrue(TOTPDevice.objects.filter(user=self.user).exists())
+
+
+class Phase4ModelTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+
+    def test_user_profile_creation(self):
+        profile = UserProfile.objects.create(user=self.user, biological_sex='female', height_cm=165.0)
+        self.assertEqual(str(profile), 'Profile of testuser')
+
+    def test_security_log_creation(self):
+        log = SecurityLog.objects.create(
+            user=self.user, action='login',
+            ip_address='127.0.0.1', device_type='Desktop'
+        )
+        self.assertIn('testuser', str(log))
+        self.assertIn('login', str(log))
+
+    def test_user_session_creation(self):
+        session = UserSession.objects.create(
+            user=self.user, session_key='abc123',
+            ip_address='192.168.1.1'
+        )
+        self.assertIn('testuser', str(session))
+
+    def test_privacy_preference_creation(self):
+        pref = PrivacyPreference.objects.create(user=self.user)
+        self.assertFalse(pref.allow_data_sharing)
+        self.assertEqual(pref.data_retention_days, 365)
+        self.assertIn('testuser', str(pref))
+
+    def test_security_log_ordering(self):
+        SecurityLog.objects.create(user=self.user, action='login')
+        SecurityLog.objects.create(user=self.user, action='logout')
+        logs = SecurityLog.objects.filter(user=self.user)
+        # Most recent first
+        self.assertEqual(logs[0].action, 'logout')
+
+
+class Phase4ProtectedViewTests(TestCase):
+    """Ensure views redirect to login when not authenticated."""
+    def setUp(self):
+        self.client = Client()
+
+    def test_index_requires_login(self):
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_history_requires_login(self):
+        response = self.client.get(reverse('history'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_vitals_requires_login(self):
+        response = self.client.get(reverse('vitals'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_profile_requires_login(self):
+        response = self.client.get(reverse('profile'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_security_log_requires_login(self):
+        response = self.client.get(reverse('security_log'))
+        self.assertEqual(response.status_code, 302)
+
+
+class Phase4SidebarTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_sidebar_has_account_section(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Account')
+        self.assertContains(response, 'Profile')
+        self.assertContains(response, 'Security Log')
+        self.assertContains(response, 'Sessions')
+        self.assertContains(response, 'Privacy')
+        self.assertContains(response, 'Logout')
 # ===== Phase 5-12 Tests =====
 
 from tracker.models import (

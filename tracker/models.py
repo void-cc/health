@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.conf import settings
+from django.utils import timezone
 
 
 class BloodTest(models.Model):
@@ -302,6 +304,86 @@ class DashboardWidget(models.Model):
         return f"{self.get_widget_type_display()} (pos {self.position})"
 
 
+class UserProfile(models.Model):
+    BIOLOGICAL_SEX_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+        ('prefer_not_to_say', 'Prefer not to say'),
+    ]
+    THEME_CHOICES = [
+        ('light', 'Light'),
+        ('dark', 'Dark'),
+        ('system', 'System'),
+    ]
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    date_of_birth = models.DateField(null=True, blank=True)
+    biological_sex = models.CharField(max_length=20, choices=BIOLOGICAL_SEX_CHOICES, blank=True, default='')
+    height_cm = models.FloatField(null=True, blank=True)
+    genetic_baseline_info = models.TextField(blank=True, default='')
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    theme_preference = models.CharField(max_length=20, choices=THEME_CHOICES, default='system')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Profile of {self.user.username}"
+
+
+class SecurityLog(models.Model):
+    ACTION_CHOICES = [
+        ('login', 'Login'),
+        ('logout', 'Logout'),
+        ('login_failed', 'Login Failed'),
+        ('password_changed', 'Password Changed'),
+        ('password_reset', 'Password Reset'),
+        ('mfa_enabled', 'MFA Enabled'),
+        ('mfa_disabled', 'MFA Disabled'),
+        ('profile_updated', 'Profile Updated'),
+        ('account_deleted', 'Account Deleted'),
+    ]
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='security_logs')
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default='')
+    device_type = models.CharField(max_length=50, blank=True, default='')
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.action} at {self.timestamp}"
+
+
+class UserSession(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='active_sessions')
+    session_key = models.CharField(max_length=40, unique=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default='')
+    device_type = models.CharField(max_length=50, blank=True, default='')
+    last_activity = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-last_activity']
+
+    def __str__(self):
+        return f"Session for {self.user.username} from {self.ip_address}"
+
+
+class PrivacyPreference(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='privacy_preferences')
+    allow_data_sharing = models.BooleanField(default=False)
+    allow_analytics = models.BooleanField(default=False)
+    allow_research_use = models.BooleanField(default=False)
+    data_retention_days = models.IntegerField(default=365, validators=[MinValueValidator(30)])
+    show_profile_publicly = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Privacy preferences for {self.user.username}"
 # ===== Phase 5: Wearable Integrations =====
 
 WEARABLE_PLATFORMS = [
