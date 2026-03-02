@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Practitioner Access</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="practitioner_name" class="form-label">Practitioner Name:</label>
+      <input type="text" class="form-control" name="practitioner_name" id="practitioner_name" value="{% if editing and entry.practitioner_name %}{{ entry.practitioner_name }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="practitioner_email" class="form-label">Practitioner Email:</label>
+      <input type="email" class="form-control" name="practitioner_email" id="practitioner_email" value="{% if editing and entry.practitioner_email %}{{ entry.practitioner_email }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="specialty" class="form-label">Specialty:</label>
+      <input type="text" class="form-control" name="specialty" id="specialty" value="{% if editing and entry.specialty %}{{ entry.specialty }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="access_status" class="form-label">Access Status:</label>
+      <select class="form-select" name="access_status" id="access_status">
+        <option value="pending" {% if editing and entry.access_status == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="approved" {% if editing and entry.access_status == 'approved' %}selected{% endif %}>Approved</option>
+        <option value="revoked" {% if editing and entry.access_status == 'revoked' %}selected{% endif %}>Revoked</option>
+      </select>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'practitioner_access_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

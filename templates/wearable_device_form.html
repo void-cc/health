@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Wearable Device</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="platform" class="form-label">Platform:</label>
+      <select class="form-select" name="platform" id="platform">
+        {% for value, label in platforms %}
+        <option value="{{ value }}" {% if editing and entry.platform == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="device_name" class="form-label">Device Name:</label>
+      <input type="text" class="form-control" name="device_name" id="device_name" value="{% if editing and entry.device_name %}{{ entry.device_name }}{% endif %}" />
+    </div>
+
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" name="is_active" id="is_active" {% if editing and entry.is_active %}checked{% elif not editing %}checked{% endif %}>
+      <label for="is_active" class="form-check-label">Active</label>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'wearable_device_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

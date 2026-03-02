@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Admin Telemetry</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="metric_name" class="form-label">Metric Name:</label>
+      <input type="text" class="form-control" name="metric_name" id="metric_name" value="{% if editing and entry.metric_name %}{{ entry.metric_name }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="metric_value" class="form-label">Metric Value:</label>
+      <input type="number" class="form-control" name="metric_value" id="metric_value" step="0.01" value="{% if editing and entry.metric_value is not None %}{{ entry.metric_value }}{% endif %}" />
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'admin_telemetry_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

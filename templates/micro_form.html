@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Micronutrient Log</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Date:</label>
+      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="nutrient_name" class="form-label">Nutrient Name:</label>
+      <input type="text" class="form-control" name="nutrient_name" id="nutrient_name" value="{% if editing and entry.nutrient_name %}{{ entry.nutrient_name }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="amount" class="form-label">Amount:</label>
+      <input type="number" class="form-control" name="amount" id="amount" step="0.01" value="{% if editing and entry.amount is not None %}{{ entry.amount }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="unit" class="form-label">Unit:</label>
+      <input type="text" class="form-control" name="unit" id="unit" value="{% if editing and entry.unit %}{{ entry.unit }}{% else %}mg{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'micro_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

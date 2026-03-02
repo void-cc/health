@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Macronutrient Log</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Date:</label>
+      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="protein_grams" class="form-label">Protein (g):</label>
+      <input type="number" class="form-control" name="protein_grams" id="protein_grams" step="0.1" value="{% if editing and entry.protein_grams is not None %}{{ entry.protein_grams }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="carbohydrate_grams" class="form-label">Carbohydrates (g):</label>
+      <input type="number" class="form-control" name="carbohydrate_grams" id="carbohydrate_grams" step="0.1" value="{% if editing and entry.carbohydrate_grams is not None %}{{ entry.carbohydrate_grams }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="fat_grams" class="form-label">Fat (g):</label>
+      <input type="number" class="form-control" name="fat_grams" id="fat_grams" step="0.1" value="{% if editing and entry.fat_grams is not None %}{{ entry.fat_grams }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="calories" class="form-label">Calories:</label>
+      <input type="number" class="form-control" name="calories" id="calories" step="0.1" value="{% if editing and entry.calories is not None %}{{ entry.calories }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="fiber_grams" class="form-label">Fiber (g):</label>
+      <input type="number" class="form-control" name="fiber_grams" id="fiber_grams" step="0.1" value="{% if editing and entry.fiber_grams is not None %}{{ entry.fiber_grams }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'macro_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

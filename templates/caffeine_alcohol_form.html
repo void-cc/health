@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Caffeine &amp; Alcohol Log</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Date:</label>
+      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="substance" class="form-label">Substance:</label>
+      <select class="form-select" name="substance" id="substance">
+        <option value="caffeine" {% if editing and entry.substance == 'caffeine' %}selected{% endif %}>Caffeine</option>
+        <option value="alcohol" {% if editing and entry.substance == 'alcohol' %}selected{% endif %}>Alcohol</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="amount_mg" class="form-label">Amount (mg):</label>
+      <input type="number" class="form-control" name="amount_mg" id="amount_mg" step="0.1" value="{% if editing and entry.amount_mg is not None %}{{ entry.amount_mg }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="drink_name" class="form-label">Drink Name:</label>
+      <input type="text" class="form-control" name="drink_name" id="drink_name" value="{% if editing and entry.drink_name %}{{ entry.drink_name }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="time_consumed" class="form-label">Time Consumed:</label>
+      <input type="time" class="form-control" name="time_consumed" id="time_consumed" value="{% if editing and entry.time_consumed is not None %}{{ entry.time_consumed|time:'H:i' }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'caffeine_alcohol_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

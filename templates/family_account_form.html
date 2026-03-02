@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Family Account</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="primary_user" class="form-label">Primary User:</label>
+      <select class="form-select" name="primary_user" id="primary_user">
+        {% for value, label in profiles %}
+        <option value="{{ value }}" {% if editing and entry.primary_user == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="member_name" class="form-label">Member Name:</label>
+      <input type="text" class="form-control" name="member_name" id="member_name" value="{% if editing and entry.member_name %}{{ entry.member_name }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="relationship" class="form-label">Relationship:</label>
+      <input type="text" class="form-control" name="relationship" id="relationship" value="{% if editing and entry.relationship %}{{ entry.relationship }}{% endif %}" />
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" name="is_minor" id="is_minor" {% if editing and entry.is_minor %}checked{% endif %}>
+      <label for="is_minor" class="form-check-label">Is Minor</label>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'family_account_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

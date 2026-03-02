@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} API Rate Limit</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="endpoint" class="form-label">Endpoint:</label>
+      <input type="text" class="form-control" name="endpoint" id="endpoint" value="{% if editing and entry.endpoint %}{{ entry.endpoint }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="max_requests_per_minute" class="form-label">Max Requests Per Minute:</label>
+      <input type="number" class="form-control" name="max_requests_per_minute" id="max_requests_per_minute" value="{% if editing and entry.max_requests_per_minute is not None %}{{ entry.max_requests_per_minute }}{% else %}60{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="max_requests_per_hour" class="form-label">Max Requests Per Hour:</label>
+      <input type="number" class="form-control" name="max_requests_per_hour" id="max_requests_per_hour" value="{% if editing and entry.max_requests_per_hour is not None %}{{ entry.max_requests_per_hour }}{% else %}1000{% endif %}" />
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" name="is_active" id="is_active" {% if editing and entry.is_active %}checked{% elif not editing %}checked{% endif %}>
+      <label for="is_active" class="form-check-label">Active</label>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'api_rate_limit_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
