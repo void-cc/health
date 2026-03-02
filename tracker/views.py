@@ -1789,7 +1789,7 @@ _body_composition = make_crud_views(
         {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
         {'name': 'body_fat_percentage', 'type': 'float', 'step': '0.1', 'placeholder': 'e.g. 18.5', 'label': 'Body Fat (%)'},
         {'name': 'skeletal_muscle_mass', 'type': 'float', 'step': '0.1', 'placeholder': 'e.g. 30.0', 'label': 'Skeletal Muscle Mass (kg)'},
-        {'name': 'bone_density', 'type': 'float', 'step': '0.01', 'placeholder': 'e.g. 1.2', 'label': 'Bone Density (g/cm\u00b2)'},
+        {'name': 'bone_density', 'type': 'float', 'step': '0.01', 'placeholder': 'e.g. 1.2', 'label': 'Bone Density (g/cm²)'},
         {'name': 'waist_circumference', 'type': 'float', 'step': '0.1', 'placeholder': 'e.g. 80', 'label': 'Waist (cm)'},
         {'name': 'hip_circumference', 'type': 'float', 'step': '0.1', 'placeholder': 'e.g. 95', 'label': 'Hip (cm)'},
         {'name': 'notes', 'type': 'str', 'widget': 'textarea'},

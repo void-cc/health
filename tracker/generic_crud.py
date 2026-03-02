@@ -79,21 +79,22 @@ def make_crud_views(
         context.update(_resolve_extra_context(extra_list_context, request))
         return render(request, list_template, context)
 
+    has_date = any(f['name'] == 'date' for f in fields)
+
     # -- add view --
     @login_required
     def add_view(request):
         if request.method == 'POST':
-            date_str = request.POST.get('date')
-            if not date_str:
-                messages.error(request, 'Please select a date.')
-                return redirect(add_url_name)
+            if has_date:
+                date_str = request.POST.get('date')
+                if not date_str:
+                    messages.error(request, 'Please select a date.')
+                    return redirect(add_url_name)
 
             try:
-                kwargs = {'date': datetime.strptime(date_str, '%Y-%m-%d').date()}
+                kwargs = {}
                 for f in fields:
                     name = f['name']
-                    if name == 'date':
-                        continue
                     kwargs[name] = _parse_field_value(f, request.POST.get(name))
 
                 model_class.objects.create(**kwargs)
@@ -122,12 +123,7 @@ def make_crud_views(
             try:
                 for f in fields:
                     name = f['name']
-                    if name == 'date':
-                        entry.date = datetime.strptime(
-                            request.POST.get('date'), '%Y-%m-%d'
-                        ).date()
-                    else:
-                        setattr(entry, name, _parse_field_value(f, request.POST.get(name)))
+                    setattr(entry, name, _parse_field_value(f, request.POST.get(name)))
                 entry.save()
                 messages.success(request, f'{display_name} updated!')
                 return redirect(list_url_name)
