@@ -439,6 +439,10 @@ class WearableSyncLog(models.Model):
 # ===== Phase 6: Sleep and Nutrition Tracking =====
 
 class SleepLog(models.Model):
+    IDEAL_DEEP_SLEEP_RATIO = 0.20  # Ideal deep sleep as fraction of total sleep
+    IDEAL_REM_RATIO = 0.25  # Ideal REM as fraction of total sleep
+    AWAKE_PENALTY_THRESHOLD_MINUTES = 60.0  # Minutes of awake time for full penalty
+
     date = models.DateField()
     bedtime = models.TimeField(null=True, blank=True)
     wake_time = models.TimeField(null=True, blank=True)
@@ -480,18 +484,18 @@ class SleepLog(models.Model):
         # Deep sleep component (25 points max) — ideal ~20% of total
         if self.deep_sleep_minutes is not None:
             deep_ratio = self.deep_sleep_minutes / self.total_sleep_minutes
-            deep_score = min(deep_ratio / 0.20, 1.0)
+            deep_score = min(deep_ratio / self.IDEAL_DEEP_SLEEP_RATIO, 1.0)
             score += deep_score * 25.0
 
         # REM component (25 points max) — ideal ~25% of total
         if self.rem_minutes is not None:
             rem_ratio = self.rem_minutes / self.total_sleep_minutes
-            rem_score = min(rem_ratio / 0.25, 1.0)
+            rem_score = min(rem_ratio / self.IDEAL_REM_RATIO, 1.0)
             score += rem_score * 25.0
 
         # Low awakenings component (10 points max)
         if self.awake_minutes is not None:
-            awake_penalty = max(0.0, 1.0 - (self.awake_minutes / 60.0))
+            awake_penalty = max(0.0, 1.0 - (self.awake_minutes / self.AWAKE_PENALTY_THRESHOLD_MINUTES))
             score += awake_penalty * 10.0
 
         return round(score, 1)
@@ -534,6 +538,8 @@ class SleepLog(models.Model):
 
 
 class CircadianRhythmLog(models.Model):
+    EARLY_MORNING_THRESHOLD_MINUTES = 360  # 6 AM in minutes; times before this are treated as next-day
+
     date = models.DateField()
     wake_time = models.TimeField(null=True, blank=True)
     sleep_onset = models.TimeField(null=True, blank=True)
@@ -559,8 +565,8 @@ class CircadianRhythmLog(models.Model):
 
         def time_to_minutes(t):
             mins = t.hour * 60 + t.minute
-            # Treat times before 6 AM as next-day (add 24h)
-            if mins < 360:
+            # Treat times before early morning as next-day (add 24h)
+            if mins < CircadianRhythmLog.EARLY_MORNING_THRESHOLD_MINUTES:
                 mins += 1440
             return mins
 
