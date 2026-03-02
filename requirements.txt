@@ -10,7 +10,7 @@ thefuzz
 python-Levenshtein
 
 # Phase 4: Authentication & Profiles
-django-allauth
+django-allauth[socialaccount]
 django-otp
 qrcode
 Pillow
