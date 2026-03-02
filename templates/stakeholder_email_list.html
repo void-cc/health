@@ -30,6 +30,11 @@
           <a href="{% url 'stakeholder_email_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
             <i class="fas fa-edit"></i> Edit
           </a>
+          {% if entry.is_active %}
+          <a href="{% url 'stakeholder_email_send' pk=entry.id %}" class="btn btn-sm btn-success">
+            <i class="fas fa-paper-plane"></i> Send
+          </a>
+          {% endif %}
           <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
             <i class="fas fa-trash-alt"></i> Delete
           </button>

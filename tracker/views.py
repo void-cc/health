@@ -29,7 +29,12 @@ from .models import (
     INTEGRATION_CATEGORIES, INTEGRATION_FEATURE_TYPES,
 )
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import send_mail
+from django.conf import settings
 from datetime import datetime
+from xml.etree.ElementTree import Element, SubElement, tostring
 import csv
 import os
 import io
@@ -2901,15 +2906,14 @@ def secure_viewing_link_list(request):
 def secure_viewing_link_add(request):
     if request.method == 'POST':
         try:
-            access_count = request.POST.get('access_count', '').strip()
+            token = SecureViewingLink.generate_token()
             SecureViewingLink.objects.create(
-                token=request.POST.get('token', ''),
+                token=token,
                 data_types=request.POST.get('data_types', ''),
                 expires_at=request.POST.get('expires_at', '') or None,
                 is_active=request.POST.get('is_active') == 'on',
-                access_count=int(access_count) if access_count else 0,
             )
-            messages.success(request, 'Secure viewing link added!')
+            messages.success(request, 'Secure viewing link created!')
             return redirect('secure_viewing_link_list')
         except Exception:
             messages.error(request, 'Error adding secure viewing link.')
@@ -2920,12 +2924,9 @@ def secure_viewing_link_edit(request, pk):
     entry = get_object_or_404(SecureViewingLink, id=pk)
     if request.method == 'POST':
         try:
-            access_count = request.POST.get('access_count', '').strip()
-            entry.token = request.POST.get('token', '')
             entry.data_types = request.POST.get('data_types', '')
             entry.expires_at = request.POST.get('expires_at', '') or None
             entry.is_active = request.POST.get('is_active') == 'on'
-            entry.access_count = int(access_count) if access_count else 0
             entry.save()
             messages.success(request, 'Secure viewing link updated!')
             return redirect('secure_viewing_link_list')
@@ -2939,6 +2940,27 @@ def secure_viewing_link_delete(request, pk):
         get_object_or_404(SecureViewingLink, id=pk).delete()
         messages.success(request, 'Secure viewing link deleted!')
     return redirect('secure_viewing_link_list')
+
+
+def secure_link_shared_view(request, token):
+    """Public view for accessing shared health data via secure link."""
+    link = get_object_or_404(SecureViewingLink, token=token)
+    if not link.is_valid:
+        return render(request, 'secure_link_expired.html', {'link': link})
+    link.access_count += 1
+    link.save(update_fields=['access_count'])
+    data_types = [dt.strip() for dt in link.data_types.split(',') if dt.strip()] if link.data_types else []
+    context = {'link': link, 'data': {}}
+    if not data_types or 'blood_tests' in data_types:
+        context['data']['blood_tests'] = list(BloodTest.objects.all().order_by('-date')[:20].values(
+            'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max'))
+    if not data_types or 'vitals' in data_types:
+        context['data']['vitals'] = list(VitalSign.objects.all().order_by('-date')[:20].values(
+            'date', 'systolic', 'diastolic', 'heart_rate', 'temperature', 'respiratory_rate', 'oxygen_saturation'))
+    if not data_types or 'medications' in data_types:
+        context['data']['medications'] = list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
+            'medication_name', 'dosage', 'frequency', 'start_date', 'end_date'))
+    return render(request, 'secure_link_shared_view.html', context)
 
 
 # ===== Phase 9: Practitioner Access =====
@@ -2973,6 +2995,8 @@ def practitioner_access_edit(request, pk):
             entry.specialty = request.POST.get('specialty', '')
             entry.access_status = request.POST.get('access_status', '')
             entry.expires_at = request.POST.get('expires_at', '') or None
+            if entry.access_status == 'approved' and not entry.granted_at:
+                entry.granted_at = timezone.now()
             entry.save()
             messages.success(request, 'Practitioner access updated!')
             return redirect('practitioner_access_list')
@@ -2986,6 +3010,54 @@ def practitioner_access_delete(request, pk):
         get_object_or_404(PractitionerAccess, id=pk).delete()
         messages.success(request, 'Practitioner access deleted!')
     return redirect('practitioner_access_list')
+
+
+def practitioner_portal(request):
+    """Dedicated portal for practitioners to request access and view patient data."""
+    context = {'access_entries': [], 'error': None}
+    if request.method == 'POST':
+        email = request.POST.get('practitioner_email', '').strip()
+        if email:
+            entries = PractitionerAccess.objects.filter(
+                practitioner_email=email, access_status='approved'
+            )
+            if entries.exists():
+                data = {
+                    'blood_tests': list(BloodTest.objects.all().order_by('-date')[:20].values(
+                        'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max')),
+                    'vitals': list(VitalSign.objects.all().order_by('-date')[:20].values(
+                        'date', 'systolic', 'diastolic', 'heart_rate', 'temperature',
+                        'respiratory_rate', 'oxygen_saturation')),
+                    'medications': list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
+                        'medication_name', 'dosage', 'frequency', 'start_date', 'end_date')),
+                }
+                context['access_entries'] = entries
+                context['patient_data'] = data
+            else:
+                context['error'] = 'No approved access found for this email address.'
+        else:
+            context['error'] = 'Please provide a valid email address.'
+    return render(request, 'practitioner_portal.html', context)
+
+
+def practitioner_request_access(request):
+    """Allow a practitioner to request access to patient data."""
+    if request.method == 'POST':
+        name = request.POST.get('practitioner_name', '').strip()
+        email = request.POST.get('practitioner_email', '').strip()
+        specialty = request.POST.get('specialty', '').strip()
+        if name and email:
+            PractitionerAccess.objects.create(
+                practitioner_name=name,
+                practitioner_email=email,
+                specialty=specialty,
+                access_status='pending',
+            )
+            messages.success(request, 'Access request submitted. Awaiting patient approval.')
+            return redirect('practitioner_portal')
+        else:
+            messages.error(request, 'Name and email are required.')
+    return render(request, 'practitioner_request_access.html')
 
 
 # ===== Phase 9: Intake Summary =====
@@ -3035,7 +3107,94 @@ def intake_summary_delete(request, pk):
     return redirect('intake_summary_list')
 
 
+def intake_summary_generate(request):
+    """Auto-generate an intake summary from existing health data."""
+    blood_tests = BloodTest.objects.all().order_by('-date')[:10]
+    vitals = VitalSign.objects.all().order_by('-date').first()
+    medications = MedicationSchedule.objects.all().order_by('-start_date')
+
+    summary_lines = []
+    if vitals:
+        parts = []
+        if vitals.systolic and vitals.diastolic:
+            parts.append(f"BP: {vitals.systolic}/{vitals.diastolic} mmHg")
+        if vitals.heart_rate:
+            parts.append(f"HR: {vitals.heart_rate} bpm")
+        if vitals.temperature:
+            parts.append(f"Temp: {vitals.temperature}°F")
+        if vitals.oxygen_saturation:
+            parts.append(f"SpO2: {vitals.oxygen_saturation}%")
+        if parts:
+            summary_lines.append("Latest Vitals: " + ", ".join(parts))
+
+    if blood_tests:
+        test_strs = [f"{t.test_name}: {t.value} {t.unit}" for t in blood_tests[:5]]
+        summary_lines.append("Recent Labs: " + "; ".join(test_strs))
+
+    med_list = [f"{m.medication_name} ({m.dosage}, {m.frequency})" for m in medications if m.medication_name]
+
+    conditions_text = ""
+    out_of_range = []
+    for t in blood_tests:
+        if t.normal_min is not None and t.normal_max is not None:
+            if t.value < t.normal_min or t.value > t.normal_max:
+                out_of_range.append(f"{t.test_name}: {t.value} {t.unit} (range: {t.normal_min}-{t.normal_max})")
+    if out_of_range:
+        conditions_text = "Out-of-range results: " + "; ".join(out_of_range)
+
+    title = f"Intake Summary - {timezone.now().strftime('%Y-%m-%d')}"
+    summary = IntakeSummary.objects.create(
+        title=title,
+        summary_text="\n".join(summary_lines) if summary_lines else "No health data available.",
+        conditions=conditions_text,
+        medications="; ".join(med_list) if med_list else "None recorded",
+        allergies="",
+    )
+    messages.success(request, f'Intake summary "{summary.title}" generated from health data!')
+    return redirect('intake_summary_list')
+
+
 # ===== Phase 9: Data Export Request =====
+
+def _collect_export_data():
+    """Collect all health data for export."""
+    data = {
+        'blood_tests': list(BloodTest.objects.all().order_by('-date').values(
+            'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max', 'category')),
+        'vitals': list(VitalSign.objects.all().order_by('-date').values(
+            'date', 'systolic', 'diastolic', 'heart_rate', 'temperature',
+            'respiratory_rate', 'oxygen_saturation')),
+        'medications': list(MedicationSchedule.objects.all().order_by('-start_date').values(
+            'medication_name', 'dosage', 'frequency', 'start_date', 'end_date')),
+        'body_composition': list(BodyComposition.objects.all().order_by('-date').values(
+            'date', 'body_fat_percentage', 'lean_mass_kg', 'waist_circumference',
+            'hip_circumference', 'waist_to_hip_ratio')),
+        'sleep_logs': list(SleepLog.objects.all().order_by('-date').values(
+            'date', 'total_sleep_minutes', 'deep_sleep_minutes', 'rem_sleep_minutes',
+            'sleep_quality_rating')),
+    }
+    # Convert date objects to strings for JSON serialization
+    for key in data:
+        for record in data[key]:
+            for field, value in record.items():
+                if hasattr(value, 'isoformat'):
+                    record[field] = value.isoformat()
+    return data
+
+
+def _data_to_xml(data):
+    """Convert health data dictionary to XML string."""
+    root = Element('health_data')
+    root.set('exported_at', timezone.now().isoformat())
+    for section_name, records in data.items():
+        section = SubElement(root, section_name)
+        for record in records:
+            entry = SubElement(section, 'entry')
+            for field, value in record.items():
+                field_elem = SubElement(entry, field)
+                field_elem.text = str(value) if value is not None else ''
+    return tostring(root, encoding='unicode', xml_declaration=False)
+
 
 def data_export_list(request):
     entries = DataExportRequest.objects.all().order_by('-requested_at')
@@ -3044,12 +3203,13 @@ def data_export_list(request):
 def data_export_add(request):
     if request.method == 'POST':
         try:
-            DataExportRequest.objects.create(
-                export_format=request.POST.get('export_format', ''),
-                status=request.POST.get('status', ''),
-                file_path=request.POST.get('file_path', ''),
+            export_format = request.POST.get('export_format', 'json')
+            export_req = DataExportRequest.objects.create(
+                export_format=export_format,
+                status='completed',
+                completed_at=timezone.now(),
             )
-            messages.success(request, 'Data export request added!')
+            messages.success(request, f'Data export ({export_format.upper()}) created! Use the download button to get your data.')
             return redirect('data_export_list')
         except Exception:
             messages.error(request, 'Error adding data export request.')
@@ -3076,6 +3236,23 @@ def data_export_delete(request, pk):
         get_object_or_404(DataExportRequest, id=pk).delete()
         messages.success(request, 'Data export request deleted!')
     return redirect('data_export_list')
+
+
+def data_export_download(request, pk):
+    """Download exported health data in the requested format (JSON or XML)."""
+    export_req = get_object_or_404(DataExportRequest, id=pk)
+    data = _collect_export_data()
+
+    if export_req.export_format == 'xml':
+        xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + _data_to_xml(data)
+        response = HttpResponse(xml_content, content_type='application/xml')
+        response['Content-Disposition'] = f'attachment; filename="health_export_{export_req.pk}.xml"'
+        return response
+    else:
+        json_content = json.dumps(data, indent=2, default=str)
+        response = HttpResponse(json_content, content_type='application/json')
+        response['Content-Disposition'] = f'attachment; filename="health_export_{export_req.pk}.json"'
+        return response
 
 
 # ===== Phase 9: Stakeholder Email =====
@@ -3120,6 +3297,69 @@ def stakeholder_email_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(StakeholderEmail, id=pk).delete()
         messages.success(request, 'Stakeholder email deleted!')
+    return redirect('stakeholder_email_list')
+
+
+def _build_health_summary_text():
+    """Build a plain-text health summary for stakeholder emails."""
+    lines = ["Health Summary Report", "=" * 40, ""]
+
+    vitals = VitalSign.objects.all().order_by('-date').first()
+    if vitals:
+        lines.append("Latest Vitals:")
+        if vitals.systolic and vitals.diastolic:
+            lines.append(f"  Blood Pressure: {vitals.systolic}/{vitals.diastolic} mmHg")
+        if vitals.heart_rate:
+            lines.append(f"  Heart Rate: {vitals.heart_rate} bpm")
+        if vitals.temperature:
+            lines.append(f"  Temperature: {vitals.temperature}°F")
+        if vitals.oxygen_saturation:
+            lines.append(f"  Oxygen Saturation: {vitals.oxygen_saturation}%")
+        lines.append("")
+
+    blood_tests = BloodTest.objects.all().order_by('-date')[:5]
+    if blood_tests:
+        lines.append("Recent Lab Results:")
+        for t in blood_tests:
+            status = ""
+            if t.normal_min is not None and t.normal_max is not None:
+                if t.value < t.normal_min or t.value > t.normal_max:
+                    status = " [OUT OF RANGE]"
+            lines.append(f"  {t.test_name}: {t.value} {t.unit}{status}")
+        lines.append("")
+
+    medications = MedicationSchedule.objects.all().order_by('-start_date')
+    if medications:
+        lines.append("Current Medications:")
+        for m in medications:
+            lines.append(f"  {m.medication_name} - {m.dosage} ({m.frequency})")
+        lines.append("")
+
+    lines.append(f"Report generated: {timezone.now().strftime('%Y-%m-%d %H:%M UTC')}")
+    return "\n".join(lines)
+
+
+def stakeholder_email_send(request, pk):
+    """Send a health summary email to a specific stakeholder."""
+    entry = get_object_or_404(StakeholderEmail, id=pk)
+    if not entry.is_active:
+        messages.error(request, 'This stakeholder email is not active.')
+        return redirect('stakeholder_email_list')
+
+    summary_text = _build_health_summary_text()
+    try:
+        send_mail(
+            subject=f'Health Summary for {entry.recipient_name}',
+            message=summary_text,
+            from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else 'noreply@healthtracker.local',
+            recipient_list=[entry.recipient_email],
+            fail_silently=False,
+        )
+        entry.last_sent = timezone.now()
+        entry.save(update_fields=['last_sent'])
+        messages.success(request, f'Health summary sent to {entry.recipient_email}!')
+    except Exception as e:
+        messages.error(request, f'Error sending email: {e}')
     return redirect('stakeholder_email_list')
 
 

@@ -1,0 +1,87 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shared Health Data</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+</head>
+<body>
+<div class="container my-5">
+  <h2 class="mb-4 text-center">Shared Health Data</h2>
+  <p class="text-muted text-center">This link expires on {{ link.expires_at }}. Access count: {{ link.access_count }}.</p>
+
+  {% if data.blood_tests %}
+  <h4 class="mt-4">Blood Tests</h4>
+  <div class="table-responsive">
+    <table class="table table-striped table-hover">
+      <thead class="table-dark">
+        <tr><th>Test</th><th>Value</th><th>Unit</th><th>Date</th><th>Range</th></tr>
+      </thead>
+      <tbody>
+        {% for t in data.blood_tests %}
+        <tr>
+          <td>{{ t.test_name }}</td>
+          <td>{{ t.value }}</td>
+          <td>{{ t.unit }}</td>
+          <td>{{ t.date }}</td>
+          <td>{% if t.normal_min is not None and t.normal_max is not None %}{{ t.normal_min }} - {{ t.normal_max }}{% else %}-{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if data.vitals %}
+  <h4 class="mt-4">Vital Signs</h4>
+  <div class="table-responsive">
+    <table class="table table-striped table-hover">
+      <thead class="table-dark">
+        <tr><th>Date</th><th>BP</th><th>HR</th><th>Temp</th><th>RR</th><th>SpO2</th></tr>
+      </thead>
+      <tbody>
+        {% for v in data.vitals %}
+        <tr>
+          <td>{{ v.date }}</td>
+          <td>{% if v.systolic and v.diastolic %}{{ v.systolic }}/{{ v.diastolic }}{% else %}-{% endif %}</td>
+          <td>{% if v.heart_rate %}{{ v.heart_rate }}{% else %}-{% endif %}</td>
+          <td>{% if v.temperature %}{{ v.temperature }}{% else %}-{% endif %}</td>
+          <td>{% if v.respiratory_rate %}{{ v.respiratory_rate }}{% else %}-{% endif %}</td>
+          <td>{% if v.oxygen_saturation %}{{ v.oxygen_saturation }}%{% else %}-{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if data.medications %}
+  <h4 class="mt-4">Medications</h4>
+  <div class="table-responsive">
+    <table class="table table-striped table-hover">
+      <thead class="table-dark">
+        <tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Start</th><th>End</th></tr>
+      </thead>
+      <tbody>
+        {% for m in data.medications %}
+        <tr>
+          <td>{{ m.medication_name }}</td>
+          <td>{{ m.dosage }}</td>
+          <td>{{ m.frequency }}</td>
+          <td>{{ m.start_date }}</td>
+          <td>{% if m.end_date %}{{ m.end_date }}{% else %}Ongoing{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if not data.blood_tests and not data.vitals and not data.medications %}
+  <div class="alert alert-info text-center">No health data available for the selected data types.</div>
+  {% endif %}
+</div>
+</body>
+</html>
