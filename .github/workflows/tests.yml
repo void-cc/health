@@ -26,9 +26,28 @@ jobs:
           - name: "Phase 3 - UI & UX"
             tests: "tracker.tests.Phase3DarkModeTests tracker.tests.Phase3NavigationTests tracker.tests.Phase3AccessibilityTests tracker.tests.Phase3QuickEntryTests tracker.tests.Phase3PWATests tracker.tests.Phase3GlobalSearchTests tracker.tests.Phase3MedicalTooltipTests tracker.tests.Phase3VoiceInputTests tracker.tests.Phase3OnboardingTests"
           - name: "Phase 4 - Authentication"
-            tests: "tracker.tests.Phase4RegistrationTests tracker.tests.Phase4LoginTests tracker.tests.Phase4LogoutTests tracker.tests.Phase4ProfileTests tracker.tests.Phase4PasswordChangeTests tracker.tests.Phase4SecurityLogTests tracker.tests.Phase4SessionManagementTests tracker.tests.Phase4PrivacyPreferencesTests tracker.tests.Phase4AccountDeletionTests tracker.tests.Phase4MFATests tracker.tests.Phase4ModelTests tracker.tests.Phase4ProtectedViewTests tracker.tests.Phase4SidebarTests"
+            tests: "tracker.tests.Phase4RegistrationTests tracker.tests.Phase4LoginTests tracker.tests.Phase4LogoutTests tracker.tests.Phase4ProfileTests tracker.tests.Phase4PasswordChangeTests tracker.tests.Phase4SecurityLogTests tracker.tests.Phase4SessionManagementTests tracker.tests.Phase4PrivacyPreferencesTests tracker.tests.Phase4AccountDeletionTests tracker.tests.Phase4MFATests tracker.tests.Phase4ModelTests tracker.tests.Phase4ProtectedViewTests tracker.tests.Phase4SidebarTests tracker.tests.DynamicSidebarTests"
           - name: "Phases 5-12 - Advanced Features"
-            tests: "tracker.tests.Phase5ModelTests tracker.tests.Phase6ModelTests tracker.tests.Phase7ModelTests tracker.tests.Phase8ModelTests tracker.tests.Phase9ModelTests tracker.tests.Phase10_12ModelTests tracker.tests.Phase5To12StatusCodeTests tracker.tests.Phase5To12CRUDTests"
+            tests: >-
+              tracker.tests.Phase5ModelTests tracker.tests.Phase5IntegrationRegistryTests
+              tracker.tests.Phase5OAuthClientTests tracker.tests.Phase5IntegrationViewTests
+              tracker.tests.Phase5SyncDataTests tracker.tests.Phase6ModelTests
+              tracker.tests.Phase7ModelTests tracker.tests.Phase8ModelTests
+              tracker.tests.Phase9ModelTests tracker.tests.Phase10_12ModelTests
+              tracker.tests.Phase5To12StatusCodeTests tracker.tests.Phase5To12CRUDTests
+              tracker.tests.Phase11DashboardTests tracker.tests.Phase11SubTaskModelTests
+              tracker.tests.Phase9SecureViewingLinkTests tracker.tests.Phase9PractitionerPortalTests
+              tracker.tests.Phase9IntakeSummaryGenerateTests tracker.tests.Phase9DataExportTests
+              tracker.tests.Phase9StakeholderEmailTests tracker.tests.SleepLogAutoScoreTests
+              tracker.tests.MacronutrientLogAutoCalcTests tracker.tests.FastingLogAutoCalcTests
+              tracker.tests.MetabolicLogHomaIRTests tracker.tests.HealthGoalAutoCompleteTests
+              tracker.tests.MedicationScheduleOverdueTests tracker.tests.CriticalAlertAutoCheckTests
+              tracker.tests.WearableSyncTests tracker.tests.HealthReportGenerateTests
+              tracker.tests.PredictiveBiomarkerGenerateTests tracker.tests.BiologicalAgeEstimateTests
+              tracker.tests.IntegrationConfigActivateTests tracker.tests.SleepListEnhancedTests
+              tracker.tests.HydrationListEnhancedTests tracker.tests.BodyCompositionListEnhancedTests
+              tracker.tests.MedicationScheduleListEnhancedTests tracker.tests.HealthGoalListEnhancedTests
+              tracker.tests.MacroListEnhancedTests
 
     steps:
       - uses: actions/checkout@v4
