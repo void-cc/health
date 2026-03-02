@@ -337,7 +337,7 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
-            name='UserProfile',
+            name='MultiUserProfile',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('username', models.CharField(max_length=150, unique=True)),
@@ -345,6 +345,9 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
             ],
+            options={
+                'db_table': 'tracker_multiuserprofile',
+            },
         ),
         migrations.CreateModel(
             name='WearableDevice',
@@ -401,7 +404,7 @@ class Migration(migrations.Migration):
                 ('relationship', models.CharField(blank=True, default='', max_length=100)),
                 ('is_minor', models.BooleanField(default=False)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('primary_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='family_members', to='tracker.userprofile')),
+                ('primary_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='family_members', to='tracker.multiuserprofile')),
             ],
         ),
         migrations.CreateModel(

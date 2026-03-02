@@ -1824,7 +1824,7 @@ from tracker.models import (
     WearableDevice, WearableSyncLog, WEARABLE_PLATFORMS,
     SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
-    UserProfile, FamilyAccount, EncryptionKey, AuditLog,
+    MultiUserProfile, FamilyAccount, EncryptionKey, AuditLog,
     APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
@@ -1923,12 +1923,12 @@ class Phase7ModelTests(TestCase):
     """Test model creation and __str__ for Phase 7 models."""
 
     def test_user_profile_str(self):
-        u = UserProfile.objects.create(username='testuser', role='admin')
+        u = MultiUserProfile.objects.create(username='testuser', role='admin')
         self.assertIn('testuser', str(u))
         self.assertIn('Administrator', str(u))
 
     def test_family_account_str(self):
-        u = UserProfile.objects.create(username='primary', role='user')
+        u = MultiUserProfile.objects.create(username='primary', role='user')
         fa = FamilyAccount.objects.create(primary_user=u, member_name='Child One')
         self.assertIn('Child One', str(fa))
 
@@ -2406,10 +2406,10 @@ class Phase5To12CRUDTests(TestCase):
             'role': 'user',
         })
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(UserProfile.objects.count(), 1)
+        self.assertEqual(MultiUserProfile.objects.count(), 1)
 
     def test_user_profile_edit_post(self):
-        u = UserProfile.objects.create(username='testuser', role='user')
+        u = MultiUserProfile.objects.create(username='testuser', role='user')
         response = self.client.post(reverse('user_profile_edit', kwargs={'pk': u.pk}), {
             'username': 'testuser',
             'role': 'admin',
@@ -2419,10 +2419,10 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(u.role, 'admin')
 
     def test_user_profile_delete_post(self):
-        u = UserProfile.objects.create(username='testuser', role='user')
+        u = MultiUserProfile.objects.create(username='testuser', role='user')
         response = self.client.post(reverse('user_profile_delete', kwargs={'pk': u.pk}))
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(UserProfile.objects.count(), 0)
+        self.assertEqual(MultiUserProfile.objects.count(), 0)
 
     # ----- MedicationSchedule -----
     def test_medication_schedule_add_post(self):

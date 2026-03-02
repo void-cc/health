@@ -14,7 +14,7 @@ from .models import (
     SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
     # Phase 7
-    UserProfile, FamilyAccount, EncryptionKey, AuditLog,
+    MultiUserProfile, FamilyAccount, EncryptionKey, AuditLog,
     APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
     # Phase 8
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
@@ -2290,13 +2290,13 @@ def caffeine_alcohol_delete(request, pk):
 # ===== Phase 7: User Profile =====
 
 def user_profile_list(request):
-    entries = UserProfile.objects.all().order_by('-created_at')
+    entries = MultiUserProfile.objects.all().order_by('-created_at')
     return render(request, 'user_profile_list.html', {'entries': entries})
 
 def user_profile_add(request):
     if request.method == 'POST':
         try:
-            UserProfile.objects.create(
+            MultiUserProfile.objects.create(
                 username=request.POST.get('username', ''),
                 role=request.POST.get('role', ''),
                 is_active=request.POST.get('is_active') == 'on',
@@ -2309,7 +2309,7 @@ def user_profile_add(request):
     return render(request, 'user_profile_form.html', {'editing': False})
 
 def user_profile_edit(request, pk):
-    entry = get_object_or_404(UserProfile, id=pk)
+    entry = get_object_or_404(MultiUserProfile, id=pk)
     if request.method == 'POST':
         try:
             entry.username = request.POST.get('username', '')
@@ -2325,7 +2325,7 @@ def user_profile_edit(request, pk):
 
 def user_profile_delete(request, pk):
     if request.method == 'POST':
-        get_object_or_404(UserProfile, id=pk).delete()
+        get_object_or_404(MultiUserProfile, id=pk).delete()
         messages.success(request, 'User profile deleted!')
     return redirect('user_profile_list')
 
