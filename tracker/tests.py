@@ -4173,7 +4173,7 @@ class WearableSyncTests(TestCase):
         device = WearableDevice.objects.create(
             platform='fitbit', device_name='Charge 5', is_active=True,
         )
-        response = self.client.post(reverse('wearable_device_sync', kwargs={'pk': device.pk}))
+        response = self.client.post(reverse('wearable_sync', kwargs={'pk': device.pk}))
         self.assertEqual(response.status_code, 302)
 
 
