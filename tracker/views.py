@@ -3751,3 +3751,56 @@ def integration_subtask_delete(request, pk):
         get_object_or_404(IntegrationSubTask, id=pk).delete()
         messages.success(request, 'Integration sub-task deleted!')
     return redirect('integration_subtask_list')
+
+
+# ===== Phase 11: Interoperability Dashboard =====
+
+def phase11_dashboard(request):
+    subtasks = IntegrationSubTask.objects.filter(phase=11).order_by('sub_task_number')
+
+    category_filter = request.GET.get('category', '')
+    feature_type_filter = request.GET.get('feature_type', '')
+    status_filter = request.GET.get('status', '')
+
+    if category_filter:
+        subtasks = subtasks.filter(category=category_filter)
+    if feature_type_filter:
+        subtasks = subtasks.filter(feature_type=feature_type_filter)
+    if status_filter:
+        subtasks = subtasks.filter(status=status_filter)
+
+    all_phase11 = IntegrationSubTask.objects.filter(phase=11)
+    total = all_phase11.count()
+    completed = all_phase11.filter(status='completed').count()
+    in_progress = all_phase11.filter(status='in_progress').count()
+    pending = all_phase11.filter(status='pending').count()
+    failed = all_phase11.filter(status='failed').count()
+
+    category_summary = {}
+    for cat_key, cat_label in INTEGRATION_CATEGORIES:
+        cat_tasks = all_phase11.filter(category=cat_key)
+        count = cat_tasks.count()
+        if count > 0:
+            category_summary[cat_label] = {
+                'total': count,
+                'completed': cat_tasks.filter(status='completed').count(),
+                'in_progress': cat_tasks.filter(status='in_progress').count(),
+                'pending': cat_tasks.filter(status='pending').count(),
+            }
+
+    context = {
+        'subtasks': subtasks,
+        'total': total,
+        'completed': completed,
+        'in_progress': in_progress,
+        'pending': pending,
+        'failed': failed,
+        'categories': INTEGRATION_CATEGORIES,
+        'feature_types': INTEGRATION_FEATURE_TYPES,
+        'status_choices': IntegrationSubTask.STATUS_CHOICES,
+        'category_filter': category_filter,
+        'feature_type_filter': feature_type_filter,
+        'status_filter': status_filter,
+        'category_summary': category_summary,
+    }
+    return render(request, 'phase11_dashboard.html', context)

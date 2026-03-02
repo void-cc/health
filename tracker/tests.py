@@ -2947,6 +2947,7 @@ class Phase5To12CRUDTests(TestCase):
 
     # ----- IntegrationSubTask -----
     def test_integration_subtask_add_post(self):
+        count_before = IntegrationSubTask.objects.count()
         response = self.client.post(reverse('integration_subtask_add'), {
             'phase': '10',
             'sub_task_number': '1',
@@ -2956,7 +2957,7 @@ class Phase5To12CRUDTests(TestCase):
             'status': 'pending',
         })
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(IntegrationSubTask.objects.count(), 1)
+        self.assertEqual(IntegrationSubTask.objects.count(), count_before + 1)
 
     def test_integration_subtask_edit_post(self):
         ist = IntegrationSubTask.objects.create(
@@ -2980,8 +2981,138 @@ class Phase5To12CRUDTests(TestCase):
             phase=10, sub_task_number=1, title='Test',
             category='genomics', feature_type='export', status='pending',
         )
+        count_before = IntegrationSubTask.objects.count()
         response = self.client.post(reverse('integration_subtask_delete', kwargs={'pk': ist.pk}))
         self.assertEqual(response.status_code, 302)
+        self.assertEqual(IntegrationSubTask.objects.count(), count_before - 1)
+
+
+class Phase11DashboardTests(TestCase):
+    """Test Phase 11 Interoperability dashboard view."""
+
+    def setUp(self):
+        self.client = Client()
+        IntegrationSubTask.objects.filter(phase=11).delete()
+        IntegrationSubTask.objects.create(
+            phase=11, sub_task_number=91, title='Macronutrients User Dashboard',
+            category='macronutrients', feature_type='user_dashboard', status='pending',
+        )
+        IntegrationSubTask.objects.create(
+            phase=11, sub_task_number=92, title='DICOM Predictive Modeling',
+            category='dicom', feature_type='predictive_modeling', status='in_progress',
+        )
+        IntegrationSubTask.objects.create(
+            phase=11, sub_task_number=99, title='IHE_XDM Predictive Modeling',
+            category='ihe_xdm', feature_type='predictive_modeling', status='completed',
+        )
+        IntegrationSubTask.objects.create(
+            phase=11, sub_task_number=124, title='FHIR R4 Predictive Modeling',
+            category='fhir_r4', feature_type='predictive_modeling', status='pending',
+        )
+        IntegrationSubTask.objects.create(
+            phase=11, sub_task_number=144, title='HL7 v3 Reporting Tools',
+            category='hl7_v3', feature_type='reporting', status='pending',
+        )
+
+    def test_dashboard_status_code(self):
+        response = self.client.get(reverse('phase11_dashboard'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_dashboard_shows_subtasks(self):
+        response = self.client.get(reverse('phase11_dashboard'))
+        self.assertContains(response, 'Macronutrients User Dashboard')
+        self.assertContains(response, 'DICOM Predictive Modeling')
+        self.assertContains(response, 'IHE_XDM Predictive Modeling')
+
+    def test_dashboard_summary_counts(self):
+        response = self.client.get(reverse('phase11_dashboard'))
+        self.assertEqual(response.context['total'], 5)
+        self.assertEqual(response.context['completed'], 1)
+        self.assertEqual(response.context['in_progress'], 1)
+        self.assertEqual(response.context['pending'], 3)
+
+    def test_dashboard_filter_by_category(self):
+        response = self.client.get(reverse('phase11_dashboard'), {'category': 'ihe_xdm'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['subtasks']), 1)
+        self.assertContains(response, 'IHE_XDM Predictive Modeling')
+
+    def test_dashboard_filter_by_feature_type(self):
+        response = self.client.get(reverse('phase11_dashboard'), {'feature_type': 'predictive_modeling'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['subtasks']), 3)
+
+    def test_dashboard_filter_by_status(self):
+        response = self.client.get(reverse('phase11_dashboard'), {'status': 'pending'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['subtasks']), 3)
+
+    def test_dashboard_category_summary(self):
+        response = self.client.get(reverse('phase11_dashboard'))
+        summary = response.context['category_summary']
+        self.assertIn('IHE_XDM', summary)
+        self.assertEqual(summary['IHE_XDM']['total'], 1)
+        self.assertEqual(summary['IHE_XDM']['completed'], 1)
+
+    def test_dashboard_excludes_other_phases(self):
+        IntegrationSubTask.objects.create(
+            phase=10, sub_task_number=1, title='Phase 10 Task',
+            category='genomics', feature_type='export', status='pending',
+        )
+        response = self.client.get(reverse('phase11_dashboard'))
+        self.assertNotContains(response, 'Phase 10 Task')
+        self.assertEqual(response.context['total'], 5)
+
+    def test_dashboard_interoperability_categories(self):
+        response = self.client.get(reverse('phase11_dashboard'))
+        self.assertContains(response, 'Interoperability')
+        self.assertContains(response, 'IHE_XDM')
+        self.assertContains(response, 'FHIR R4')
+        self.assertContains(response, 'HL7 v3')
+
+
+class Phase11SubTaskModelTests(TestCase):
+    """Test Phase 11 IntegrationSubTask model with interoperability-specific data."""
+
+    def setUp(self):
+        IntegrationSubTask.objects.filter(phase=11).delete()
+
+    def test_phase11_subtask_creation(self):
+        ist = IntegrationSubTask.objects.create(
+            phase=11, sub_task_number=104, title='IHE_XDM Data Pipeline',
+            category='ihe_xdm', feature_type='data_pipeline', status='pending',
+        )
+        self.assertEqual(str(ist), 'Phase 11 Sub-task 104: IHE_XDM Data Pipeline')
+        self.assertEqual(ist.phase, 11)
+        self.assertEqual(ist.category, 'ihe_xdm')
+        self.assertEqual(ist.feature_type, 'data_pipeline')
+
+    def test_phase11_subtask_unique_constraint(self):
+        IntegrationSubTask.objects.create(
+            phase=11, sub_task_number=91, title='Task A',
+            category='macronutrients', feature_type='user_dashboard', status='pending',
+        )
+        from django.db import IntegrityError
+        with self.assertRaises(IntegrityError):
+            IntegrationSubTask.objects.create(
+                phase=11, sub_task_number=91, title='Task B',
+                category='dicom', feature_type='export', status='pending',
+            )
+
+    def test_phase11_subtask_status_transitions(self):
+        ist = IntegrationSubTask.objects.create(
+            phase=11, sub_task_number=156, title='IHE_XDM Api Syncing',
+            category='ihe_xdm', feature_type='api_syncing', status='pending',
+        )
+        ist.status = 'in_progress'
+        ist.save()
+        ist.refresh_from_db()
+        self.assertEqual(ist.status, 'in_progress')
+
+        ist.status = 'completed'
+        ist.save()
+        ist.refresh_from_db()
+        self.assertEqual(ist.status, 'completed')
         self.assertEqual(IntegrationSubTask.objects.count(), 0)
 
 
