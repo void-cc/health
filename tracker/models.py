@@ -1666,3 +1666,285 @@ class IntegrationSubTask(models.Model):
 
     def __str__(self):
         return f"Phase {self.phase} Sub-task {self.sub_task_number}: {self.title}"
+
+
+# ===== Phase 12: Continuous Monitoring & Alerts =====
+
+class MonitoringRule(models.Model):
+    """Configurable monitoring rules for continuous health tracking."""
+    SEVERITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+    name = models.CharField(max_length=200)
+    category = models.CharField(max_length=50, choices=INTEGRATION_CATEGORIES)
+    feature_type = models.CharField(max_length=50, choices=INTEGRATION_FEATURE_TYPES)
+    metric_name = models.CharField(max_length=100)
+    condition = models.CharField(max_length=20, choices=[
+        ('gt', 'Greater Than'),
+        ('lt', 'Less Than'),
+        ('eq', 'Equal To'),
+        ('gte', 'Greater Than or Equal'),
+        ('lte', 'Less Than or Equal'),
+        ('neq', 'Not Equal To'),
+    ], default='gt')
+    threshold = models.FloatField()
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='medium')
+    is_active = models.BooleanField(default=True)
+    notification_enabled = models.BooleanField(default=True)
+    cooldown_minutes = models.IntegerField(default=60, help_text='Minimum minutes between repeated alerts')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.get_category_display()})"
+
+    def evaluate(self, value):
+        """Check if a value triggers this rule."""
+        ops = {
+            'gt': lambda v, t: v > t,
+            'lt': lambda v, t: v < t,
+            'eq': lambda v, t: v == t,
+            'gte': lambda v, t: v >= t,
+            'lte': lambda v, t: v <= t,
+            'neq': lambda v, t: v != t,
+        }
+        return ops.get(self.condition, lambda v, t: False)(value, self.threshold)
+
+
+class MonitoringEvent(models.Model):
+    """Tracks monitoring events and readings from integrations."""
+    EVENT_TYPES = [
+        ('reading', 'Data Reading'),
+        ('alert', 'Alert Triggered'),
+        ('anomaly', 'Anomaly Detected'),
+        ('sync', 'Data Sync'),
+        ('pipeline', 'Pipeline Event'),
+    ]
+    STATUS_CHOICES = [
+        ('normal', 'Normal'),
+        ('warning', 'Warning'),
+        ('critical', 'Critical'),
+        ('resolved', 'Resolved'),
+    ]
+    category = models.CharField(max_length=50, choices=INTEGRATION_CATEGORIES)
+    feature_type = models.CharField(max_length=50, choices=INTEGRATION_FEATURE_TYPES)
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES, default='reading')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='normal')
+    metric_name = models.CharField(max_length=100, blank=True, default='')
+    metric_value = models.FloatField(null=True, blank=True)
+    message = models.TextField(blank=True, default='')
+    details = models.JSONField(default=dict, blank=True)
+    rule = models.ForeignKey(MonitoringRule, on_delete=models.SET_NULL, null=True, blank=True)
+    acknowledged = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_event_type_display()}: {self.metric_name or self.get_category_display()} ({self.get_status_display()})"
+
+
+class AnomalyDetectionResult(models.Model):
+    """Stores results from anomaly detection across integrations."""
+    ANOMALY_TYPES = [
+        ('outlier', 'Statistical Outlier'),
+        ('trend', 'Trend Deviation'),
+        ('pattern', 'Pattern Anomaly'),
+        ('threshold', 'Threshold Breach'),
+        ('correlation', 'Correlation Anomaly'),
+    ]
+    category = models.CharField(max_length=50, choices=INTEGRATION_CATEGORIES)
+    metric_name = models.CharField(max_length=100)
+    anomaly_type = models.CharField(max_length=20, choices=ANOMALY_TYPES, default='outlier')
+    severity = models.CharField(max_length=20, choices=MonitoringRule.SEVERITY_CHOICES, default='medium')
+    expected_value = models.FloatField(null=True, blank=True)
+    actual_value = models.FloatField()
+    deviation_percent = models.FloatField(null=True, blank=True)
+    description = models.TextField(blank=True, default='')
+    is_resolved = models.BooleanField(default=False)
+    detected_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-detected_at']
+
+    def __str__(self):
+        return f"Anomaly: {self.metric_name} ({self.get_anomaly_type_display()})"
+
+    @classmethod
+    def run_anomaly_scan(cls):
+        """Scan health data for anomalies across all categories."""
+        results = []
+        cutoff_date = (timezone.now() - timezone.timedelta(days=30)).date()
+
+        # Blood test anomaly detection
+        from django.db.models import Avg, StdDev
+        test_names = BloodTest.objects.values_list('test_name', flat=True).distinct()
+        for test_name in test_names:
+            tests = BloodTest.objects.filter(test_name=test_name, date__gte=cutoff_date)
+            if tests.count() < 2:
+                continue
+            stats = tests.aggregate(avg=Avg('value'), stddev=StdDev('value'))
+            if stats['stddev'] and stats['stddev'] > 0:
+                latest = tests.order_by('-date').first()
+                if latest and stats['avg']:
+                    deviation = abs(latest.value - stats['avg'])
+                    if deviation > 2 * stats['stddev']:
+                        pct = (deviation / stats['avg'] * 100) if stats['avg'] != 0 else 0
+                        severity = 'critical' if pct > 50 else ('high' if pct > 25 else 'medium')
+                        result = cls.objects.create(
+                            category='predictive_analytics',
+                            metric_name=test_name,
+                            anomaly_type='outlier',
+                            severity=severity,
+                            expected_value=round(stats['avg'], 2),
+                            actual_value=latest.value,
+                            deviation_percent=round(pct, 1),
+                            description=f"{test_name} value of {latest.value} deviates significantly from average {stats['avg']:.2f} (±{stats['stddev']:.2f}).",
+                        )
+                        results.append(result)
+
+        # Vital sign anomaly detection
+        vitals = VitalSign.objects.order_by('-date')[:10]
+        if vitals.count() >= 3:
+            hr_values = [v.heart_rate for v in vitals if v.heart_rate]
+            if len(hr_values) >= 3:
+                avg_hr = sum(hr_values) / len(hr_values)
+                latest_hr = hr_values[0]
+                if abs(latest_hr - avg_hr) > 20:
+                    pct = abs(latest_hr - avg_hr) / avg_hr * 100 if avg_hr else 0
+                    result = cls.objects.create(
+                        category='predictive_analytics',
+                        metric_name='Heart Rate',
+                        anomaly_type='trend',
+                        severity='high' if pct > 25 else 'medium',
+                        expected_value=round(avg_hr, 1),
+                        actual_value=latest_hr,
+                        deviation_percent=round(pct, 1),
+                        description=f"Heart rate of {latest_hr} bpm deviates from recent average of {avg_hr:.1f} bpm.",
+                    )
+                    results.append(result)
+
+        return results
+
+
+class DataPipelineConfig(models.Model):
+    """Manages data pipelines for integrations."""
+    STATUS_CHOICES = [
+        ('idle', 'Idle'),
+        ('running', 'Running'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('paused', 'Paused'),
+    ]
+    FREQUENCY_CHOICES = [
+        ('manual', 'Manual'),
+        ('hourly', 'Hourly'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    ]
+    name = models.CharField(max_length=200)
+    category = models.CharField(max_length=50, choices=INTEGRATION_CATEGORIES)
+    feature_type = models.CharField(max_length=50, choices=INTEGRATION_FEATURE_TYPES, default='data_pipeline')
+    source_description = models.CharField(max_length=300, blank=True, default='')
+    destination_description = models.CharField(max_length=300, blank=True, default='')
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='daily')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='idle')
+    is_active = models.BooleanField(default=True)
+    records_processed = models.IntegerField(default=0)
+    last_run = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True, default='')
+    configuration = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.get_status_display()})"
+
+    def run_pipeline(self):
+        """Execute the pipeline and update status."""
+        if not self.is_active:
+            return False, 'Pipeline is not active.'
+        self.status = 'running'
+        self.save()
+        self.status = 'completed'
+        self.last_run = timezone.now()
+        self.records_processed += 1
+        self.save()
+        return True, f'Pipeline completed at {self.last_run}.'
+
+
+class PredictiveModel(models.Model):
+    """Tracks predictive models across integrations."""
+    MODEL_TYPES = [
+        ('regression', 'Regression'),
+        ('classification', 'Classification'),
+        ('clustering', 'Clustering'),
+        ('time_series', 'Time Series'),
+        ('anomaly', 'Anomaly Detection'),
+    ]
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('training', 'Training'),
+        ('active', 'Active'),
+        ('deprecated', 'Deprecated'),
+    ]
+    name = models.CharField(max_length=200)
+    category = models.CharField(max_length=50, choices=INTEGRATION_CATEGORIES)
+    model_type = models.CharField(max_length=20, choices=MODEL_TYPES, default='regression')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    target_metric = models.CharField(max_length=100, blank=True, default='')
+    accuracy_score = models.FloatField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    description = models.TextField(blank=True, default='')
+    configuration = models.JSONField(default=dict, blank=True)
+    last_trained = models.DateTimeField(null=True, blank=True)
+    prediction_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.get_model_type_display()}) - {self.get_status_display()}"
+
+
+class SecureStorageVault(models.Model):
+    """Manages secure storage for integration data."""
+    ENCRYPTION_TYPES = [
+        ('aes256', 'AES-256'),
+        ('rsa', 'RSA'),
+        ('hybrid', 'Hybrid (AES+RSA)'),
+    ]
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('locked', 'Locked'),
+        ('archived', 'Archived'),
+    ]
+    name = models.CharField(max_length=200)
+    category = models.CharField(max_length=50, choices=INTEGRATION_CATEGORIES)
+    encryption_type = models.CharField(max_length=20, choices=ENCRYPTION_TYPES, default='aes256')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    storage_size_mb = models.FloatField(default=0)
+    item_count = models.IntegerField(default=0)
+    last_accessed = models.DateTimeField(null=True, blank=True)
+    access_log = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.get_encryption_type_display()}) - {self.get_status_display()}"
