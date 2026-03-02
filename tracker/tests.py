@@ -1824,7 +1824,7 @@ from tracker.models import (
     WearableDevice, WearableSyncLog, WEARABLE_PLATFORMS,
     SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
-    UserAccount, FamilyAccount, EncryptionKey, AuditLog,
+    UserProfile, FamilyAccount, EncryptionKey, AuditLog,
     APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
@@ -1922,14 +1922,16 @@ class Phase6ModelTests(TestCase):
 class Phase7ModelTests(TestCase):
     """Test model creation and __str__ for Phase 7 models."""
 
-    def test_user_account_str(self):
-        u = UserAccount.objects.create(username='testuser', role='admin')
-        self.assertIn('testuser', str(u))
-        self.assertIn('Administrator', str(u))
+    def test_user_profile_role(self):
+        user = User.objects.create_user(username='testuser', password='pass')
+        p = UserProfile.objects.create(user=user, role='admin')
+        self.assertIn('testuser', str(p))
+        self.assertEqual(p.role, 'admin')
 
     def test_family_account_str(self):
-        u = UserAccount.objects.create(username='primary', role='user')
-        fa = FamilyAccount.objects.create(primary_user=u, member_name='Child One')
+        user = User.objects.create_user(username='primary', password='pass')
+        p = UserProfile.objects.create(user=user, role='user')
+        fa = FamilyAccount.objects.create(primary_user=p, member_name='Child One')
         self.assertIn('Child One', str(fa))
 
     def test_encryption_key_str(self):
@@ -2399,30 +2401,32 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(FoodEntry.objects.count(), 0)
 
-    # ----- UserAccount -----
+    # ----- UserProfile (Phase 7) -----
     def test_user_profile_add_post(self):
         response = self.client.post(reverse('user_profile_add'), {
-            'username': 'testuser',
+            'username': 'newuser',
             'role': 'user',
         })
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(UserAccount.objects.count(), 1)
+        self.assertEqual(UserProfile.objects.filter(role='user', user__username='newuser').count(), 1)
 
     def test_user_profile_edit_post(self):
-        u = UserAccount.objects.create(username='testuser', role='user')
-        response = self.client.post(reverse('user_profile_edit', kwargs={'pk': u.pk}), {
+        user = User.objects.create_user(username='testuser', password='pass')
+        p = UserProfile.objects.create(user=user, role='user')
+        response = self.client.post(reverse('user_profile_edit', kwargs={'pk': p.pk}), {
             'username': 'testuser',
             'role': 'admin',
         })
         self.assertEqual(response.status_code, 302)
-        u.refresh_from_db()
-        self.assertEqual(u.role, 'admin')
+        p.refresh_from_db()
+        self.assertEqual(p.role, 'admin')
 
     def test_user_profile_delete_post(self):
-        u = UserAccount.objects.create(username='testuser', role='user')
-        response = self.client.post(reverse('user_profile_delete', kwargs={'pk': u.pk}))
+        user = User.objects.create_user(username='testuser', password='pass')
+        p = UserProfile.objects.create(user=user, role='user')
+        response = self.client.post(reverse('user_profile_delete', kwargs={'pk': p.pk}))
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(UserAccount.objects.count(), 0)
+        self.assertEqual(UserProfile.objects.filter(user__username='testuser').count(), 0)
 
     # ----- MedicationSchedule -----
     def test_medication_schedule_add_post(self):

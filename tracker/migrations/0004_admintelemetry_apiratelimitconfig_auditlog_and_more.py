@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('tracker', '0003_merge_20260301_2102'),
+        ('tracker', '0004_privacypreference_securitylog_userprofile_and_more'),
     ]
 
     operations = [
@@ -337,16 +338,6 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
-            name='UserAccount',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('username', models.CharField(max_length=150, unique=True)),
-                ('role', models.CharField(choices=[('admin', 'Administrator'), ('user', 'Standard User'), ('practitioner', 'Medical Practitioner')], default='user', max_length=20)),
-                ('is_active', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-            ],
-        ),
-        migrations.CreateModel(
             name='WearableDevice',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -401,7 +392,7 @@ class Migration(migrations.Migration):
                 ('relationship', models.CharField(blank=True, default='', max_length=100)),
                 ('is_minor', models.BooleanField(default=False)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('primary_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='family_members', to='tracker.useraccount')),
+                ('primary_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='family_members', to='tracker.userprofile')),
             ],
         ),
         migrations.CreateModel(

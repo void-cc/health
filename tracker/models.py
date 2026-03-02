@@ -316,6 +316,11 @@ class UserProfile(models.Model):
         ('dark', 'Dark'),
         ('system', 'System'),
     ]
+    ROLE_CHOICES = [
+        ('admin', 'Administrator'),
+        ('user', 'Standard User'),
+        ('practitioner', 'Medical Practitioner'),
+    ]
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     date_of_birth = models.DateField(null=True, blank=True)
     biological_sex = models.CharField(max_length=20, choices=BIOLOGICAL_SEX_CHOICES, blank=True, default='')
@@ -323,6 +328,7 @@ class UserProfile(models.Model):
     genetic_baseline_info = models.TextField(blank=True, default='')
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     theme_preference = models.CharField(max_length=20, choices=THEME_CHOICES, default='system')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -566,30 +572,15 @@ class CaffeineAlcoholLog(models.Model):
 
 # ===== Phase 7: Multi-User Release Preparations =====
 
-class UserAccount(models.Model):
-    ROLE_CHOICES = [
-        ('admin', 'Administrator'),
-        ('user', 'Standard User'),
-        ('practitioner', 'Medical Practitioner'),
-    ]
-    username = models.CharField(max_length=150, unique=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.username} ({self.get_role_display()})"
-
-
 class FamilyAccount(models.Model):
-    primary_user = models.ForeignKey(UserAccount, on_delete=models.CASCADE, related_name='family_members')
+    primary_user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='family_members')
     member_name = models.CharField(max_length=200)
     relationship = models.CharField(max_length=100, blank=True, default='')
     is_minor = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.member_name} (under {self.primary_user.username})"
+        return f"{self.member_name} (under {self.primary_user.user.username})"
 
 
 class EncryptionKey(models.Model):
