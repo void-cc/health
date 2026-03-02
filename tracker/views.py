@@ -3117,7 +3117,7 @@ def health_goal_list(request):
     stats = {
         'total': all_goals.count(),
         'completed': all_goals.filter(status='completed').count(),
-        'in_progress': all_goals.filter(status='in_progress').count(),
+        'in_progress': all_goals.filter(status='active').count(),
         'paused': all_goals.filter(status='paused').count(),
     }
     stats['completion_rate'] = round((stats['completed'] / stats['total']) * 100, 1) if stats['total'] > 0 else 0

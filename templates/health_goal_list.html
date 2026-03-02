@@ -53,7 +53,7 @@
     <label for="statusFilter" class="form-label small mb-0">Status</label>
     <select class="form-select form-select-sm" id="statusFilter" name="status">
       <option value="">All</option>
-      <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
+      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
       <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
       <option value="paused" {% if status_filter == 'paused' %}selected{% endif %}>Paused</option>
     </select>
