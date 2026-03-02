@@ -643,6 +643,59 @@ class AdminTelemetry(models.Model):
         return f"{self.metric_name}: {self.metric_value}"
 
 
+class AnonymizedDataReport(models.Model):
+    REPORT_TYPE_CHOICES = [
+        ('population_health', 'Population Health'),
+        ('trend_analysis', 'Trend Analysis'),
+        ('aggregate_stats', 'Aggregate Statistics'),
+    ]
+    report_title = models.CharField(max_length=200)
+    report_type = models.CharField(max_length=50, choices=REPORT_TYPE_CHOICES)
+    total_records = models.IntegerField(default=0)
+    anonymization_method = models.CharField(max_length=100, blank=True, default='')
+    generated_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return f"Anonymized Report: {self.report_title}"
+
+
+class DatabaseScalingConfig(models.Model):
+    SCALING_TYPE_CHOICES = [
+        ('read_replica', 'Read Replica'),
+        ('sharding', 'Data Sharding'),
+        ('partitioning', 'Table Partitioning'),
+    ]
+    config_name = models.CharField(max_length=200, unique=True)
+    scaling_type = models.CharField(max_length=50, choices=SCALING_TYPE_CHOICES)
+    is_active = models.BooleanField(default=False)
+    max_connections = models.IntegerField(default=100)
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"DB Scaling: {self.config_name} ({self.get_scaling_type_display()})"
+
+
+class BackupConfiguration(models.Model):
+    FREQUENCY_CHOICES = [
+        ('hourly', 'Hourly'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    ]
+    backup_name = models.CharField(max_length=200)
+    frequency = models.CharField(max_length=50, choices=FREQUENCY_CHOICES)
+    retention_days = models.IntegerField(default=30, validators=[MinValueValidator(1)])
+    is_active = models.BooleanField(default=True)
+    last_backup_at = models.DateTimeField(null=True, blank=True)
+    storage_location = models.CharField(max_length=500, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Backup: {self.backup_name} ({self.get_frequency_display()})"
+
+
 # ===== Phase 8: Advanced Health Analytics and AI =====
 
 class PredictiveBiomarker(models.Model):

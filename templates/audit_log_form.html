@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Audit Log</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="action" class="form-label">Action:</label>
+      <input type="text" class="form-control" name="action" id="action" value="{% if editing and entry.action %}{{ entry.action }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="details" class="form-label">Details:</label>
+      <textarea class="form-control" name="details" id="details" rows="3">{% if editing and entry.details %}{{ entry.details }}{% endif %}</textarea>
+    </div>
+    <div class="mb-3">
+      <label for="ip_address" class="form-label">IP Address:</label>
+      <input type="text" class="form-control" name="ip_address" id="ip_address" value="{% if editing and entry.ip_address %}{{ entry.ip_address }}{% endif %}" />
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'audit_log_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

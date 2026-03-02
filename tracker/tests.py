@@ -1826,6 +1826,7 @@ from tracker.models import (
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
     UserProfile, FamilyAccount, EncryptionKey, AuditLog,
     APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
+    AnonymizedDataReport, DatabaseScalingConfig, BackupConfiguration,
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
     HealthGoal, CriticalAlert,
@@ -1953,6 +1954,32 @@ class Phase7ModelTests(TestCase):
     def test_api_rate_limit_str(self):
         ar = APIRateLimitConfig.objects.create(endpoint='/api/v1/data')
         self.assertIn('/api/v1/data', str(ar))
+
+    def test_anonymized_data_report_str(self):
+        adr = AnonymizedDataReport.objects.create(
+            report_title='Q1 Health Stats', report_type='population_health',
+        )
+        self.assertIn('Q1 Health Stats', str(adr))
+
+    def test_database_scaling_config_str(self):
+        dsc = DatabaseScalingConfig.objects.create(
+            config_name='Primary Replica', scaling_type='read_replica',
+        )
+        s = str(dsc)
+        self.assertIn('Primary Replica', s)
+        self.assertIn('Read Replica', s)
+
+    def test_backup_configuration_str(self):
+        bc = BackupConfiguration.objects.create(
+            backup_name='Nightly DB Backup', frequency='daily',
+        )
+        s = str(bc)
+        self.assertIn('Nightly DB Backup', s)
+        self.assertIn('Daily', s)
+
+    def test_audit_log_str(self):
+        al = AuditLog.objects.create(action='user_login')
+        self.assertIn('user_login', str(al))
 
 
 class Phase8ModelTests(TestCase):
@@ -2169,6 +2196,36 @@ class Phase5To12StatusCodeTests(TestCase):
 
     def test_api_rate_limit_add(self):
         self.assertEqual(self.client.get(reverse('api_rate_limit_add')).status_code, 200)
+
+    def test_encryption_key_list(self):
+        self.assertEqual(self.client.get(reverse('encryption_key_list')).status_code, 200)
+
+    def test_encryption_key_add(self):
+        self.assertEqual(self.client.get(reverse('encryption_key_add')).status_code, 200)
+
+    def test_audit_log_list(self):
+        self.assertEqual(self.client.get(reverse('audit_log_list')).status_code, 200)
+
+    def test_audit_log_add(self):
+        self.assertEqual(self.client.get(reverse('audit_log_add')).status_code, 200)
+
+    def test_anonymized_data_list(self):
+        self.assertEqual(self.client.get(reverse('anonymized_data_list')).status_code, 200)
+
+    def test_anonymized_data_add(self):
+        self.assertEqual(self.client.get(reverse('anonymized_data_add')).status_code, 200)
+
+    def test_database_scaling_list(self):
+        self.assertEqual(self.client.get(reverse('database_scaling_list')).status_code, 200)
+
+    def test_database_scaling_add(self):
+        self.assertEqual(self.client.get(reverse('database_scaling_add')).status_code, 200)
+
+    def test_backup_config_list(self):
+        self.assertEqual(self.client.get(reverse('backup_config_list')).status_code, 200)
+
+    def test_backup_config_add(self):
+        self.assertEqual(self.client.get(reverse('backup_config_add')).status_code, 200)
 
     # Phase 8
     def test_medication_schedule_list(self):
@@ -2427,6 +2484,154 @@ class Phase5To12CRUDTests(TestCase):
         response = self.client.post(reverse('user_profile_delete', kwargs={'pk': p.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(UserProfile.objects.filter(user__username='testuser').count(), 0)
+
+    # ----- EncryptionKey (Phase 7) -----
+    def test_encryption_key_add_post(self):
+        response = self.client.post(reverse('encryption_key_add'), {
+            'key_identifier': 'key-test-001',
+            'public_key': 'test-public-key-data',
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(EncryptionKey.objects.count(), 1)
+
+    def test_encryption_key_edit_post(self):
+        ek = EncryptionKey.objects.create(key_identifier='key-001', public_key='data')
+        response = self.client.post(reverse('encryption_key_edit', kwargs={'pk': ek.pk}), {
+            'key_identifier': 'key-002',
+            'public_key': 'updated-data',
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        ek.refresh_from_db()
+        self.assertEqual(ek.key_identifier, 'key-002')
+
+    def test_encryption_key_delete_post(self):
+        ek = EncryptionKey.objects.create(key_identifier='key-001', public_key='data')
+        response = self.client.post(reverse('encryption_key_delete', kwargs={'pk': ek.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(EncryptionKey.objects.count(), 0)
+
+    # ----- AuditLog (Phase 7) -----
+    def test_audit_log_add_post(self):
+        response = self.client.post(reverse('audit_log_add'), {
+            'action': 'user_login',
+            'details': 'User logged in successfully',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AuditLog.objects.count(), 1)
+
+    def test_audit_log_edit_post(self):
+        al = AuditLog.objects.create(action='user_login', details='test')
+        response = self.client.post(reverse('audit_log_edit', kwargs={'pk': al.pk}), {
+            'action': 'user_logout',
+            'details': 'updated',
+        })
+        self.assertEqual(response.status_code, 302)
+        al.refresh_from_db()
+        self.assertEqual(al.action, 'user_logout')
+
+    def test_audit_log_delete_post(self):
+        al = AuditLog.objects.create(action='user_login')
+        response = self.client.post(reverse('audit_log_delete', kwargs={'pk': al.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AuditLog.objects.count(), 0)
+
+    # ----- AnonymizedDataReport (Phase 7) -----
+    def test_anonymized_data_add_post(self):
+        response = self.client.post(reverse('anonymized_data_add'), {
+            'report_title': 'Q1 Stats',
+            'report_type': 'population_health',
+            'total_records': '1000',
+            'anonymization_method': 'k-anonymity',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AnonymizedDataReport.objects.count(), 1)
+
+    def test_anonymized_data_edit_post(self):
+        adr = AnonymizedDataReport.objects.create(
+            report_title='Q1 Stats', report_type='population_health', total_records=1000,
+        )
+        response = self.client.post(reverse('anonymized_data_edit', kwargs={'pk': adr.pk}), {
+            'report_title': 'Q2 Stats',
+            'report_type': 'trend_analysis',
+            'total_records': '2000',
+        })
+        self.assertEqual(response.status_code, 302)
+        adr.refresh_from_db()
+        self.assertEqual(adr.report_title, 'Q2 Stats')
+
+    def test_anonymized_data_delete_post(self):
+        adr = AnonymizedDataReport.objects.create(
+            report_title='Q1 Stats', report_type='population_health',
+        )
+        response = self.client.post(reverse('anonymized_data_delete', kwargs={'pk': adr.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AnonymizedDataReport.objects.count(), 0)
+
+    # ----- DatabaseScalingConfig (Phase 7) -----
+    def test_database_scaling_add_post(self):
+        response = self.client.post(reverse('database_scaling_add'), {
+            'config_name': 'Primary Replica',
+            'scaling_type': 'read_replica',
+            'max_connections': '200',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DatabaseScalingConfig.objects.count(), 1)
+
+    def test_database_scaling_edit_post(self):
+        dsc = DatabaseScalingConfig.objects.create(
+            config_name='Primary Replica', scaling_type='read_replica',
+        )
+        response = self.client.post(reverse('database_scaling_edit', kwargs={'pk': dsc.pk}), {
+            'config_name': 'Shard Config',
+            'scaling_type': 'sharding',
+            'max_connections': '500',
+        })
+        self.assertEqual(response.status_code, 302)
+        dsc.refresh_from_db()
+        self.assertEqual(dsc.config_name, 'Shard Config')
+
+    def test_database_scaling_delete_post(self):
+        dsc = DatabaseScalingConfig.objects.create(
+            config_name='Primary Replica', scaling_type='read_replica',
+        )
+        response = self.client.post(reverse('database_scaling_delete', kwargs={'pk': dsc.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DatabaseScalingConfig.objects.count(), 0)
+
+    # ----- BackupConfiguration (Phase 7) -----
+    def test_backup_config_add_post(self):
+        response = self.client.post(reverse('backup_config_add'), {
+            'backup_name': 'Nightly Backup',
+            'frequency': 'daily',
+            'retention_days': '30',
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(BackupConfiguration.objects.count(), 1)
+
+    def test_backup_config_edit_post(self):
+        bc = BackupConfiguration.objects.create(
+            backup_name='Nightly Backup', frequency='daily',
+        )
+        response = self.client.post(reverse('backup_config_edit', kwargs={'pk': bc.pk}), {
+            'backup_name': 'Weekly Backup',
+            'frequency': 'weekly',
+            'retention_days': '60',
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        bc.refresh_from_db()
+        self.assertEqual(bc.backup_name, 'Weekly Backup')
+
+    def test_backup_config_delete_post(self):
+        bc = BackupConfiguration.objects.create(
+            backup_name='Nightly Backup', frequency='daily',
+        )
+        response = self.client.post(reverse('backup_config_delete', kwargs={'pk': bc.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(BackupConfiguration.objects.count(), 0)
 
     # ----- MedicationSchedule -----
     def test_medication_schedule_add_post(self):
