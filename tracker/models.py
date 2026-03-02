@@ -1333,15 +1333,16 @@ class CriticalAlert(models.Model):
         """Scan recent health data and auto-generate alerts for out-of-range values.
 
         Checks:
-        - Blood tests outside normal range
-        - Vital signs outside safe ranges
-        - Metabolic readings indicating risk
+        - Blood tests outside normal range (last 30 days)
+        - Vital signs outside safe ranges (most recent)
+        - Metabolic readings indicating risk (most recent)
         Returns list of newly created alerts.
         """
         new_alerts = []
+        cutoff_date = (timezone.now() - timezone.timedelta(days=30)).date()
 
-        # Check blood tests
-        for bt in BloodTest.objects.all():
+        # Check recent blood tests
+        for bt in BloodTest.objects.filter(date__gte=cutoff_date):
             if bt.normal_min is not None and bt.value < bt.normal_min:
                 deviation = bt.normal_min - bt.value
                 threshold = bt.normal_min
