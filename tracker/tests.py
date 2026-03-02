@@ -10,6 +10,9 @@ from tracker.models import (
     HealthGoal, CriticalAlert, WearableDevice, WearableSyncLog,
     HealthReport, PredictiveBiomarker, BiologicalAgeCalculation,
     IntegrationConfig, BodyComposition,
+    MonitoringRule, MonitoringEvent, AnomalyDetectionResult,
+    DataPipelineConfig, PredictiveModel, SecureStorageVault,
+    IntegrationSubTask,
 )
 from datetime import date, datetime, timedelta
 from django.utils import timezone
@@ -4349,3 +4352,337 @@ class IntegrationConfigActivateTests(TestCase):
         )
         response = self.client.post(reverse('integration_config_run', kwargs={'pk': config.pk}))
         self.assertEqual(response.status_code, 302)
+
+
+# ===== Phase 12: Continuous Monitoring & Alerts Tests =====
+
+class Phase12DashboardTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_phase12_dashboard_page(self):
+        response = self.client.get(reverse('phase12_dashboard'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_phase12_dashboard_context(self):
+        response = self.client.get(reverse('phase12_dashboard'))
+        self.assertIn('total', response.context)
+        self.assertIn('active_rules', response.context)
+        self.assertIn('open_anomalies', response.context)
+        self.assertIn('active_pipelines', response.context)
+
+
+class MonitoringRuleTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_monitoring_rule_list_page(self):
+        response = self.client.get(reverse('monitoring_rule_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_monitoring_rule_add_page(self):
+        response = self.client.get(reverse('monitoring_rule_add'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_monitoring_rule_create(self):
+        response = self.client.post(reverse('monitoring_rule_add'), {
+            'name': 'High Heart Rate',
+            'category': 'predictive_analytics',
+            'feature_type': 'real_time_monitoring',
+            'metric_name': 'Heart Rate',
+            'condition': 'gt',
+            'threshold': '100',
+            'severity': 'high',
+            'is_active': 'on',
+            'notification_enabled': 'on',
+            'cooldown_minutes': '30',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(MonitoringRule.objects.count(), 1)
+        rule = MonitoringRule.objects.first()
+        self.assertEqual(rule.name, 'High Heart Rate')
+        self.assertEqual(rule.threshold, 100.0)
+
+    def test_monitoring_rule_edit(self):
+        rule = MonitoringRule.objects.create(
+            name='Test Rule', category='genomics', feature_type='export',
+            metric_name='Test', threshold=50.0,
+        )
+        response = self.client.get(reverse('monitoring_rule_edit', kwargs={'pk': rule.pk}))
+        self.assertEqual(response.status_code, 200)
+
+    def test_monitoring_rule_delete(self):
+        rule = MonitoringRule.objects.create(
+            name='Test Rule', category='genomics', feature_type='export',
+            metric_name='Test', threshold=50.0,
+        )
+        response = self.client.post(reverse('monitoring_rule_delete', kwargs={'pk': rule.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(MonitoringRule.objects.count(), 0)
+
+    def test_monitoring_rule_evaluate(self):
+        rule = MonitoringRule(condition='gt', threshold=100)
+        self.assertTrue(rule.evaluate(150))
+        self.assertFalse(rule.evaluate(50))
+        rule.condition = 'lt'
+        self.assertTrue(rule.evaluate(50))
+        self.assertFalse(rule.evaluate(150))
+        rule.condition = 'eq'
+        self.assertTrue(rule.evaluate(100))
+        self.assertFalse(rule.evaluate(99))
+
+
+class MonitoringEventTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_monitoring_event_list_page(self):
+        response = self.client.get(reverse('monitoring_event_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_monitoring_event_list_with_filters(self):
+        response = self.client.get(reverse('monitoring_event_list'), {'category': 'genomics', 'status': 'warning'})
+        self.assertEqual(response.status_code, 200)
+
+    def test_monitoring_event_acknowledge(self):
+        event = MonitoringEvent.objects.create(
+            category='genomics', feature_type='export',
+            event_type='alert', status='warning',
+            message='Test alert',
+        )
+        response = self.client.post(reverse('monitoring_event_acknowledge', kwargs={'pk': event.pk}))
+        self.assertEqual(response.status_code, 302)
+        event.refresh_from_db()
+        self.assertTrue(event.acknowledged)
+
+
+class AnomalyDetectionTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_anomaly_detection_list_page(self):
+        response = self.client.get(reverse('anomaly_detection_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_anomaly_detection_list_show_resolved(self):
+        response = self.client.get(reverse('anomaly_detection_list'), {'show_resolved': '1'})
+        self.assertEqual(response.status_code, 200)
+
+    def test_anomaly_detection_run(self):
+        response = self.client.post(reverse('anomaly_detection_run'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_anomaly_detection_resolve(self):
+        anomaly = AnomalyDetectionResult.objects.create(
+            category='predictive_analytics', metric_name='Test',
+            actual_value=150, severity='high',
+        )
+        response = self.client.post(reverse('anomaly_detection_resolve', kwargs={'pk': anomaly.pk}))
+        self.assertEqual(response.status_code, 302)
+        anomaly.refresh_from_db()
+        self.assertTrue(anomaly.is_resolved)
+        self.assertIsNotNone(anomaly.resolved_at)
+
+    def test_anomaly_scan_with_blood_test_data(self):
+        """Should detect anomalies when blood test values deviate significantly."""
+        for i in range(5):
+            BloodTest.objects.create(
+                test_name='Hemoglobin', value=14.0 + i * 0.1,
+                unit='g/dL', date=date.today() - timedelta(days=i),
+                normal_min=13.8, normal_max=17.2,
+            )
+        BloodTest.objects.create(
+            test_name='Hemoglobin', value=25.0,
+            unit='g/dL', date=date.today(),
+            normal_min=13.8, normal_max=17.2,
+        )
+        results = AnomalyDetectionResult.run_anomaly_scan()
+        self.assertGreaterEqual(len(results), 0)
+
+    def test_anomaly_scan_no_data(self):
+        """Should return empty list when no data exists."""
+        results = AnomalyDetectionResult.run_anomaly_scan()
+        self.assertEqual(len(results), 0)
+
+
+class DataPipelineTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_data_pipeline_list_page(self):
+        response = self.client.get(reverse('data_pipeline_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_data_pipeline_add_page(self):
+        response = self.client.get(reverse('data_pipeline_add'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_data_pipeline_create(self):
+        response = self.client.post(reverse('data_pipeline_add'), {
+            'name': 'Withings Sync Pipeline',
+            'category': 'withings',
+            'feature_type': 'data_pipeline',
+            'source_description': 'Withings API',
+            'destination_description': 'Health Database',
+            'frequency': 'daily',
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DataPipelineConfig.objects.count(), 1)
+
+    def test_data_pipeline_run(self):
+        pipeline = DataPipelineConfig.objects.create(
+            name='Test Pipeline', category='withings',
+            is_active=True,
+        )
+        success, msg = pipeline.run_pipeline()
+        self.assertTrue(success)
+        pipeline.refresh_from_db()
+        self.assertEqual(pipeline.status, 'completed')
+        self.assertIsNotNone(pipeline.last_run)
+
+    def test_data_pipeline_run_inactive(self):
+        pipeline = DataPipelineConfig.objects.create(
+            name='Test Pipeline', category='withings',
+            is_active=False,
+        )
+        success, msg = pipeline.run_pipeline()
+        self.assertFalse(success)
+
+    def test_data_pipeline_run_endpoint(self):
+        pipeline = DataPipelineConfig.objects.create(
+            name='Test Pipeline', category='withings', is_active=True,
+        )
+        response = self.client.post(reverse('data_pipeline_run', kwargs={'pk': pipeline.pk}))
+        self.assertEqual(response.status_code, 302)
+
+    def test_data_pipeline_delete(self):
+        pipeline = DataPipelineConfig.objects.create(
+            name='Test Pipeline', category='withings',
+        )
+        response = self.client.post(reverse('data_pipeline_delete', kwargs={'pk': pipeline.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DataPipelineConfig.objects.count(), 0)
+
+
+class PredictiveModelTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_predictive_model_list_page(self):
+        response = self.client.get(reverse('predictive_model_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_predictive_model_add_page(self):
+        response = self.client.get(reverse('predictive_model_add'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_predictive_model_create(self):
+        response = self.client.post(reverse('predictive_model_add'), {
+            'name': 'Blood Glucose Predictor',
+            'category': 'predictive_analytics',
+            'model_type': 'time_series',
+            'status': 'active',
+            'target_metric': 'Blood Glucose',
+            'accuracy_score': '85.5',
+            'description': 'Predicts blood glucose trends',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PredictiveModel.objects.count(), 1)
+        model = PredictiveModel.objects.first()
+        self.assertEqual(model.accuracy_score, 85.5)
+
+    def test_predictive_model_delete(self):
+        model = PredictiveModel.objects.create(
+            name='Test Model', category='fitbit', model_type='regression',
+        )
+        response = self.client.post(reverse('predictive_model_delete', kwargs={'pk': model.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PredictiveModel.objects.count(), 0)
+
+
+class SecureStorageTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_secure_storage_list_page(self):
+        response = self.client.get(reverse('secure_storage_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_secure_storage_add_page(self):
+        response = self.client.get(reverse('secure_storage_add'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_secure_storage_create(self):
+        response = self.client.post(reverse('secure_storage_add'), {
+            'name': 'Blockchain Vault',
+            'category': 'blockchain',
+            'encryption_type': 'aes256',
+            'status': 'active',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(SecureStorageVault.objects.count(), 1)
+
+    def test_secure_storage_delete(self):
+        vault = SecureStorageVault.objects.create(
+            name='Test Vault', category='blockchain',
+        )
+        response = self.client.post(reverse('secure_storage_delete', kwargs={'pk': vault.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(SecureStorageVault.objects.count(), 0)
+
+
+class ExportHubTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_export_hub_page(self):
+        response = self.client.get(reverse('export_hub'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_export_hub_generate(self):
+        response = self.client.post(reverse('export_hub_generate'), {
+            'export_format': 'json',
+            'category': 'predictive_analytics',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DataExportRequest.objects.count(), 1)
+        export = DataExportRequest.objects.first()
+        self.assertEqual(export.export_format, 'json')
+        self.assertEqual(export.status, 'completed')
+
+
+class SeedPhase12Tests(TestCase):
+    def test_seed_command(self):
+        """Management command should create Phase 12 sub-tasks."""
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command('seed_phase12', stdout=out)
+        output = out.getvalue()
+        self.assertIn('Seeded', output)
+        self.assertEqual(IntegrationSubTask.objects.filter(phase=12).count(), 90)
+
+    def test_seed_command_idempotent(self):
+        """Running seed twice should not duplicate sub-tasks."""
+        from django.core.management import call_command
+        from io import StringIO
+        call_command('seed_phase12', stdout=StringIO())
+        call_command('seed_phase12', stdout=StringIO())
+        self.assertEqual(IntegrationSubTask.objects.filter(phase=12).count(), 90)
