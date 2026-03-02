@@ -1799,6 +1799,16 @@ def wearable_device_delete(request, pk):
         messages.success(request, 'Wearable device deleted!')
     return redirect('wearable_device_list')
 
+def wearable_device_sync(request, pk):
+    device = get_object_or_404(WearableDevice, id=pk)
+    if request.method == 'POST':
+        sync_log = device.trigger_sync()
+        if sync_log.status == 'success':
+            messages.success(request, f'Sync completed! {sync_log.records_synced} records synced from {device.get_platform_display()}.')
+        else:
+            messages.error(request, f'Sync failed: {sync_log.error_message}')
+    return redirect('wearable_device_list')
+
 def sync_log_list(request):
     entries = WearableSyncLog.objects.all().order_by('-started_at')
     return render(request, 'sync_log_list.html', {'entries': entries})
@@ -2842,7 +2852,8 @@ def backup_config_delete(request, pk):
 
 def medication_schedule_list(request):
     entries = MedicationSchedule.objects.all().order_by('-start_date')
-    return render(request, 'medication_schedule_list.html', {'entries': entries})
+    overdue_count = sum(1 for e in entries if e.is_overdue)
+    return render(request, 'medication_schedule_list.html', {'entries': entries, 'overdue_count': overdue_count})
 
 def medication_schedule_add(request):
     if request.method == 'POST':
@@ -3008,6 +3019,15 @@ def critical_alert_delete(request, pk):
         messages.success(request, 'Critical alert deleted!')
     return redirect('critical_alert_list')
 
+def critical_alert_auto_check(request):
+    if request.method == 'POST':
+        new_alerts = CriticalAlert.check_and_create_alerts()
+        if new_alerts:
+            messages.success(request, f'{len(new_alerts)} new alert(s) generated from health data.')
+        else:
+            messages.info(request, 'No new alerts — all health metrics are within normal range.')
+    return redirect('critical_alert_list')
+
 
 # ===== Phase 8: Health Report =====
 
@@ -3057,6 +3077,20 @@ def health_report_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(HealthReport, id=pk).delete()
         messages.success(request, 'Health report deleted!')
+    return redirect('health_report_list')
+
+def health_report_generate(request):
+    if request.method == 'POST':
+        report_type = request.POST.get('report_type', 'monthly')
+        period_start_str = request.POST.get('period_start', '').strip()
+        period_end_str = request.POST.get('period_end', '').strip()
+        try:
+            period_start = datetime.strptime(period_start_str, '%Y-%m-%d').date()
+            period_end = datetime.strptime(period_end_str, '%Y-%m-%d').date()
+            report = HealthReport.generate_from_data(report_type, period_start, period_end)
+            messages.success(request, f'Health report generated: {report.title}')
+        except Exception:
+            messages.error(request, 'Error generating report. Please provide valid dates.')
     return redirect('health_report_list')
 
 
@@ -3115,6 +3149,19 @@ def biological_age_delete(request, pk):
         messages.success(request, 'Biological age calculation deleted!')
     return redirect('biological_age_list')
 
+def biological_age_estimate(request):
+    if request.method == 'POST':
+        try:
+            chrono_age = float(request.POST.get('chronological_age', '0').strip())
+            calc = BiologicalAgeCalculation.estimate_from_health_data(chrono_age)
+            if calc:
+                messages.success(request, f'Biological age estimated: {calc.biological_age} years (difference: {calc.age_difference:+.1f} years).')
+            else:
+                messages.warning(request, 'Insufficient health data to estimate biological age. Please add vitals, sleep, or metabolic data first.')
+        except Exception:
+            messages.error(request, 'Error estimating biological age.')
+    return redirect('biological_age_list')
+
 
 # ===== Phase 8: Predictive Biomarker =====
 
@@ -3166,6 +3213,21 @@ def predictive_biomarker_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(PredictiveBiomarker, id=pk).delete()
         messages.success(request, 'Predictive biomarker deleted!')
+    return redirect('predictive_biomarker_list')
+
+def predictive_biomarker_generate(request):
+    if request.method == 'POST':
+        biomarker_name = request.POST.get('biomarker_name', '').strip()
+        pred_date_str = request.POST.get('prediction_date', '').strip()
+        try:
+            prediction_date = datetime.strptime(pred_date_str, '%Y-%m-%d').date()
+            prediction = PredictiveBiomarker.generate_from_history(biomarker_name, prediction_date)
+            if prediction:
+                messages.success(request, f'Prediction generated for {biomarker_name}: {prediction.predicted_value} (confidence: {prediction.confidence_percent}%).')
+            else:
+                messages.warning(request, f'Insufficient data for {biomarker_name}. Need at least 2 historical blood test values.')
+        except Exception:
+            messages.error(request, 'Error generating prediction. Please provide valid inputs.')
     return redirect('predictive_biomarker_list')
 
 
@@ -3686,6 +3748,26 @@ def integration_config_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(IntegrationConfig, id=pk).delete()
         messages.success(request, 'Integration config deleted!')
+    return redirect('integration_config_list')
+
+def integration_config_activate(request, pk):
+    entry = get_object_or_404(IntegrationConfig, id=pk)
+    if request.method == 'POST':
+        success, msg = entry.activate()
+        if success:
+            messages.success(request, msg)
+        else:
+            messages.error(request, msg)
+    return redirect('integration_config_list')
+
+def integration_config_run(request, pk):
+    entry = get_object_or_404(IntegrationConfig, id=pk)
+    if request.method == 'POST':
+        success, msg = entry.run_integration()
+        if success:
+            messages.success(request, msg)
+        else:
+            messages.error(request, msg)
     return redirect('integration_config_list')
 
 

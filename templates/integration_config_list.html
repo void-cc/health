@@ -27,6 +27,17 @@
         <td>{% if entry.last_run %}{{ entry.last_run }}{% else %}-{% endif %}</td>
         <td>{% if entry.created_at %}{{ entry.created_at }}{% else %}-{% endif %}</td>
         <td>
+          {% if not entry.is_enabled %}
+          <form action="{% url 'integration_config_activate' pk=entry.id %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-power-off"></i> Activate</button>
+          </form>
+          {% else %}
+          <form action="{% url 'integration_config_run' pk=entry.id %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-info"><i class="fas fa-play"></i> Run</button>
+          </form>
+          {% endif %}
           <a href="{% url 'integration_config_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
             <i class="fas fa-edit"></i> Edit
           </a>

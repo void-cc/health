@@ -13,6 +13,7 @@
         <th>Date</th>
         <th>Blood Glucose (mg/dL)</th>
         <th>Insulin Level (µU/mL)</th>
+        <th>HOMA-IR</th>
         <th>Notes</th>
         <th>Actions</th>
       </tr>
@@ -23,6 +24,7 @@
         <td>{{ entry.date|date:"Y-m-d" }}</td>
         <td>{% if entry.blood_glucose is not None %}{{ entry.blood_glucose }}{% else %}-{% endif %}</td>
         <td>{% if entry.insulin_level is not None %}{{ entry.insulin_level }}{% else %}-{% endif %}</td>
+        <td>{% if entry.homa_ir is not None %}{{ entry.homa_ir }} {% if entry.homa_ir_category == 'normal' %}<span class="badge bg-success">Normal</span>{% elif entry.homa_ir_category == 'borderline' %}<span class="badge bg-warning text-dark">Borderline</span>{% elif entry.homa_ir_category == 'insulin_resistant' %}<span class="badge bg-danger">Insulin Resistant</span>{% endif %}{% else %}-{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'metabolic_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">

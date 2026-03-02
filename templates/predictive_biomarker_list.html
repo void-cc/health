@@ -2,7 +2,39 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2>Predictive Biomarkers</h2>
-  <a href="{% url 'predictive_biomarker_add' %}" class="btn btn-primary">Add Entry</a>
+  <div>
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#generatePredictionModal"><i class="fas fa-chart-line"></i> Generate Prediction</button>
+    <a href="{% url 'predictive_biomarker_add' %}" class="btn btn-primary">Add Entry</a>
+  </div>
+</div>
+
+<div class="modal fade" id="generatePredictionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="{% url 'predictive_biomarker_generate' %}" method="post">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Generate Biomarker Prediction</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Uses linear trend analysis of your historical blood test data to predict future values.</p>
+          <div class="mb-3">
+            <label class="form-label">Biomarker Name</label>
+            <input type="text" name="biomarker_name" class="form-control" placeholder="e.g. Hemoglobin, Glucose" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Prediction Date</label>
+            <input type="date" name="prediction_date" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Generate</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 {% if entries %}

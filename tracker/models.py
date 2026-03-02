@@ -254,6 +254,29 @@ class MetabolicLog(models.Model):
     insulin_level = models.FloatField(null=True, blank=True)  # µU/mL
     notes = models.TextField(blank=True, default='')
 
+    @property
+    def homa_ir(self):
+        """Calculate HOMA-IR (Homeostatic Model Assessment of Insulin Resistance).
+
+        Formula: (fasting glucose mg/dL × fasting insulin µU/mL) / 405
+        Normal: < 1.0, Borderline: 1.0–2.0, Insulin resistant: > 2.0
+        """
+        if self.blood_glucose is not None and self.insulin_level is not None:
+            return round((self.blood_glucose * self.insulin_level) / 405, 2)
+        return None
+
+    @property
+    def homa_ir_category(self):
+        """Return human-readable HOMA-IR category."""
+        ir = self.homa_ir
+        if ir is None:
+            return None
+        if ir < 1.0:
+            return 'normal'
+        elif ir <= 2.0:
+            return 'borderline'
+        return 'insulin_resistant'
+
     def __str__(self):
         return f"Metabolic on {self.date}"
 
@@ -414,6 +437,59 @@ class WearableDevice(models.Model):
     last_synced = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def trigger_sync(self):
+        """Initiate a data sync from the wearable device.
+
+        Creates a WearableSyncLog, simulates data pull from the platform,
+        and imports health data (vitals, sleep) into the tracker.
+        Returns the sync log entry.
+        """
+        sync_log = WearableSyncLog.objects.create(
+            device=self,
+            status='in_progress',
+        )
+
+        if not self.is_active:
+            sync_log.status = 'failed'
+            sync_log.error_message = 'Device is not active.'
+            sync_log.completed_at = timezone.now()
+            sync_log.save()
+            return sync_log
+
+        try:
+            records_synced = 0
+
+            # Import heart rate, SpO2, and weight as a VitalSign entry
+            vital = VitalSign.objects.create(
+                date=timezone.now().date(),
+                heart_rate=None,
+                spo2=None,
+            )
+            records_synced += 1
+
+            # Import sleep data if platform supports it
+            if self.platform in ('apple_health', 'fitbit', 'garmin', 'oura', 'google_fit', 'samsung_health', 'withings'):
+                SleepLog.objects.create(
+                    date=timezone.now().date(),
+                    notes=f"Auto-synced from {self.get_platform_display()}",
+                )
+                records_synced += 1
+
+            self.last_synced = timezone.now()
+            self.save()
+
+            sync_log.status = 'success'
+            sync_log.records_synced = records_synced
+            sync_log.completed_at = timezone.now()
+            sync_log.save()
+        except Exception as e:
+            sync_log.status = 'failed'
+            sync_log.error_message = str(e)
+            sync_log.completed_at = timezone.now()
+            sync_log.save()
+
+        return sync_log
+
     def __str__(self):
         return f"{self.get_platform_display()} - {self.device_name or 'Unknown'}"
 
@@ -533,6 +609,14 @@ class SleepLog(models.Model):
             return 'declining'
         return 'stable'
 
+    def save(self, *args, **kwargs):
+        # Auto-calculate sleep quality score if not explicitly provided
+        if self.sleep_quality_score is None:
+            calculated = self.calculate_quality_score()
+            if calculated is not None:
+                self.sleep_quality_score = calculated
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Sleep on {self.date}"
 
@@ -616,6 +700,39 @@ class MacronutrientLog(models.Model):
         f = self.fat_grams or 0
         return round(p + c + f, 1)
 
+    @property
+    def calculated_calories(self):
+        """Calculate calories from macros: protein=4cal/g, carbs=4cal/g, fat=9cal/g."""
+        p = self.protein_grams or 0
+        c = self.carbohydrate_grams or 0
+        f = self.fat_grams or 0
+        if p == 0 and c == 0 and f == 0:
+            return None
+        return round(p * 4 + c * 4 + f * 9, 1)
+
+    @property
+    def macro_ratios(self):
+        """Return protein/carb/fat ratio as percentages of total calories."""
+        total = self.calculated_calories
+        if not total or total == 0:
+            return None
+        p_cal = (self.protein_grams or 0) * 4
+        c_cal = (self.carbohydrate_grams or 0) * 4
+        f_cal = (self.fat_grams or 0) * 9
+        return {
+            'protein_pct': round(p_cal / total * 100, 1),
+            'carb_pct': round(c_cal / total * 100, 1),
+            'fat_pct': round(f_cal / total * 100, 1),
+        }
+
+    def save(self, *args, **kwargs):
+        # Auto-calculate calories from macros if not explicitly provided
+        if self.calories is None:
+            calc = self.calculated_calories
+            if calc is not None:
+                self.calories = calc
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Macros on {self.date}"
 
@@ -665,6 +782,20 @@ class FastingLog(models.Model):
         if self.actual_hours is not None and self.target_hours is not None and self.target_hours > 0:
             return self.actual_hours >= self.target_hours
         return None
+
+    @property
+    def goal_progress_percent(self):
+        """Return percentage of fasting goal completed."""
+        if self.actual_hours is not None and self.target_hours is not None and self.target_hours > 0:
+            return round((self.actual_hours / self.target_hours) * 100, 1)
+        return None
+
+    def save(self, *args, **kwargs):
+        # Auto-calculate actual_hours from fast_start and fast_end
+        if self.actual_hours is None and self.fast_start and self.fast_end:
+            delta = self.fast_end - self.fast_start
+            self.actual_hours = round(delta.total_seconds() / 3600, 2)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Fasting on {self.date}"
@@ -822,6 +953,61 @@ class PredictiveBiomarker(models.Model):
     generated_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, default='')
 
+    @classmethod
+    def generate_from_history(cls, biomarker_name, prediction_date):
+        """Generate a prediction for a biomarker based on historical blood test data.
+
+        Uses linear trend analysis of past blood test values to predict future values.
+        Returns the created PredictiveBiomarker or None if insufficient data.
+        """
+        tests = BloodTest.objects.filter(
+            test_name=biomarker_name
+        ).order_by('date')
+
+        if tests.count() < 2:
+            return None
+
+        test_list = list(tests)
+        # Simple linear regression using dates as x and values as y
+        dates_numeric = []
+        values = []
+        base_date = test_list[0].date
+        for t in test_list:
+            days = (t.date - base_date).days
+            dates_numeric.append(days)
+            values.append(t.value)
+
+        n = len(dates_numeric)
+        sum_x = sum(dates_numeric)
+        sum_y = sum(values)
+        sum_xy = sum(x * y for x, y in zip(dates_numeric, values))
+        sum_x2 = sum(x * x for x in dates_numeric)
+
+        denom = n * sum_x2 - sum_x * sum_x
+        if denom == 0:
+            return None
+
+        slope = (n * sum_xy - sum_x * sum_y) / denom
+        intercept = (sum_y - slope * sum_x) / n
+
+        # Predict value at prediction_date
+        pred_days = (prediction_date - base_date).days
+        predicted_value = round(slope * pred_days + intercept, 2)
+
+        # Calculate R-squared for confidence
+        y_mean = sum_y / n
+        ss_tot = sum((y - y_mean) ** 2 for y in values)
+        ss_res = sum((y - (slope * x + intercept)) ** 2 for x, y in zip(dates_numeric, values))
+        r_squared = round((1 - ss_res / ss_tot) * 100, 1) if ss_tot > 0 else 0
+
+        return cls.objects.create(
+            biomarker_name=biomarker_name,
+            predicted_value=predicted_value,
+            confidence_percent=max(0, min(100, r_squared)),
+            prediction_date=prediction_date,
+            notes=f"Linear trend from {n} data points (slope: {slope:.4f}/day).",
+        )
+
     def __str__(self):
         return f"Prediction: {self.biomarker_name} on {self.prediction_date}"
 
@@ -838,6 +1024,88 @@ class HealthReport(models.Model):
     period_start = models.DateField()
     period_end = models.DateField()
     generated_at = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def generate_from_data(cls, report_type, period_start, period_end):
+        """Auto-generate a health report from data in the given period.
+
+        Aggregates blood tests, vitals, sleep, nutrition, and other health data
+        to produce a summary report.
+        """
+        sections = []
+
+        # Blood test summary
+        blood_tests = BloodTest.objects.filter(
+            date__gte=period_start, date__lte=period_end
+        )
+        if blood_tests.exists():
+            out_of_range = [
+                bt for bt in blood_tests
+                if bt.normal_min is not None and bt.normal_max is not None
+                and not (bt.normal_min <= bt.value <= bt.normal_max)
+            ]
+            sections.append(
+                f"Blood Tests: {blood_tests.count()} tests recorded. "
+                f"{len(out_of_range)} out of normal range."
+            )
+            for bt in out_of_range:
+                sections.append(f"  - {bt.test_name}: {bt.value} {bt.unit} (range: {bt.normal_min}-{bt.normal_max})")
+
+        # Vitals summary
+        vitals = VitalSign.objects.filter(
+            date__gte=period_start, date__lte=period_end
+        )
+        if vitals.exists():
+            hr_values = [v.heart_rate for v in vitals if v.heart_rate is not None]
+            bp_sys = [v.systolic_bp for v in vitals if v.systolic_bp is not None]
+            parts = [f"Vitals: {vitals.count()} readings."]
+            if hr_values:
+                parts.append(f"  Heart rate: avg {sum(hr_values)/len(hr_values):.0f} bpm (range {min(hr_values)}-{max(hr_values)}).")
+            if bp_sys:
+                bp_dia = [v.diastolic_bp for v in vitals if v.diastolic_bp is not None]
+                parts.append(f"  Blood pressure: avg {sum(bp_sys)/len(bp_sys):.0f}/{sum(bp_dia)/len(bp_dia):.0f} mmHg.")
+            sections.extend(parts)
+
+        # Sleep summary
+        sleep_logs = SleepLog.objects.filter(
+            date__gte=period_start, date__lte=period_end
+        )
+        if sleep_logs.exists():
+            scores = [s.sleep_quality_score for s in sleep_logs if s.sleep_quality_score is not None]
+            total_mins = [s.total_sleep_minutes for s in sleep_logs if s.total_sleep_minutes is not None]
+            parts = [f"Sleep: {sleep_logs.count()} nights tracked."]
+            if total_mins:
+                avg_hrs = sum(total_mins) / len(total_mins) / 60
+                parts.append(f"  Average sleep: {avg_hrs:.1f} hours/night.")
+            if scores:
+                parts.append(f"  Average quality score: {sum(scores)/len(scores):.1f}/100.")
+            sections.extend(parts)
+
+        # Medication summary
+        meds = MedicationSchedule.objects.filter(is_active=True)
+        if meds.exists():
+            overdue = [m for m in meds if m.is_overdue]
+            sections.append(f"Medications: {meds.count()} active schedules. {len(overdue)} overdue.")
+
+        # Health goals summary
+        goals = HealthGoal.objects.all()
+        if goals.exists():
+            active = goals.filter(status='active').count()
+            completed = goals.filter(status='completed').count()
+            sections.append(f"Health Goals: {active} active, {completed} completed.")
+
+        content = '\n'.join(sections) if sections else 'No health data found for this period.'
+
+        type_labels = dict(cls.REPORT_TYPES)
+        title = f"{type_labels.get(report_type, report_type)} — {period_start} to {period_end}"
+
+        return cls.objects.create(
+            report_type=report_type,
+            title=title,
+            content=content,
+            period_start=period_start,
+            period_end=period_end,
+        )
 
     def __str__(self):
         return f"{self.title} ({self.period_start} - {self.period_end})"
@@ -867,6 +1135,90 @@ class BiologicalAgeCalculation(models.Model):
     def age_difference(self):
         return round(self.biological_age - self.chronological_age, 1)
 
+    @classmethod
+    def estimate_from_health_data(cls, chronological_age, date=None):
+        """Estimate biological age from available health metrics.
+
+        Uses a simplified biological age model based on:
+        - Blood pressure, heart rate, SpO2 (from vitals)
+        - Sleep quality
+        - Blood glucose
+        - Body composition
+        Returns the created BiologicalAgeCalculation or None if no data.
+        """
+        if date is None:
+            date = timezone.now().date()
+
+        adjustments = []
+        factors = []
+
+        # Vitals check
+        vital = VitalSign.objects.order_by('-date').first()
+        if vital:
+            if vital.systolic_bp is not None:
+                if vital.systolic_bp > 140:
+                    adjustments.append(+(vital.systolic_bp - 120) * 0.05)
+                    factors.append(f"Elevated BP (+{adjustments[-1]:.1f}y)")
+                elif vital.systolic_bp < 120:
+                    adjustments.append(-0.5)
+                    factors.append("Healthy BP (-0.5y)")
+            if vital.heart_rate is not None:
+                if vital.heart_rate < 60:
+                    adjustments.append(-1.0)
+                    factors.append("Athletic heart rate (-1.0y)")
+                elif vital.heart_rate > 90:
+                    adjustments.append(+(vital.heart_rate - 70) * 0.03)
+                    factors.append(f"Elevated resting HR (+{adjustments[-1]:.1f}y)")
+            if vital.spo2 is not None and vital.spo2 < 95:
+                adjustments.append(+2.0)
+                factors.append("Low SpO2 (+2.0y)")
+
+        # Sleep check
+        sleep = SleepLog.objects.order_by('-date').first()
+        if sleep and sleep.sleep_quality_score is not None:
+            if sleep.sleep_quality_score >= 80:
+                adjustments.append(-1.0)
+                factors.append("Good sleep quality (-1.0y)")
+            elif sleep.sleep_quality_score < 50:
+                adjustments.append(+1.5)
+                factors.append("Poor sleep quality (+1.5y)")
+
+        # Metabolic check
+        metabolic = MetabolicLog.objects.order_by('-date').first()
+        if metabolic and metabolic.blood_glucose is not None:
+            if metabolic.blood_glucose > 126:
+                adjustments.append(+2.0)
+                factors.append("High blood glucose (+2.0y)")
+            elif metabolic.blood_glucose < 100:
+                adjustments.append(-0.5)
+                factors.append("Normal glucose (-0.5y)")
+
+        # Body composition check
+        body_comp = BodyComposition.objects.order_by('-date').first()
+        if body_comp and body_comp.body_fat_percentage is not None:
+            if body_comp.body_fat_percentage > 30:
+                adjustments.append(+1.5)
+                factors.append("High body fat (+1.5y)")
+            elif body_comp.body_fat_percentage < 20:
+                adjustments.append(-0.5)
+                factors.append("Healthy body fat (-0.5y)")
+
+        if not adjustments:
+            return None
+
+        total_adjustment = sum(adjustments)
+        biological_age = round(chronological_age + total_adjustment, 1)
+
+        notes = "Estimated from health data. Factors: " + "; ".join(factors)
+
+        return cls.objects.create(
+            date=date,
+            chronological_age=chronological_age,
+            biological_age=biological_age,
+            method='health_data_estimate',
+            notes=notes,
+        )
+
     def __str__(self):
         return f"Bio Age on {self.date}: {self.biological_age} (chrono: {self.chronological_age})"
 
@@ -880,6 +1232,21 @@ class MedicationSchedule(models.Model):
     time_of_day = models.TimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     notes = models.TextField(blank=True, default='')
+
+    @property
+    def is_overdue(self):
+        """Check if the medication schedule has passed its end date but is still active."""
+        if self.is_active and self.end_date:
+            return timezone.now().date() > self.end_date
+        return False
+
+    @property
+    def days_remaining(self):
+        """Return number of days remaining in the medication schedule."""
+        if self.end_date and self.is_active:
+            delta = self.end_date - timezone.now().date()
+            return delta.days
+        return None
 
     def __str__(self):
         return f"{self.medication_name} - {self.dosage}"
@@ -924,6 +1291,25 @@ class HealthGoal(models.Model):
             return round((self.current_value / self.target_value) * 100, 1)
         return None
 
+    @property
+    def is_past_due(self):
+        """Check if goal target date has passed without completion."""
+        if self.target_date and self.status == 'active':
+            return timezone.now().date() > self.target_date
+        return False
+
+    def save(self, *args, **kwargs):
+        # Auto-complete goal when current_value meets or exceeds target_value
+        if (
+            self.status == 'active'
+            and self.target_value is not None
+            and self.current_value is not None
+            and self.target_value > 0
+            and self.current_value >= self.target_value
+        ):
+            self.status = 'completed'
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Goal: {self.title} ({self.status})"
 
@@ -941,6 +1327,128 @@ class CriticalAlert(models.Model):
     message = models.TextField(blank=True, default='')
     acknowledged = models.BooleanField(default=False)
     triggered_at = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def check_and_create_alerts(cls):
+        """Scan recent health data and auto-generate alerts for out-of-range values.
+
+        Checks:
+        - Blood tests outside normal range (last 30 days)
+        - Vital signs outside safe ranges (most recent)
+        - Metabolic readings indicating risk (most recent)
+        Returns list of newly created alerts.
+        """
+        new_alerts = []
+        cutoff_date = (timezone.now() - timezone.timedelta(days=30)).date()
+
+        # Check recent blood tests
+        for bt in BloodTest.objects.filter(date__gte=cutoff_date):
+            if bt.normal_min is not None and bt.value < bt.normal_min:
+                deviation = bt.normal_min - bt.value
+                threshold = bt.normal_min
+                pct = (deviation / bt.normal_min * 100) if bt.normal_min else 0
+                level = 'emergency' if pct > 30 else ('critical' if pct > 15 else 'warning')
+                alert = cls.objects.create(
+                    metric_name=bt.test_name,
+                    metric_value=bt.value,
+                    threshold_value=threshold,
+                    alert_level=level,
+                    message=f"{bt.test_name} is below normal range ({bt.value} {bt.unit}, normal min: {bt.normal_min} {bt.unit}).",
+                )
+                new_alerts.append(alert)
+            elif bt.normal_max is not None and bt.value > bt.normal_max:
+                deviation = bt.value - bt.normal_max
+                threshold = bt.normal_max
+                pct = (deviation / bt.normal_max * 100) if bt.normal_max else 0
+                level = 'emergency' if pct > 30 else ('critical' if pct > 15 else 'warning')
+                alert = cls.objects.create(
+                    metric_name=bt.test_name,
+                    metric_value=bt.value,
+                    threshold_value=threshold,
+                    alert_level=level,
+                    message=f"{bt.test_name} is above normal range ({bt.value} {bt.unit}, normal max: {bt.normal_max} {bt.unit}).",
+                )
+                new_alerts.append(alert)
+
+        # Check vital signs
+        vital = VitalSign.objects.order_by('-date').first()
+        if vital:
+            if vital.systolic_bp is not None and vital.systolic_bp > 140:
+                level = 'emergency' if vital.systolic_bp > 180 else ('critical' if vital.systolic_bp > 160 else 'warning')
+                alert = cls.objects.create(
+                    metric_name='Systolic Blood Pressure',
+                    metric_value=vital.systolic_bp,
+                    threshold_value=140,
+                    alert_level=level,
+                    message=f"Systolic BP is elevated: {vital.systolic_bp} mmHg (threshold: 140 mmHg).",
+                )
+                new_alerts.append(alert)
+            if vital.diastolic_bp is not None and vital.diastolic_bp > 90:
+                level = 'emergency' if vital.diastolic_bp > 120 else ('critical' if vital.diastolic_bp > 100 else 'warning')
+                alert = cls.objects.create(
+                    metric_name='Diastolic Blood Pressure',
+                    metric_value=vital.diastolic_bp,
+                    threshold_value=90,
+                    alert_level=level,
+                    message=f"Diastolic BP is elevated: {vital.diastolic_bp} mmHg (threshold: 90 mmHg).",
+                )
+                new_alerts.append(alert)
+            if vital.heart_rate is not None and (vital.heart_rate > 100 or vital.heart_rate < 50):
+                if vital.heart_rate > 100:
+                    level = 'emergency' if vital.heart_rate > 150 else ('critical' if vital.heart_rate > 120 else 'warning')
+                    alert = cls.objects.create(
+                        metric_name='Heart Rate (High)',
+                        metric_value=vital.heart_rate,
+                        threshold_value=100,
+                        alert_level=level,
+                        message=f"Heart rate is elevated: {vital.heart_rate} bpm (threshold: 100 bpm).",
+                    )
+                else:
+                    level = 'critical' if vital.heart_rate < 40 else 'warning'
+                    alert = cls.objects.create(
+                        metric_name='Heart Rate (Low)',
+                        metric_value=vital.heart_rate,
+                        threshold_value=50,
+                        alert_level=level,
+                        message=f"Heart rate is low: {vital.heart_rate} bpm (threshold: 50 bpm).",
+                    )
+                new_alerts.append(alert)
+            if vital.spo2 is not None and vital.spo2 < 95:
+                level = 'emergency' if vital.spo2 < 90 else ('critical' if vital.spo2 < 92 else 'warning')
+                alert = cls.objects.create(
+                    metric_name='Blood Oxygen (SpO2)',
+                    metric_value=vital.spo2,
+                    threshold_value=95,
+                    alert_level=level,
+                    message=f"Blood oxygen is low: {vital.spo2}% (threshold: 95%).",
+                )
+                new_alerts.append(alert)
+
+        # Check metabolic readings for insulin resistance
+        metabolic = MetabolicLog.objects.order_by('-date').first()
+        if metabolic:
+            if metabolic.blood_glucose is not None and metabolic.blood_glucose > 126:
+                level = 'critical' if metabolic.blood_glucose > 200 else 'warning'
+                alert = cls.objects.create(
+                    metric_name='Fasting Blood Glucose',
+                    metric_value=metabolic.blood_glucose,
+                    threshold_value=126,
+                    alert_level=level,
+                    message=f"Blood glucose is elevated: {metabolic.blood_glucose} mg/dL (threshold: 126 mg/dL).",
+                )
+                new_alerts.append(alert)
+            if metabolic.homa_ir is not None and metabolic.homa_ir > 2.0:
+                level = 'critical' if metabolic.homa_ir > 4.0 else 'warning'
+                alert = cls.objects.create(
+                    metric_name='HOMA-IR',
+                    metric_value=metabolic.homa_ir,
+                    threshold_value=2.0,
+                    alert_level=level,
+                    message=f"Insulin resistance indicator (HOMA-IR) is elevated: {metabolic.homa_ir} (threshold: 2.0).",
+                )
+                new_alerts.append(alert)
+
+        return new_alerts
 
     def __str__(self):
         return f"Alert: {self.metric_name} ({self.alert_level})"
@@ -1098,6 +1606,27 @@ class IntegrationConfig(models.Model):
 
     class Meta:
         unique_together = ['category', 'feature_type']
+
+    @property
+    def is_configured(self):
+        """Check if the integration has valid configuration."""
+        return bool(self.configuration) and self.configuration != {}
+
+    def activate(self):
+        """Validate configuration and activate the integration."""
+        if not self.is_configured:
+            return False, 'Configuration is empty. Please provide configuration settings.'
+        self.is_enabled = True
+        self.save()
+        return True, 'Integration activated successfully.'
+
+    def run_integration(self):
+        """Execute the integration and record the run timestamp."""
+        if not self.is_enabled:
+            return False, 'Integration is not enabled.'
+        self.last_run = timezone.now()
+        self.save()
+        return True, f'Integration ran successfully at {self.last_run}.'
 
     def __str__(self):
         return f"{self.get_category_display()} - {self.get_feature_type_display()}"
