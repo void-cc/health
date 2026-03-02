@@ -1,8 +1,36 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Medication Schedules</h2>
-  <a href="{% url 'medication_schedule_add' %}" class="btn btn-primary">Add Entry</a>
+  <h2><i class="fas fa-pills"></i> Medication Schedules</h2>
+  <a href="{% url 'medication_schedule_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Entry</a>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-primary">
+      <div class="card-body py-2">
+        <div class="text-muted small">Total Medications</div>
+        <div class="h4 mb-0">{{ total_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-success">
+      <div class="card-body py-2">
+        <div class="text-muted small">Active</div>
+        <div class="h4 mb-0 text-success">{{ total_active }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-danger">
+      <div class="card-body py-2">
+        <div class="text-muted small">Overdue</div>
+        <div class="h4 mb-0 {% if overdue_count %}text-danger{% endif %}">{{ overdue_count }}</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 {% if overdue_count %}
@@ -10,6 +38,26 @@
   <i class="fas fa-exclamation-triangle"></i> <strong>{{ overdue_count }} medication(s) overdue!</strong> Please review your schedules below.
 </div>
 {% endif %}
+
+<!-- Search & Filter -->
+<form method="get" class="row g-2 mb-4 align-items-end">
+  <div class="col-auto">
+    <label for="searchQuery" class="form-label small mb-0">Search</label>
+    <input type="text" class="form-control form-control-sm" id="searchQuery" name="q" value="{{ search_query }}" placeholder="Medication name...">
+  </div>
+  <div class="col-auto">
+    <label for="statusFilter" class="form-label small mb-0">Status</label>
+    <select class="form-select form-select-sm" id="statusFilter" name="status">
+      <option value="">All</option>
+      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+      <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-filter"></i> Filter</button>
+    <a href="{% url 'medication_schedule_list' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i> Clear</a>
+  </div>
+</form>
 
 {% if entries %}
 <div class="table-responsive">
@@ -36,14 +84,20 @@
         <td>{% if entry.start_date %}{{ entry.start_date|date:"Y-m-d" }}{% else %}-{% endif %}</td>
         <td>{% if entry.end_date %}{{ entry.end_date|date:"Y-m-d" }}{% if entry.is_overdue %} <span class="badge bg-danger">Overdue</span>{% elif entry.days_remaining is not None and entry.days_remaining <= 7 %} <span class="badge bg-warning text-dark">{{ entry.days_remaining }}d left</span>{% endif %}{% else %}-{% endif %}</td>
         <td>{% if entry.time_of_day %}{{ entry.time_of_day|time:"H:i" }}{% else %}-{% endif %}</td>
-        <td>{% if entry.is_active %}Yes{% else %}No{% endif %}</td>
-        <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
+        <td>
+          {% if entry.is_active %}
+            <span class="badge bg-success">Active</span>
+          {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+          {% endif %}
+        </td>
+        <td>{% if entry.notes %}{{ entry.notes|truncatewords:8 }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'medication_schedule_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
-            <i class="fas fa-edit"></i> Edit
+            <i class="fas fa-edit"></i>
           </a>
           <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
-            <i class="fas fa-trash-alt"></i> Delete
+            <i class="fas fa-trash-alt"></i>
           </button>
 
           <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">
@@ -72,6 +126,9 @@
     </tbody>
   </table>
 </div>
+
+{% include 'includes/pagination.html' %}
+
 {% else %}
 <div class="alert alert-info">
   <p>No medication schedules recorded yet.</p>
