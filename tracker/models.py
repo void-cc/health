@@ -406,10 +406,16 @@ WEARABLE_PLATFORMS = [
 
 
 class WearableDevice(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='wearable_devices', null=True, blank=True,
+    )
     platform = models.CharField(max_length=50, choices=WEARABLE_PLATFORMS)
     device_name = models.CharField(max_length=200, blank=True, default='')
     access_token = models.TextField(blank=True, default='')
     refresh_token = models.TextField(blank=True, default='')
+    token_expires_at = models.DateTimeField(null=True, blank=True)
+    scope = models.TextField(blank=True, default='')
     is_active = models.BooleanField(default=True)
     last_synced = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

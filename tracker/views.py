@@ -1761,12 +1761,23 @@ def global_search(request):
 
 def wearable_device_list(request):
     entries = WearableDevice.objects.all().order_by('-created_at')
+    from tracker.integrations.registry import is_oauth_platform, get_client
+    for entry in entries:
+        entry.supports_oauth = is_oauth_platform(entry.platform)
+        entry.has_token = bool(entry.access_token)
+        client = get_client(entry.platform)
+        if client:
+            config = client.get_oauth_config()
+            entry.is_configured = bool(config.client_id and config.client_secret)
+        else:
+            entry.is_configured = False
     return render(request, 'wearable_device_list.html', {'entries': entries})
 
 def wearable_device_add(request):
     if request.method == 'POST':
         try:
             WearableDevice.objects.create(
+                user=request.user if request.user.is_authenticated else None,
                 platform=request.POST.get('platform', ''),
                 device_name=request.POST.get('device_name', ''),
                 is_active=request.POST.get('is_active') == 'on',
@@ -1802,6 +1813,118 @@ def wearable_device_delete(request, pk):
 def sync_log_list(request):
     entries = WearableSyncLog.objects.all().order_by('-started_at')
     return render(request, 'sync_log_list.html', {'entries': entries})
+
+
+@login_required
+def wearable_connect(request, pk):
+    """Initiate OAuth connection for a wearable device."""
+    import secrets
+    device = get_object_or_404(WearableDevice, id=pk)
+    from tracker.integrations.registry import get_client, is_oauth_platform
+    if not is_oauth_platform(device.platform):
+        messages.error(request, f'{device.get_platform_display()} does not support OAuth connection.')
+        return redirect('wearable_device_list')
+
+    client = get_client(device.platform)
+    if not client:
+        messages.error(request, f'No integration client for {device.get_platform_display()}.')
+        return redirect('wearable_device_list')
+
+    config = client.get_oauth_config()
+    if not config.client_id or not config.client_secret:
+        messages.error(request, f'{device.get_platform_display()} OAuth credentials are not configured.')
+        return redirect('wearable_device_list')
+
+    callback_url = request.build_absolute_uri(
+        reverse('wearable_oauth_callback', kwargs={'platform': device.platform})
+    )
+    state = secrets.token_urlsafe(32)
+    request.session[f'oauth_state_{device.platform}'] = state
+    request.session[f'oauth_device_id_{device.platform}'] = device.pk
+
+    auth_url = client.get_authorization_url(callback_url, state=state)
+    return redirect(auth_url)
+
+
+@login_required
+def wearable_oauth_callback(request, platform):
+    """Handle OAuth callback from a wearable platform."""
+    from tracker.integrations.registry import get_client
+    code = request.GET.get('code') or request.GET.get('oauth_verifier', '')
+    state = request.GET.get('state', '')
+    stored_state = request.session.pop(f'oauth_state_{platform}', '')
+    device_id = request.session.pop(f'oauth_device_id_{platform}', None)
+
+    if not code:
+        messages.error(request, 'Authorization failed: no code received.')
+        return redirect('wearable_device_list')
+
+    # Validate state for OAuth2 platforms (not applicable for OAuth 1.0a like Garmin)
+    if stored_state and state and state != stored_state:
+        messages.error(request, 'Authorization failed: state mismatch.')
+        return redirect('wearable_device_list')
+
+    if not device_id:
+        messages.error(request, 'Authorization failed: no device found in session.')
+        return redirect('wearable_device_list')
+
+    device = get_object_or_404(WearableDevice, id=device_id)
+    client = get_client(platform)
+    if not client:
+        messages.error(request, f'No integration client for this platform.')
+        return redirect('wearable_device_list')
+
+    try:
+        callback_url = request.build_absolute_uri(
+            reverse('wearable_oauth_callback', kwargs={'platform': platform})
+        )
+        token_data = client.exchange_code_for_token(code, callback_url)
+        client._update_device_tokens(device, token_data)
+        if token_data.get('scope'):
+            device.scope = token_data['scope'] if isinstance(token_data['scope'], str) else ' '.join(token_data['scope'])
+            device.save(update_fields=['scope'])
+        messages.success(request, f'{device.get_platform_display()} connected successfully!')
+    except Exception as exc:
+        messages.error(request, f'Failed to connect {device.get_platform_display()}: {exc}')
+
+    return redirect('wearable_device_list')
+
+
+@login_required
+def wearable_disconnect(request, pk):
+    """Disconnect (revoke tokens) for a wearable device."""
+    if request.method == 'POST':
+        device = get_object_or_404(WearableDevice, id=pk)
+        device.access_token = ''
+        device.refresh_token = ''
+        device.token_expires_at = None
+        device.scope = ''
+        device.save(update_fields=['access_token', 'refresh_token', 'token_expires_at', 'scope'])
+        messages.success(request, f'{device.get_platform_display()} disconnected.')
+    return redirect('wearable_device_list')
+
+
+@login_required
+def wearable_sync(request, pk):
+    """Trigger a data sync for a wearable device."""
+    if request.method == 'POST':
+        device = get_object_or_404(WearableDevice, id=pk)
+        if not device.access_token:
+            messages.error(request, f'{device.get_platform_display()} is not connected. Please connect first.')
+            return redirect('wearable_device_list')
+
+        from tracker.integrations.registry import get_client
+        client = get_client(device.platform)
+        if not client:
+            messages.error(request, f'No integration client for {device.get_platform_display()}.')
+            return redirect('wearable_device_list')
+
+        sync_log = client.sync_data(device)
+        if sync_log.status == 'success':
+            messages.success(request, f'Synced {sync_log.records_synced} records from {device.get_platform_display()}.')
+        else:
+            messages.error(request, f'Sync failed: {sync_log.error_message}')
+    return redirect('wearable_device_list')
 
 
 # ===== Phase 6: Sleep & Circadian =====

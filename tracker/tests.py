@@ -1943,6 +1943,211 @@ class Phase5ModelTests(TestCase):
         sl = WearableSyncLog.objects.create(device=d, status='success')
         self.assertIn('success', str(sl))
 
+    def test_wearable_device_new_fields(self):
+        """Test the new OAuth fields on WearableDevice."""
+        user = User.objects.create_user(username='oauthuser', password='testpass123')
+        d = WearableDevice.objects.create(
+            user=user,
+            platform='withings',
+            device_name='Body+',
+            access_token='test_token',
+            refresh_token='test_refresh',
+            token_expires_at=timezone.now(),
+            scope='user.metrics user.activity',
+        )
+        self.assertEqual(d.user, user)
+        self.assertEqual(d.scope, 'user.metrics user.activity')
+        self.assertIsNotNone(d.token_expires_at)
+
+
+class Phase5IntegrationRegistryTests(TestCase):
+    """Test the integration registry and client lookup."""
+
+    def test_get_client_for_known_platforms(self):
+        from tracker.integrations.registry import get_client
+        for platform in ['withings', 'google_fit', 'fitbit', 'oura', 'strava',
+                         'garmin', 'dexcom_cgm', 'samsung_health']:
+            client = get_client(platform)
+            self.assertIsNotNone(client, f"No client for {platform}")
+            self.assertEqual(client.PLATFORM, platform)
+
+    def test_get_client_returns_none_for_unknown(self):
+        from tracker.integrations.registry import get_client
+        self.assertIsNone(get_client('unknown_platform'))
+
+    def test_get_client_returns_none_for_apple_health(self):
+        from tracker.integrations.registry import get_client
+        self.assertIsNone(get_client('apple_health'))
+
+    def test_is_oauth_platform(self):
+        from tracker.integrations.registry import is_oauth_platform
+        self.assertTrue(is_oauth_platform('withings'))
+        self.assertTrue(is_oauth_platform('google_fit'))
+        self.assertTrue(is_oauth_platform('fitbit'))
+        self.assertFalse(is_oauth_platform('apple_health'))
+        self.assertFalse(is_oauth_platform('unknown'))
+
+
+class Phase5OAuthClientTests(TestCase):
+    """Test OAuth client methods."""
+
+    def test_get_authorization_url_contains_params(self):
+        from tracker.integrations.registry import get_client
+        client = get_client('withings')
+        url = client.get_authorization_url('http://localhost/callback', state='test123')
+        self.assertIn('response_type=code', url)
+        self.assertIn('state=test123', url)
+        self.assertIn('redirect_uri=', url)
+
+    def test_get_authorization_url_google_fit_offline(self):
+        from tracker.integrations.registry import get_client
+        client = get_client('google_fit')
+        url = client.get_authorization_url('http://localhost/callback', state='abc')
+        self.assertIn('access_type=offline', url)
+        self.assertIn('prompt=consent', url)
+
+    def test_oauth_config_has_required_fields(self):
+        from tracker.integrations.registry import get_client
+        for platform in ['withings', 'google_fit', 'fitbit', 'oura', 'strava',
+                         'dexcom_cgm', 'samsung_health']:
+            client = get_client(platform)
+            config = client.get_oauth_config()
+            self.assertTrue(config.authorize_url, f"No authorize_url for {platform}")
+            self.assertTrue(config.token_url, f"No token_url for {platform}")
+            self.assertTrue(config.api_base_url, f"No api_base_url for {platform}")
+
+
+class Phase5IntegrationViewTests(TestCase):
+    """Test integration views for connect, disconnect, sync."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='integrationuser', password='testpass123')
+        self.client.login(username='integrationuser', password='testpass123')
+
+    def test_wearable_device_list_shows_status(self):
+        WearableDevice.objects.create(platform='fitbit', device_name='Charge 5')
+        response = self.client.get(reverse('wearable_device_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_wearable_connect_requires_login(self):
+        device = WearableDevice.objects.create(platform='fitbit', device_name='Charge 5')
+        self.client.logout()
+        response = self.client.get(reverse('wearable_connect', kwargs={'pk': device.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_wearable_connect_no_credentials_shows_error(self):
+        device = WearableDevice.objects.create(platform='fitbit', device_name='Charge 5')
+        response = self.client.get(reverse('wearable_connect', kwargs={'pk': device.pk}), follow=True)
+        self.assertEqual(response.status_code, 200)
+        # Should show error about credentials not configured
+        messages_list = list(response.context['messages'])
+        self.assertTrue(any('not configured' in str(m) for m in messages_list))
+
+    def test_wearable_disconnect(self):
+        device = WearableDevice.objects.create(
+            platform='fitbit', device_name='Charge 5',
+            access_token='test_token', refresh_token='test_refresh',
+        )
+        response = self.client.post(
+            reverse('wearable_disconnect', kwargs={'pk': device.pk}),
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        device.refresh_from_db()
+        self.assertEqual(device.access_token, '')
+        self.assertEqual(device.refresh_token, '')
+
+    def test_wearable_sync_without_token_shows_error(self):
+        device = WearableDevice.objects.create(platform='fitbit', device_name='Charge 5')
+        response = self.client.post(
+            reverse('wearable_sync', kwargs={'pk': device.pk}),
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        messages_list = list(response.context['messages'])
+        self.assertTrue(any('not connected' in str(m).lower() for m in messages_list))
+
+    def test_wearable_callback_no_code_shows_error(self):
+        response = self.client.get(
+            reverse('wearable_oauth_callback', kwargs={'platform': 'fitbit'}),
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        messages_list = list(response.context['messages'])
+        self.assertTrue(any('no code' in str(m).lower() for m in messages_list))
+
+    def test_new_url_patterns_resolve(self):
+        """Verify the new URL patterns are accessible."""
+        device = WearableDevice.objects.create(platform='fitbit', device_name='Test')
+        # connect URL
+        url = reverse('wearable_connect', kwargs={'pk': device.pk})
+        self.assertIn('/wearables/connect/', url)
+        # callback URL
+        url = reverse('wearable_oauth_callback', kwargs={'platform': 'fitbit'})
+        self.assertIn('/wearables/callback/fitbit/', url)
+        # disconnect URL
+        url = reverse('wearable_disconnect', kwargs={'pk': device.pk})
+        self.assertIn('/wearables/disconnect/', url)
+        # sync URL
+        url = reverse('wearable_sync', kwargs={'pk': device.pk})
+        self.assertIn('/wearables/sync/', url)
+
+
+from unittest.mock import patch, MagicMock
+from django.utils import timezone
+
+
+class Phase5SyncDataTests(TestCase):
+    """Test the sync_data flow with mocked API responses."""
+
+    def test_sync_data_creates_log_on_success(self):
+        from tracker.integrations.base import BaseOAuthClient
+        device = WearableDevice.objects.create(
+            platform='fitbit', device_name='Test',
+            access_token='token', refresh_token='refresh',
+        )
+
+        class MockClient(BaseOAuthClient):
+            PLATFORM = 'fitbit'
+            def get_oauth_config(self):
+                from tracker.integrations.base import OAuthConfig
+                return OAuthConfig('Fitbit', 'id', 'secret',
+                                   'http://auth', 'http://token', 'http://api')
+            def fetch_data(self, device, start_date, end_date):
+                return 5
+
+        client = MockClient()
+        sync_log = client.sync_data(device)
+        self.assertEqual(sync_log.status, 'success')
+        self.assertEqual(sync_log.records_synced, 5)
+        self.assertIsNotNone(sync_log.completed_at)
+        device.refresh_from_db()
+        self.assertIsNotNone(device.last_synced)
+
+    def test_sync_data_creates_log_on_failure(self):
+        from tracker.integrations.base import BaseOAuthClient
+        device = WearableDevice.objects.create(
+            platform='fitbit', device_name='Test',
+            access_token='token', refresh_token='refresh',
+        )
+
+        class MockClient(BaseOAuthClient):
+            PLATFORM = 'fitbit'
+            def get_oauth_config(self):
+                from tracker.integrations.base import OAuthConfig
+                return OAuthConfig('Fitbit', 'id', 'secret',
+                                   'http://auth', 'http://token', 'http://api')
+            def fetch_data(self, device, start_date, end_date):
+                raise ConnectionError("API unreachable")
+
+        client = MockClient()
+        sync_log = client.sync_data(device)
+        self.assertEqual(sync_log.status, 'failed')
+        self.assertIn('API unreachable', sync_log.error_message)
+        self.assertIsNotNone(sync_log.completed_at)
+
 
 class Phase6ModelTests(TestCase):
     """Test model creation, __str__, and calculated fields for Phase 6 models."""
