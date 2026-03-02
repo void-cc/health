@@ -28,7 +28,7 @@
         <td>{% if entry.fast_end is not None %}{{ entry.fast_end }}{% else %}-{% endif %}</td>
         <td>{% if entry.target_hours is not None %}{{ entry.target_hours }}{% else %}-{% endif %}</td>
         <td>{% if entry.actual_hours is not None %}{{ entry.actual_hours }}{% else %}-{% endif %}</td>
-        <td>{% if entry.goal_met is not None %}{% if entry.goal_met %}Yes{% else %}No{% endif %}{% else %}-{% endif %}</td>
+        <td>{% if entry.goal_met is not None %}{% if entry.goal_met %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-warning text-dark">No{% if entry.goal_progress_percent is not None %} ({{ entry.goal_progress_percent }}%){% endif %}</span>{% endif %}{% else %}-{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'fasting_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">

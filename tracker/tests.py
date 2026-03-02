@@ -6,8 +6,13 @@ from tracker.models import (
     UserProfile, SecurityLog, UserSession, PrivacyPreference,
     SecureViewingLink, PractitionerAccess, IntakeSummary,
     DataExportRequest, StakeholderEmail, MedicationSchedule,
+    SleepLog, MacronutrientLog, FastingLog, MetabolicLog,
+    HealthGoal, CriticalAlert, WearableDevice, WearableSyncLog,
+    HealthReport, PredictiveBiomarker, BiologicalAgeCalculation,
+    IntegrationConfig, BodyComposition,
 )
-from datetime import date
+from datetime import date, datetime, timedelta
+from django.utils import timezone
 import json
 
 
@@ -3868,3 +3873,479 @@ class Phase9StakeholderEmailTests(TestCase):
         """Sending to nonexistent stakeholder should return 404."""
         response = self.client.get(reverse('stakeholder_email_send', kwargs={'pk': 99999}))
         self.assertEqual(response.status_code, 404)
+
+
+# ===== Tests for Enhanced Model Logic =====
+
+class SleepLogAutoScoreTests(TestCase):
+    def test_auto_calculate_quality_score_on_save(self):
+        """SleepLog should auto-calculate quality score when not explicitly provided."""
+        log = SleepLog.objects.create(
+            date=date.today(),
+            total_sleep_minutes=480,
+            deep_sleep_minutes=96,
+            rem_minutes=120,
+            light_sleep_minutes=264,
+            awake_minutes=20,
+        )
+        self.assertIsNotNone(log.sleep_quality_score)
+        self.assertGreater(log.sleep_quality_score, 0)
+
+    def test_explicit_quality_score_preserved(self):
+        """When quality score is explicitly set, it should not be overwritten."""
+        log = SleepLog.objects.create(
+            date=date.today(),
+            total_sleep_minutes=480,
+            deep_sleep_minutes=96,
+            sleep_quality_score=42.0,
+        )
+        self.assertEqual(log.sleep_quality_score, 42.0)
+
+    def test_no_data_no_score(self):
+        """Without sleep minutes, no quality score should be set."""
+        log = SleepLog.objects.create(date=date.today())
+        self.assertIsNone(log.sleep_quality_score)
+
+
+class MacronutrientLogAutoCalcTests(TestCase):
+    def test_auto_calculate_calories(self):
+        """Calories should be auto-calculated from macros when not provided."""
+        log = MacronutrientLog.objects.create(
+            date=date.today(),
+            protein_grams=100,
+            carbohydrate_grams=200,
+            fat_grams=50,
+        )
+        # 100*4 + 200*4 + 50*9 = 400 + 800 + 450 = 1650
+        self.assertEqual(log.calories, 1650.0)
+
+    def test_explicit_calories_preserved(self):
+        """When calories are explicitly set, they should not be overwritten."""
+        log = MacronutrientLog.objects.create(
+            date=date.today(),
+            protein_grams=100,
+            calories=2000,
+        )
+        self.assertEqual(log.calories, 2000)
+
+    def test_macro_ratios(self):
+        """Macro ratios should return protein/carb/fat percentages."""
+        log = MacronutrientLog(
+            date=date.today(),
+            protein_grams=100,
+            carbohydrate_grams=200,
+            fat_grams=50,
+        )
+        ratios = log.macro_ratios
+        self.assertIsNotNone(ratios)
+        self.assertAlmostEqual(ratios['protein_pct'] + ratios['carb_pct'] + ratios['fat_pct'], 100.0, places=0)
+
+
+class FastingLogAutoCalcTests(TestCase):
+    def test_auto_calculate_actual_hours(self):
+        """actual_hours should be auto-calculated from fast_start and fast_end."""
+        start = timezone.now()
+        end = start + timedelta(hours=16)
+        log = FastingLog.objects.create(
+            date=date.today(),
+            fast_start=start,
+            fast_end=end,
+            target_hours=16,
+        )
+        self.assertIsNotNone(log.actual_hours)
+        self.assertAlmostEqual(log.actual_hours, 16.0, places=1)
+
+    def test_explicit_actual_hours_preserved(self):
+        """When actual_hours is explicitly set, it should not be overwritten."""
+        start = timezone.now()
+        end = start + timedelta(hours=16)
+        log = FastingLog.objects.create(
+            date=date.today(),
+            fast_start=start,
+            fast_end=end,
+            actual_hours=14.0,
+        )
+        self.assertEqual(log.actual_hours, 14.0)
+
+    def test_goal_progress_percent(self):
+        """goal_progress_percent should calculate percentage of goal achieved."""
+        log = FastingLog(date=date.today(), actual_hours=12, target_hours=16)
+        self.assertEqual(log.goal_progress_percent, 75.0)
+
+
+class MetabolicLogHomaIRTests(TestCase):
+    def test_homa_ir_calculation(self):
+        """HOMA-IR should be calculated from blood glucose and insulin."""
+        log = MetabolicLog(date=date.today(), blood_glucose=90, insulin_level=10)
+        # (90 * 10) / 405 = 2.22
+        self.assertAlmostEqual(log.homa_ir, 2.22, places=2)
+
+    def test_homa_ir_category_normal(self):
+        log = MetabolicLog(date=date.today(), blood_glucose=80, insulin_level=4)
+        # (80 * 4) / 405 = 0.79
+        self.assertEqual(log.homa_ir_category, 'normal')
+
+    def test_homa_ir_category_borderline(self):
+        log = MetabolicLog(date=date.today(), blood_glucose=100, insulin_level=8)
+        # (100 * 8) / 405 = 1.98
+        self.assertEqual(log.homa_ir_category, 'borderline')
+
+    def test_homa_ir_category_insulin_resistant(self):
+        log = MetabolicLog(date=date.today(), blood_glucose=130, insulin_level=15)
+        # (130 * 15) / 405 = 4.81
+        self.assertEqual(log.homa_ir_category, 'insulin_resistant')
+
+    def test_homa_ir_none_when_missing_data(self):
+        log = MetabolicLog(date=date.today(), blood_glucose=90)
+        self.assertIsNone(log.homa_ir)
+        self.assertIsNone(log.homa_ir_category)
+
+
+class HealthGoalAutoCompleteTests(TestCase):
+    def test_auto_complete_on_save(self):
+        """Goal should auto-complete when current_value >= target_value."""
+        goal = HealthGoal.objects.create(
+            title='Lose weight',
+            target_value=10,
+            current_value=10,
+            start_date=date.today(),
+        )
+        self.assertEqual(goal.status, 'completed')
+
+    def test_stays_active_when_not_met(self):
+        """Goal should stay active when target not reached."""
+        goal = HealthGoal.objects.create(
+            title='Lose weight',
+            target_value=10,
+            current_value=5,
+            start_date=date.today(),
+        )
+        self.assertEqual(goal.status, 'active')
+
+    def test_paused_not_auto_completed(self):
+        """Paused goals should not be auto-completed."""
+        goal = HealthGoal.objects.create(
+            title='Lose weight',
+            target_value=10,
+            current_value=15,
+            status='paused',
+            start_date=date.today(),
+        )
+        self.assertEqual(goal.status, 'paused')
+
+    def test_is_past_due(self):
+        """is_past_due should return True when target date has passed."""
+        goal = HealthGoal(
+            title='Test',
+            status='active',
+            target_date=date.today() - timedelta(days=1),
+            start_date=date.today() - timedelta(days=30),
+        )
+        self.assertTrue(goal.is_past_due)
+
+
+class MedicationScheduleOverdueTests(TestCase):
+    def test_is_overdue_when_past_end_date(self):
+        """Should be overdue when end_date has passed and still active."""
+        med = MedicationSchedule(
+            medication_name='Aspirin',
+            dosage='100mg',
+            frequency='daily',
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today() - timedelta(days=1),
+            is_active=True,
+        )
+        self.assertTrue(med.is_overdue)
+
+    def test_not_overdue_when_inactive(self):
+        """Should not be overdue when inactive."""
+        med = MedicationSchedule(
+            medication_name='Aspirin',
+            dosage='100mg',
+            frequency='daily',
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today() - timedelta(days=1),
+            is_active=False,
+        )
+        self.assertFalse(med.is_overdue)
+
+    def test_days_remaining(self):
+        """days_remaining should return correct number of days."""
+        med = MedicationSchedule(
+            medication_name='Aspirin',
+            dosage='100mg',
+            frequency='daily',
+            start_date=date.today(),
+            end_date=date.today() + timedelta(days=5),
+            is_active=True,
+        )
+        self.assertEqual(med.days_remaining, 5)
+
+
+class CriticalAlertAutoCheckTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_auto_check_creates_alerts_for_out_of_range_blood_test(self):
+        """Auto-check should create alerts for blood tests outside normal range."""
+        BloodTest.objects.create(
+            test_name='Glucose', value=250, unit='mg/dL',
+            date=date.today(), normal_min=70, normal_max=100,
+        )
+        new_alerts = CriticalAlert.check_and_create_alerts()
+        self.assertGreater(len(new_alerts), 0)
+        self.assertEqual(new_alerts[0].metric_name, 'Glucose')
+
+    def test_auto_check_creates_alerts_for_high_bp(self):
+        """Auto-check should create alerts for elevated blood pressure."""
+        VitalSign.objects.create(
+            date=date.today(), systolic_bp=190, diastolic_bp=95,
+        )
+        new_alerts = CriticalAlert.check_and_create_alerts()
+        bp_alerts = [a for a in new_alerts if 'Blood Pressure' in a.metric_name]
+        self.assertGreater(len(bp_alerts), 0)
+
+    def test_auto_check_no_alerts_when_normal(self):
+        """Auto-check should not create alerts when all values are normal."""
+        BloodTest.objects.create(
+            test_name='Glucose', value=90, unit='mg/dL',
+            date=date.today(), normal_min=70, normal_max=100,
+        )
+        VitalSign.objects.create(
+            date=date.today(), systolic_bp=120, diastolic_bp=80, heart_rate=72,
+        )
+        new_alerts = CriticalAlert.check_and_create_alerts()
+        self.assertEqual(len(new_alerts), 0)
+
+    def test_auto_check_endpoint(self):
+        """Auto-check endpoint should redirect to alert list."""
+        response = self.client.post(reverse('critical_alert_auto_check'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_auto_check_alerts_for_low_spo2(self):
+        """Auto-check should create alerts for low SpO2."""
+        VitalSign.objects.create(date=date.today(), spo2=88)
+        new_alerts = CriticalAlert.check_and_create_alerts()
+        spo2_alerts = [a for a in new_alerts if 'SpO2' in a.metric_name]
+        self.assertGreater(len(spo2_alerts), 0)
+        self.assertEqual(spo2_alerts[0].alert_level, 'emergency')
+
+    def test_auto_check_alerts_for_high_homa_ir(self):
+        """Auto-check should create alerts for elevated HOMA-IR."""
+        MetabolicLog.objects.create(
+            date=date.today(), blood_glucose=150, insulin_level=20,
+        )
+        new_alerts = CriticalAlert.check_and_create_alerts()
+        homa_alerts = [a for a in new_alerts if 'HOMA-IR' in a.metric_name]
+        self.assertGreater(len(homa_alerts), 0)
+
+
+class WearableSyncTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_trigger_sync_creates_log(self):
+        """trigger_sync should create a sync log entry."""
+        device = WearableDevice.objects.create(
+            platform='fitbit', device_name='Charge 5', is_active=True,
+        )
+        sync_log = device.trigger_sync()
+        self.assertEqual(sync_log.status, 'success')
+        self.assertGreater(sync_log.records_synced, 0)
+        device.refresh_from_db()
+        self.assertIsNotNone(device.last_synced)
+
+    def test_trigger_sync_inactive_device(self):
+        """Syncing an inactive device should fail."""
+        device = WearableDevice.objects.create(
+            platform='fitbit', device_name='Charge 5', is_active=False,
+        )
+        sync_log = device.trigger_sync()
+        self.assertEqual(sync_log.status, 'failed')
+        self.assertIn('not active', sync_log.error_message)
+
+    def test_sync_endpoint(self):
+        """Sync endpoint should redirect to device list."""
+        device = WearableDevice.objects.create(
+            platform='fitbit', device_name='Charge 5', is_active=True,
+        )
+        response = self.client.post(reverse('wearable_device_sync', kwargs={'pk': device.pk}))
+        self.assertEqual(response.status_code, 302)
+
+
+class HealthReportGenerateTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_generate_report_with_data(self):
+        """generate_from_data should create a report with blood test data."""
+        BloodTest.objects.create(
+            test_name='Hemoglobin', value=10, unit='g/dL',
+            date=date.today(), normal_min=13.8, normal_max=17.2,
+        )
+        report = HealthReport.generate_from_data(
+            'monthly', date.today() - timedelta(days=30), date.today(),
+        )
+        self.assertIn('Blood Tests', report.content)
+        self.assertIn('out of normal range', report.content)
+
+    def test_generate_report_empty_data(self):
+        """generate_from_data should handle no data gracefully."""
+        report = HealthReport.generate_from_data(
+            'monthly', date.today() - timedelta(days=30), date.today(),
+        )
+        self.assertIn('No health data found', report.content)
+
+    def test_generate_endpoint(self):
+        """Generate endpoint should create a report and redirect."""
+        response = self.client.post(reverse('health_report_generate'), {
+            'report_type': 'monthly',
+            'period_start': (date.today() - timedelta(days=30)).strftime('%Y-%m-%d'),
+            'period_end': date.today().strftime('%Y-%m-%d'),
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(HealthReport.objects.count(), 1)
+
+
+class PredictiveBiomarkerGenerateTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_generate_prediction_from_history(self):
+        """Should generate a prediction from 2+ blood test data points."""
+        BloodTest.objects.create(
+            test_name='Glucose', value=90, unit='mg/dL',
+            date=date.today() - timedelta(days=60),
+        )
+        BloodTest.objects.create(
+            test_name='Glucose', value=95, unit='mg/dL',
+            date=date.today() - timedelta(days=30),
+        )
+        prediction = PredictiveBiomarker.generate_from_history(
+            'Glucose', date.today() + timedelta(days=30),
+        )
+        self.assertIsNotNone(prediction)
+        self.assertGreater(prediction.predicted_value, 0)
+        self.assertIsNotNone(prediction.confidence_percent)
+
+    def test_generate_prediction_insufficient_data(self):
+        """Should return None with less than 2 data points."""
+        BloodTest.objects.create(
+            test_name='Glucose', value=90, unit='mg/dL',
+            date=date.today(),
+        )
+        prediction = PredictiveBiomarker.generate_from_history(
+            'Glucose', date.today() + timedelta(days=30),
+        )
+        self.assertIsNone(prediction)
+
+    def test_generate_endpoint(self):
+        """Generate endpoint should redirect."""
+        response = self.client.post(reverse('predictive_biomarker_generate'), {
+            'biomarker_name': 'Glucose',
+            'prediction_date': (date.today() + timedelta(days=30)).strftime('%Y-%m-%d'),
+        })
+        self.assertEqual(response.status_code, 302)
+
+
+class BiologicalAgeEstimateTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_estimate_from_health_data(self):
+        """Should estimate biological age from available health data."""
+        VitalSign.objects.create(
+            date=date.today(), systolic_bp=150, heart_rate=85, spo2=97,
+        )
+        calc = BiologicalAgeCalculation.estimate_from_health_data(40)
+        self.assertIsNotNone(calc)
+        self.assertEqual(calc.method, 'health_data_estimate')
+        self.assertNotEqual(calc.biological_age, 40)
+
+    def test_estimate_no_data(self):
+        """Should return None when no health data available."""
+        calc = BiologicalAgeCalculation.estimate_from_health_data(40)
+        self.assertIsNone(calc)
+
+    def test_estimate_endpoint(self):
+        """Estimate endpoint should redirect."""
+        VitalSign.objects.create(date=date.today(), systolic_bp=120)
+        response = self.client.post(reverse('biological_age_estimate'), {
+            'chronological_age': '40',
+        })
+        self.assertEqual(response.status_code, 302)
+
+
+class IntegrationConfigActivateTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_activate_with_config(self):
+        """Should activate when configuration is provided."""
+        config = IntegrationConfig.objects.create(
+            category='ehr', feature_type='data_sync',
+            configuration={'api_key': 'test123'},
+        )
+        success, msg = config.activate()
+        self.assertTrue(success)
+        config.refresh_from_db()
+        self.assertTrue(config.is_enabled)
+
+    def test_activate_without_config(self):
+        """Should fail to activate when configuration is empty."""
+        config = IntegrationConfig.objects.create(
+            category='ehr', feature_type='data_sync',
+        )
+        success, msg = config.activate()
+        self.assertFalse(success)
+        config.refresh_from_db()
+        self.assertFalse(config.is_enabled)
+
+    def test_run_integration(self):
+        """Should update last_run timestamp."""
+        config = IntegrationConfig.objects.create(
+            category='ehr', feature_type='data_sync',
+            configuration={'api_key': 'test123'}, is_enabled=True,
+        )
+        success, msg = config.run_integration()
+        self.assertTrue(success)
+        config.refresh_from_db()
+        self.assertIsNotNone(config.last_run)
+
+    def test_run_disabled_integration(self):
+        """Should fail to run when not enabled."""
+        config = IntegrationConfig.objects.create(
+            category='ehr', feature_type='data_sync',
+        )
+        success, msg = config.run_integration()
+        self.assertFalse(success)
+
+    def test_activate_endpoint(self):
+        """Activate endpoint should redirect."""
+        config = IntegrationConfig.objects.create(
+            category='ehr', feature_type='data_sync',
+            configuration={'api_key': 'test123'},
+        )
+        response = self.client.post(reverse('integration_config_activate', kwargs={'pk': config.pk}))
+        self.assertEqual(response.status_code, 302)
+
+    def test_run_endpoint(self):
+        """Run endpoint should redirect."""
+        config = IntegrationConfig.objects.create(
+            category='ehr', feature_type='data_sync',
+            configuration={'api_key': 'test123'}, is_enabled=True,
+        )
+        response = self.client.post(reverse('integration_config_run', kwargs={'pk': config.pk}))
+        self.assertEqual(response.status_code, 302)

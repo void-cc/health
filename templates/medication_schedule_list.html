@@ -5,6 +5,12 @@
   <a href="{% url 'medication_schedule_add' %}" class="btn btn-primary">Add Entry</a>
 </div>
 
+{% if overdue_count %}
+<div class="alert alert-warning">
+  <i class="fas fa-exclamation-triangle"></i> <strong>{{ overdue_count }} medication(s) overdue!</strong> Please review your schedules below.
+</div>
+{% endif %}
+
 {% if entries %}
 <div class="table-responsive">
   <table class="table table-striped table-hover align-middle">
@@ -23,12 +29,12 @@
     </thead>
     <tbody>
       {% for entry in entries %}
-      <tr>
+      <tr{% if entry.is_overdue %} class="table-warning"{% endif %}>
         <td>{% if entry.medication_name %}{{ entry.medication_name }}{% else %}-{% endif %}</td>
         <td>{% if entry.dosage %}{{ entry.dosage }}{% else %}-{% endif %}</td>
         <td>{% if entry.frequency %}{{ entry.frequency }}{% else %}-{% endif %}</td>
         <td>{% if entry.start_date %}{{ entry.start_date|date:"Y-m-d" }}{% else %}-{% endif %}</td>
-        <td>{% if entry.end_date %}{{ entry.end_date|date:"Y-m-d" }}{% else %}-{% endif %}</td>
+        <td>{% if entry.end_date %}{{ entry.end_date|date:"Y-m-d" }}{% if entry.is_overdue %} <span class="badge bg-danger">Overdue</span>{% elif entry.days_remaining is not None and entry.days_remaining <= 7 %} <span class="badge bg-warning text-dark">{{ entry.days_remaining }}d left</span>{% endif %}{% else %}-{% endif %}</td>
         <td>{% if entry.time_of_day %}{{ entry.time_of_day|time:"H:i" }}{% else %}-{% endif %}</td>
         <td>{% if entry.is_active %}Yes{% else %}No{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>

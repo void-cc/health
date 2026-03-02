@@ -256,24 +256,28 @@ urlpatterns = [
     path('alerts/add/', views.critical_alert_add, name='critical_alert_add'),
     path('alerts/edit/<int:pk>/', views.critical_alert_edit, name='critical_alert_edit'),
     path('alerts/delete/<int:pk>/', views.critical_alert_delete, name='critical_alert_delete'),
+    path('alerts/auto-check/', views.critical_alert_auto_check, name='critical_alert_auto_check'),
 
     # Phase 8: Health Reports
     path('reports/', views.health_report_list, name='health_report_list'),
     path('reports/add/', views.health_report_add, name='health_report_add'),
     path('reports/edit/<int:pk>/', views.health_report_edit, name='health_report_edit'),
     path('reports/delete/<int:pk>/', views.health_report_delete, name='health_report_delete'),
+    path('reports/generate/', views.health_report_generate, name='health_report_generate'),
 
     # Phase 8: Biological Age
     path('bio-age/', views.biological_age_list, name='biological_age_list'),
     path('bio-age/add/', views.biological_age_add, name='biological_age_add'),
     path('bio-age/edit/<int:pk>/', views.biological_age_edit, name='biological_age_edit'),
     path('bio-age/delete/<int:pk>/', views.biological_age_delete, name='biological_age_delete'),
+    path('bio-age/estimate/', views.biological_age_estimate, name='biological_age_estimate'),
 
     # Phase 8: Predictive Biomarkers
     path('biomarkers/', views.predictive_biomarker_list, name='predictive_biomarker_list'),
     path('biomarkers/add/', views.predictive_biomarker_add, name='predictive_biomarker_add'),
     path('biomarkers/edit/<int:pk>/', views.predictive_biomarker_edit, name='predictive_biomarker_edit'),
     path('biomarkers/delete/<int:pk>/', views.predictive_biomarker_delete, name='predictive_biomarker_delete'),
+    path('biomarkers/generate/', views.predictive_biomarker_generate, name='predictive_biomarker_generate'),
 
     # Phase 9: Secure Viewing Links
     path('secure-links/', views.secure_viewing_link_list, name='secure_viewing_link_list'),
@@ -316,6 +320,8 @@ urlpatterns = [
     path('integrations/add/', views.integration_config_add, name='integration_config_add'),
     path('integrations/edit/<int:pk>/', views.integration_config_edit, name='integration_config_edit'),
     path('integrations/delete/<int:pk>/', views.integration_config_delete, name='integration_config_delete'),
+    path('integrations/activate/<int:pk>/', views.integration_config_activate, name='integration_config_activate'),
+    path('integrations/run/<int:pk>/', views.integration_config_run, name='integration_config_run'),
 
     # Phase 10-12: Integration Sub-tasks
     path('subtasks/', views.integration_subtask_list, name='integration_subtask_list'),
