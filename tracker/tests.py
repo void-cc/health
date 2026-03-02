@@ -1921,6 +1921,62 @@ class Phase6ModelTests(TestCase):
         c = CaffeineAlcoholLog.objects.create(date=date(2026, 3, 1), substance='caffeine')
         self.assertIn('Caffeine', str(c))
 
+    def test_calculate_quality_score_full(self):
+        s = SleepLog.objects.create(
+            date=date(2026, 3, 1), total_sleep_minutes=420,
+            rem_minutes=105, deep_sleep_minutes=84, awake_minutes=30,
+        )
+        score = s.calculate_quality_score()
+        self.assertIsNotNone(score)
+        self.assertGreater(score, 0)
+        self.assertLessEqual(score, 100)
+
+    def test_calculate_quality_score_none(self):
+        s = SleepLog.objects.create(date=date(2026, 3, 1))
+        self.assertIsNone(s.calculate_quality_score())
+
+    def test_calculate_quality_score_zero_total(self):
+        s = SleepLog.objects.create(date=date(2026, 3, 1), total_sleep_minutes=0)
+        self.assertIsNone(s.calculate_quality_score())
+
+    def test_sleep_trend_insufficient_data(self):
+        s = SleepLog.objects.create(date=date(2026, 3, 1), total_sleep_minutes=420, awake_minutes=30)
+        self.assertIsNone(s.sleep_trend)
+
+    def test_optimal_sleep_window_with_data(self):
+        from datetime import time
+        CircadianRhythmLog.objects.create(
+            date=date(2026, 2, 25), sleep_onset=time(23, 0), wake_time=time(7, 0),
+        )
+        CircadianRhythmLog.objects.create(
+            date=date(2026, 2, 26), sleep_onset=time(23, 30), wake_time=time(7, 30),
+        )
+        c = CircadianRhythmLog.objects.create(date=date(2026, 2, 27))
+        window = c.optimal_sleep_window
+        self.assertIsNotNone(window)
+        self.assertIn('suggested_bedtime', window)
+        self.assertIn('suggested_wake_time', window)
+
+    def test_optimal_sleep_window_no_data(self):
+        c = CircadianRhythmLog.objects.create(date=date(2026, 3, 1))
+        # No entries with sleep_onset and wake_time
+        self.assertIsNone(c.optimal_sleep_window)
+
+    def test_micronutrient_deficiency_risk_field(self):
+        m = MicronutrientLog.objects.create(
+            date=date(2026, 3, 1), nutrient_name='Vitamin D', amount=400, unit='IU',
+            deficiency_risk='high',
+        )
+        self.assertEqual(m.deficiency_risk, 'high')
+
+    def test_food_entry_database_id_field(self):
+        f = FoodEntry.objects.create(
+            date=date(2026, 3, 1), food_name='Apple',
+            food_database_id='usda:171688', source='usda',
+        )
+        self.assertEqual(f.food_database_id, 'usda:171688')
+        self.assertEqual(f.source, 'usda')
+
 
 class Phase7ModelTests(TestCase):
     """Test model creation and __str__ for Phase 7 models."""
@@ -2102,6 +2158,8 @@ class Phase5To12StatusCodeTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     # Phase 5
     def test_wearable_device_list(self):
@@ -2316,6 +2374,8 @@ class Phase5To12CRUDTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='crudtestuser', password='testpass123', email='crud@example.com')
+        self.client.login(username='crudtestuser', password='testpass123')
 
     # ----- WearableDevice -----
     def test_wearable_device_add_post(self):
@@ -2459,6 +2519,122 @@ class Phase5To12CRUDTests(TestCase):
         response = self.client.post(reverse('food_delete', kwargs={'pk': f.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(FoodEntry.objects.count(), 0)
+
+    # ----- CircadianRhythmLog -----
+    def test_circadian_add_post(self):
+        response = self.client.post(reverse('circadian_add'), {
+            'date': '2026-03-01',
+            'wake_time': '07:00',
+            'sleep_onset': '23:00',
+            'light_exposure_minutes': '60',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(CircadianRhythmLog.objects.count(), 1)
+
+    def test_circadian_edit_post(self):
+        c = CircadianRhythmLog.objects.create(date=date(2026, 3, 1), light_exposure_minutes=60)
+        response = self.client.post(reverse('circadian_edit', kwargs={'pk': c.pk}), {
+            'date': '2026-03-01',
+            'light_exposure_minutes': '90',
+        })
+        self.assertEqual(response.status_code, 302)
+        c.refresh_from_db()
+        self.assertEqual(c.light_exposure_minutes, 90)
+
+    def test_circadian_delete_post(self):
+        c = CircadianRhythmLog.objects.create(date=date(2026, 3, 1))
+        response = self.client.post(reverse('circadian_delete', kwargs={'pk': c.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(CircadianRhythmLog.objects.count(), 0)
+
+    # ----- DreamJournal -----
+    def test_dream_add_post(self):
+        response = self.client.post(reverse('dream_add'), {
+            'date': '2026-03-01',
+            'dream_description': 'Flying over mountains',
+            'lucidity_level': '3',
+            'mood_on_waking': 'happy',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DreamJournal.objects.count(), 1)
+
+    def test_dream_edit_post(self):
+        d = DreamJournal.objects.create(date=date(2026, 3, 1), dream_description='Old dream')
+        response = self.client.post(reverse('dream_edit', kwargs={'pk': d.pk}), {
+            'date': '2026-03-01',
+            'dream_description': 'Updated dream',
+            'mood_on_waking': 'calm',
+        })
+        self.assertEqual(response.status_code, 302)
+        d.refresh_from_db()
+        self.assertEqual(d.dream_description, 'Updated dream')
+
+    def test_dream_delete_post(self):
+        d = DreamJournal.objects.create(date=date(2026, 3, 1))
+        response = self.client.post(reverse('dream_delete', kwargs={'pk': d.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DreamJournal.objects.count(), 0)
+
+    # ----- FastingLog -----
+    def test_fasting_add_post(self):
+        response = self.client.post(reverse('fasting_add'), {
+            'date': '2026-03-01',
+            'target_hours': '16',
+            'actual_hours': '16',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(FastingLog.objects.count(), 1)
+
+    def test_fasting_edit_post(self):
+        f = FastingLog.objects.create(date=date(2026, 3, 1), target_hours=16, actual_hours=14)
+        response = self.client.post(reverse('fasting_edit', kwargs={'pk': f.pk}), {
+            'date': '2026-03-01',
+            'target_hours': '16',
+            'actual_hours': '16',
+        })
+        self.assertEqual(response.status_code, 302)
+        f.refresh_from_db()
+        self.assertEqual(f.actual_hours, 16.0)
+
+    def test_fasting_delete_post(self):
+        f = FastingLog.objects.create(date=date(2026, 3, 1))
+        response = self.client.post(reverse('fasting_delete', kwargs={'pk': f.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(FastingLog.objects.count(), 0)
+
+    # ----- CaffeineAlcoholLog -----
+    def test_caffeine_alcohol_add_post(self):
+        response = self.client.post(reverse('caffeine_alcohol_add'), {
+            'date': '2026-03-01',
+            'substance': 'caffeine',
+            'amount_mg': '200',
+            'drink_name': 'Coffee',
+            'time_consumed': '08:00',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(CaffeineAlcoholLog.objects.count(), 1)
+
+    def test_caffeine_alcohol_edit_post(self):
+        c = CaffeineAlcoholLog.objects.create(
+            date=date(2026, 3, 1), substance='caffeine', amount_mg=200,
+        )
+        response = self.client.post(reverse('caffeine_alcohol_edit', kwargs={'pk': c.pk}), {
+            'date': '2026-03-01',
+            'substance': 'caffeine',
+            'amount_mg': '300',
+            'drink_name': 'Espresso',
+        })
+        self.assertEqual(response.status_code, 302)
+        c.refresh_from_db()
+        self.assertEqual(c.amount_mg, 300.0)
+
+    def test_caffeine_alcohol_delete_post(self):
+        c = CaffeineAlcoholLog.objects.create(
+            date=date(2026, 3, 1), substance='caffeine',
+        )
+        response = self.client.post(reverse('caffeine_alcohol_delete', kwargs={'pk': c.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(CaffeineAlcoholLog.objects.count(), 0)
 
     # ----- UserProfile (Phase 7) -----
     def test_user_profile_add_post(self):

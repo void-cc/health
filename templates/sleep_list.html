@@ -20,6 +20,7 @@
         <th>Awake</th>
         <th>Quality Score</th>
         <th>Efficiency</th>
+        <th>Trend</th>
         <th>Notes</th>
         <th>Actions</th>
       </tr>
@@ -37,6 +38,7 @@
         <td>{% if entry.awake_minutes is not None %}{{ entry.awake_minutes }}{% else %}-{% endif %}</td>
         <td>{% if entry.sleep_quality_score is not None %}{{ entry.sleep_quality_score }}{% else %}-{% endif %}</td>
         <td>{% if entry.sleep_efficiency is not None %}{{ entry.sleep_efficiency }}{% else %}-{% endif %}</td>
+        <td>{% if entry.sleep_trend %}{{ entry.sleep_trend }}{% else %}-{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'sleep_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">

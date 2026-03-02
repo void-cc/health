@@ -25,6 +25,16 @@
     </div>
 
     <div class="mb-3">
+      <label for="deficiency_risk" class="form-label">Deficiency Risk:</label>
+      <select class="form-control" name="deficiency_risk" id="deficiency_risk">
+        <option value="">-- None --</option>
+        <option value="low" {% if editing and entry.deficiency_risk == 'low' %}selected{% endif %}>Low</option>
+        <option value="moderate" {% if editing and entry.deficiency_risk == 'moderate' %}selected{% endif %}>Moderate</option>
+        <option value="high" {% if editing and entry.deficiency_risk == 'high' %}selected{% endif %}>High</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
       <label for="notes" class="form-label">Notes:</label>
       <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
     </div>

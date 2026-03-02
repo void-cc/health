@@ -16,6 +16,7 @@
         <th>Peak Energy</th>
         <th>Lowest Energy</th>
         <th>Light Exposure (min)</th>
+        <th>Optimal Window</th>
         <th>Notes</th>
         <th>Actions</th>
       </tr>
@@ -29,6 +30,7 @@
         <td>{% if entry.peak_energy_time is not None %}{{ entry.peak_energy_time }}{% else %}-{% endif %}</td>
         <td>{% if entry.lowest_energy_time is not None %}{{ entry.lowest_energy_time }}{% else %}-{% endif %}</td>
         <td>{% if entry.light_exposure_minutes is not None %}{{ entry.light_exposure_minutes }}{% else %}-{% endif %}</td>
+        <td>{% if entry.optimal_sleep_window %}{{ entry.optimal_sleep_window.suggested_bedtime }} - {{ entry.optimal_sleep_window.suggested_wake_time }}{% else %}-{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'circadian_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
