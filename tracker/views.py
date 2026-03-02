@@ -2956,7 +2956,7 @@ def secure_link_shared_view(request, token):
             'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max'))
     if not data_types or 'vitals' in data_types:
         context['data']['vitals'] = list(VitalSign.objects.all().order_by('-date')[:20].values(
-            'date', 'systolic', 'diastolic', 'heart_rate', 'temperature', 'respiratory_rate', 'oxygen_saturation'))
+            'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt', 'respiratory_rate', 'spo2'))
     if not data_types or 'medications' in data_types:
         context['data']['medications'] = list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
             'medication_name', 'dosage', 'frequency', 'start_date', 'end_date'))
@@ -3026,8 +3026,8 @@ def practitioner_portal(request):
                     'blood_tests': list(BloodTest.objects.all().order_by('-date')[:20].values(
                         'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max')),
                     'vitals': list(VitalSign.objects.all().order_by('-date')[:20].values(
-                        'date', 'systolic', 'diastolic', 'heart_rate', 'temperature',
-                        'respiratory_rate', 'oxygen_saturation')),
+                        'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt',
+                        'respiratory_rate', 'spo2')),
                     'medications': list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
                         'medication_name', 'dosage', 'frequency', 'start_date', 'end_date')),
                 }
@@ -3116,14 +3116,14 @@ def intake_summary_generate(request):
     summary_lines = []
     if vitals:
         parts = []
-        if vitals.systolic and vitals.diastolic:
-            parts.append(f"BP: {vitals.systolic}/{vitals.diastolic} mmHg")
+        if vitals.systolic_bp and vitals.diastolic_bp:
+            parts.append(f"BP: {vitals.systolic_bp}/{vitals.diastolic_bp} mmHg")
         if vitals.heart_rate:
             parts.append(f"HR: {vitals.heart_rate} bpm")
-        if vitals.temperature:
-            parts.append(f"Temp: {vitals.temperature}°F")
-        if vitals.oxygen_saturation:
-            parts.append(f"SpO2: {vitals.oxygen_saturation}%")
+        if vitals.bbt:
+            parts.append(f"Temp: {vitals.bbt}°C")
+        if vitals.spo2:
+            parts.append(f"SpO2: {vitals.spo2}%")
         if parts:
             summary_lines.append("Latest Vitals: " + ", ".join(parts))
 
@@ -3162,16 +3162,16 @@ def _collect_export_data():
         'blood_tests': list(BloodTest.objects.all().order_by('-date').values(
             'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max', 'category')),
         'vitals': list(VitalSign.objects.all().order_by('-date').values(
-            'date', 'systolic', 'diastolic', 'heart_rate', 'temperature',
-            'respiratory_rate', 'oxygen_saturation')),
+            'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt',
+            'respiratory_rate', 'spo2')),
         'medications': list(MedicationSchedule.objects.all().order_by('-start_date').values(
             'medication_name', 'dosage', 'frequency', 'start_date', 'end_date')),
         'body_composition': list(BodyComposition.objects.all().order_by('-date').values(
-            'date', 'body_fat_percentage', 'lean_mass_kg', 'waist_circumference',
+            'date', 'body_fat_percentage', 'skeletal_muscle_mass', 'waist_circumference',
             'hip_circumference', 'waist_to_hip_ratio')),
         'sleep_logs': list(SleepLog.objects.all().order_by('-date').values(
-            'date', 'total_sleep_minutes', 'deep_sleep_minutes', 'rem_sleep_minutes',
-            'sleep_quality_rating')),
+            'date', 'total_sleep_minutes', 'deep_sleep_minutes', 'rem_minutes',
+            'sleep_quality_score')),
     }
     # Convert date objects to strings for JSON serialization
     for key in data:
@@ -3307,14 +3307,14 @@ def _build_health_summary_text():
     vitals = VitalSign.objects.all().order_by('-date').first()
     if vitals:
         lines.append("Latest Vitals:")
-        if vitals.systolic and vitals.diastolic:
-            lines.append(f"  Blood Pressure: {vitals.systolic}/{vitals.diastolic} mmHg")
+        if vitals.systolic_bp and vitals.diastolic_bp:
+            lines.append(f"  Blood Pressure: {vitals.systolic_bp}/{vitals.diastolic_bp} mmHg")
         if vitals.heart_rate:
             lines.append(f"  Heart Rate: {vitals.heart_rate} bpm")
-        if vitals.temperature:
-            lines.append(f"  Temperature: {vitals.temperature}°F")
-        if vitals.oxygen_saturation:
-            lines.append(f"  Oxygen Saturation: {vitals.oxygen_saturation}%")
+        if vitals.bbt:
+            lines.append(f"  Temperature: {vitals.bbt}°C")
+        if vitals.spo2:
+            lines.append(f"  Oxygen Saturation: {vitals.spo2}%")
         lines.append("")
 
     blood_tests = BloodTest.objects.all().order_by('-date')[:5]

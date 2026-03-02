@@ -45,11 +45,11 @@
         {% for v in data.vitals %}
         <tr>
           <td>{{ v.date }}</td>
-          <td>{% if v.systolic and v.diastolic %}{{ v.systolic }}/{{ v.diastolic }}{% else %}-{% endif %}</td>
+          <td>{% if v.systolic_bp and v.diastolic_bp %}{{ v.systolic_bp }}/{{ v.diastolic_bp }}{% else %}-{% endif %}</td>
           <td>{% if v.heart_rate %}{{ v.heart_rate }}{% else %}-{% endif %}</td>
-          <td>{% if v.temperature %}{{ v.temperature }}{% else %}-{% endif %}</td>
+          <td>{% if v.bbt %}{{ v.bbt }}{% else %}-{% endif %}</td>
           <td>{% if v.respiratory_rate %}{{ v.respiratory_rate }}{% else %}-{% endif %}</td>
-          <td>{% if v.oxygen_saturation %}{{ v.oxygen_saturation }}%{% else %}-{% endif %}</td>
+          <td>{% if v.spo2 %}{{ v.spo2 }}%{% else %}-{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
