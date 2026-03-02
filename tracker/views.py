@@ -42,7 +42,8 @@ import io
 import json
 import re
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Q as models_Q
+from django.db.models import Q as models_Q, Avg, Sum, Count
+from django.core.paginator import Paginator
 
 @login_required
 def index(request):
@@ -887,7 +888,44 @@ def export_data(request):
 @login_required
 def body_composition_list(request):
     entries = BodyComposition.objects.all().order_by('-date')
-    return render(request, 'body_composition_list.html', {'entries': entries})
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_body_fat=Avg('body_fat_percentage'),
+        avg_muscle_mass=Avg('skeletal_muscle_mass'),
+        avg_whr=Avg('waist_to_hip_ratio'),
+        total_entries=Count('id'),
+    )
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_body_fat = [e.body_fat_percentage for e in chart_entries if e.body_fat_percentage is not None]
+    chart_muscle = [e.skeletal_muscle_mass for e in chart_entries if e.skeletal_muscle_mass is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_body_fat': json.dumps(chart_body_fat),
+        'chart_muscle': json.dumps(chart_muscle),
+    }
+    return render(request, 'body_composition_list.html', context)
 
 @login_required
 def body_composition_add(request):
@@ -948,7 +986,48 @@ def body_composition_delete(request, pk):
 @login_required
 def hydration_list(request):
     entries = HydrationLog.objects.all().order_by('-date')
-    return render(request, 'hydration_list.html', {'entries': entries})
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_intake=Avg('fluid_intake_ml'),
+        avg_goal=Avg('goal_ml'),
+        total_entries=Count('id'),
+    )
+    # Calculate average goal achievement percentage
+    all_entries_for_stats = list(entries)
+    goal_percentages = [e.goal_percentage for e in all_entries_for_stats if e.goal_percentage is not None]
+    stats['avg_goal_pct'] = round(sum(goal_percentages) / len(goal_percentages), 1) if goal_percentages else None
+    stats['days_goal_met'] = sum(1 for p in goal_percentages if p >= 100)
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_intake = [e.fluid_intake_ml for e in chart_entries]
+    chart_goal = [e.goal_ml for e in chart_entries if e.goal_ml is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_intake': json.dumps(chart_intake),
+        'chart_goal': json.dumps(chart_goal),
+    }
+    return render(request, 'hydration_list.html', context)
 
 @login_required
 def hydration_add(request):
@@ -1819,7 +1898,45 @@ def sync_log_list(request):
 @login_required
 def sleep_list(request):
     entries = SleepLog.objects.all().order_by('-date')
-    return render(request, 'sleep_list.html', {'entries': entries})
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_total_sleep=Avg('total_sleep_minutes'),
+        avg_quality=Avg('sleep_quality_score'),
+        avg_rem=Avg('rem_minutes'),
+        avg_deep=Avg('deep_sleep_minutes'),
+        total_entries=Count('id'),
+    )
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_quality = [e.sleep_quality_score for e in chart_entries if e.sleep_quality_score is not None]
+    chart_total = [e.total_sleep_minutes for e in chart_entries if e.total_sleep_minutes is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_quality': json.dumps(chart_quality),
+        'chart_total': json.dumps(chart_total),
+    }
+    return render(request, 'sleep_list.html', context)
 
 @login_required
 def sleep_add(request):
@@ -2019,7 +2136,50 @@ def dream_delete(request, pk):
 @login_required
 def macro_list(request):
     entries = MacronutrientLog.objects.all().order_by('-date')
-    return render(request, 'macro_list.html', {'entries': entries})
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_protein=Avg('protein_grams'),
+        avg_carbs=Avg('carbohydrate_grams'),
+        avg_fat=Avg('fat_grams'),
+        avg_calories=Avg('calories'),
+        avg_fiber=Avg('fiber_grams'),
+        total_entries=Count('id'),
+    )
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_protein = [e.protein_grams for e in chart_entries if e.protein_grams is not None]
+    chart_carbs = [e.carbohydrate_grams for e in chart_entries if e.carbohydrate_grams is not None]
+    chart_fat = [e.fat_grams for e in chart_entries if e.fat_grams is not None]
+    chart_calories = [e.calories for e in chart_entries if e.calories is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_protein': json.dumps(chart_protein),
+        'chart_carbs': json.dumps(chart_carbs),
+        'chart_fat': json.dumps(chart_fat),
+        'chart_calories': json.dumps(chart_calories),
+    }
+    return render(request, 'macro_list.html', context)
 
 @login_required
 def macro_add(request):
@@ -2852,8 +3012,39 @@ def backup_config_delete(request, pk):
 
 def medication_schedule_list(request):
     entries = MedicationSchedule.objects.all().order_by('-start_date')
+
+    # Search by medication name
+    search_query = request.GET.get('q', '')
+    if search_query:
+        entries = entries.filter(medication_name__icontains=search_query)
+
+    # Filter by active status
+    status_filter = request.GET.get('status', '')
+    if status_filter == 'active':
+        entries = entries.filter(is_active=True)
+    elif status_filter == 'inactive':
+        entries = entries.filter(is_active=False)
+
     overdue_count = sum(1 for e in entries if e.is_overdue)
-    return render(request, 'medication_schedule_list.html', {'entries': entries, 'overdue_count': overdue_count})
+
+    # Summary statistics
+    total_active = entries.filter(is_active=True).count()
+    total_count = entries.count()
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'overdue_count': overdue_count,
+        'total_active': total_active,
+        'total_count': total_count,
+        'search_query': search_query,
+        'status_filter': status_filter,
+    }
+    return render(request, 'medication_schedule_list.html', context)
 
 def medication_schedule_add(request):
     if request.method == 'POST':
@@ -2910,7 +3101,39 @@ def medication_schedule_delete(request, pk):
 
 def health_goal_list(request):
     entries = HealthGoal.objects.all().order_by('-created_at')
-    return render(request, 'health_goal_list.html', {'entries': entries})
+
+    # Filter by status
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        entries = entries.filter(status=status_filter)
+
+    # Search by title
+    search_query = request.GET.get('q', '')
+    if search_query:
+        entries = entries.filter(title__icontains=search_query)
+
+    # Summary statistics
+    all_goals = HealthGoal.objects.all()
+    stats = {
+        'total': all_goals.count(),
+        'completed': all_goals.filter(status='completed').count(),
+        'in_progress': all_goals.filter(status='in_progress').count(),
+        'paused': all_goals.filter(status='paused').count(),
+    }
+    stats['completion_rate'] = round((stats['completed'] / stats['total']) * 100, 1) if stats['total'] > 0 else 0
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'status_filter': status_filter,
+        'search_query': search_query,
+    }
+    return render(request, 'health_goal_list.html', context)
 
 def health_goal_add(request):
     if request.method == 'POST':
