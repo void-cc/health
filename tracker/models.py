@@ -458,6 +458,77 @@ class SleepLog(models.Model):
                 return round((self.total_sleep_minutes / total) * 100, 1)
         return None
 
+    def calculate_quality_score(self):
+        """Algorithmic calculation of sleep quality based on sleep architecture.
+
+        Scoring factors (0-100 scale):
+        - Sleep efficiency (40% weight): percentage of time in bed spent asleep
+        - Deep sleep ratio (25% weight): deep sleep as % of total (ideal ~20%)
+        - REM ratio (25% weight): REM as % of total (ideal ~25%)
+        - Low awakenings (10% weight): fewer awake minutes = better score
+        """
+        if self.total_sleep_minutes is None or self.total_sleep_minutes == 0:
+            return None
+
+        score = 0.0
+
+        # Efficiency component (40 points max)
+        efficiency = self.sleep_efficiency
+        if efficiency is not None:
+            score += min(efficiency / 100.0, 1.0) * 40.0
+
+        # Deep sleep component (25 points max) — ideal ~20% of total
+        if self.deep_sleep_minutes is not None:
+            deep_ratio = self.deep_sleep_minutes / self.total_sleep_minutes
+            deep_score = min(deep_ratio / 0.20, 1.0)
+            score += deep_score * 25.0
+
+        # REM component (25 points max) — ideal ~25% of total
+        if self.rem_minutes is not None:
+            rem_ratio = self.rem_minutes / self.total_sleep_minutes
+            rem_score = min(rem_ratio / 0.25, 1.0)
+            score += rem_score * 25.0
+
+        # Low awakenings component (10 points max)
+        if self.awake_minutes is not None:
+            awake_penalty = max(0.0, 1.0 - (self.awake_minutes / 60.0))
+            score += awake_penalty * 10.0
+
+        return round(score, 1)
+
+    @property
+    def sleep_trend(self):
+        """Return recent sleep efficiency trend: 'improving', 'declining', or 'stable'.
+
+        Compares average efficiency of last 7 entries vs previous 7 entries.
+        """
+        recent_logs = SleepLog.objects.filter(
+            date__lt=self.date
+        ).order_by('-date')[:14]
+        recent_list = list(recent_logs)
+        if len(recent_list) < 4:
+            return None
+        mid = min(7, len(recent_list) // 2)
+        recent_half = recent_list[:mid]
+        older_half = recent_list[mid:mid * 2]
+        if not older_half:
+            return None
+
+        def avg_efficiency(logs):
+            vals = [l.sleep_efficiency for l in logs if l.sleep_efficiency is not None]
+            return sum(vals) / len(vals) if vals else None
+
+        recent_avg = avg_efficiency(recent_half)
+        older_avg = avg_efficiency(older_half)
+        if recent_avg is None or older_avg is None:
+            return None
+        diff = recent_avg - older_avg
+        if diff > 2.0:
+            return 'improving'
+        elif diff < -2.0:
+            return 'declining'
+        return 'stable'
+
     def __str__(self):
         return f"Sleep on {self.date}"
 
@@ -470,6 +541,40 @@ class CircadianRhythmLog(models.Model):
     lowest_energy_time = models.TimeField(null=True, blank=True)
     light_exposure_minutes = models.IntegerField(null=True, blank=True)
     notes = models.TextField(blank=True, default='')
+
+    @property
+    def optimal_sleep_window(self):
+        """Suggest an optimal sleep window based on recorded circadian patterns.
+
+        Uses average sleep onset and wake time from recent entries to suggest
+        the best sleep/wake times for this individual.
+        """
+        from datetime import timedelta, datetime as dt
+        recent = CircadianRhythmLog.objects.filter(
+            sleep_onset__isnull=False, wake_time__isnull=False,
+        ).order_by('-date')[:7]
+        recent_list = list(recent)
+        if not recent_list:
+            return None
+
+        def time_to_minutes(t):
+            mins = t.hour * 60 + t.minute
+            # Treat times before 6 AM as next-day (add 24h)
+            if mins < 360:
+                mins += 1440
+            return mins
+
+        onset_mins = [time_to_minutes(r.sleep_onset) for r in recent_list]
+        wake_mins = [time_to_minutes(r.wake_time) for r in recent_list]
+        avg_onset = sum(onset_mins) // len(onset_mins)
+        avg_wake = sum(wake_mins) // len(wake_mins)
+        # Convert back to HH:MM
+        onset_h, onset_m = divmod(avg_onset % 1440, 60)
+        wake_h, wake_m = divmod(avg_wake % 1440, 60)
+        return {
+            'suggested_bedtime': f"{onset_h:02d}:{onset_m:02d}",
+            'suggested_wake_time': f"{wake_h:02d}:{wake_m:02d}",
+        }
 
     def __str__(self):
         return f"Circadian Rhythm on {self.date}"
@@ -514,6 +619,8 @@ class MicronutrientLog(models.Model):
     nutrient_name = models.CharField(max_length=100)
     amount = models.FloatField()
     unit = models.CharField(max_length=20, default='mg')
+    deficiency_risk = models.CharField(max_length=20, blank=True, default='',
+        help_text='Risk level mapped from blood test results: low, moderate, high')
     notes = models.TextField(blank=True, default='')
 
     def __str__(self):
@@ -529,7 +636,10 @@ class FoodEntry(models.Model):
     protein_grams = models.FloatField(null=True, blank=True)
     carbohydrate_grams = models.FloatField(null=True, blank=True)
     fat_grams = models.FloatField(null=True, blank=True)
-    source = models.CharField(max_length=100, blank=True, default='')
+    source = models.CharField(max_length=100, blank=True, default='',
+        help_text='Data source: manual, barcode_scan, usda, openfoodfacts')
+    food_database_id = models.CharField(max_length=100, blank=True, default='',
+        help_text='External food database identifier (e.g., USDA FDC ID or OpenFoodFacts ID)')
     notes = models.TextField(blank=True, default='')
 
     def __str__(self):

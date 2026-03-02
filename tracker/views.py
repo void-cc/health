@@ -1800,10 +1800,12 @@ def sync_log_list(request):
 
 # ===== Phase 6: Sleep & Circadian =====
 
+@login_required
 def sleep_list(request):
     entries = SleepLog.objects.all().order_by('-date')
     return render(request, 'sleep_list.html', {'entries': entries})
 
+@login_required
 def sleep_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1818,10 +1820,12 @@ def sleep_add(request):
             light = request.POST.get('light_sleep_minutes', '').strip()
             awake = request.POST.get('awake_minutes', '').strip()
             quality = request.POST.get('sleep_quality_score', '').strip()
+            bedtime_val = request.POST.get('bedtime', '').strip() or None
+            wake_val = request.POST.get('wake_time', '').strip() or None
             SleepLog.objects.create(
                 date=date,
-                bedtime=request.POST.get('bedtime', ''),
-                wake_time=request.POST.get('wake_time', ''),
+                bedtime=bedtime_val,
+                wake_time=wake_val,
                 total_sleep_minutes=int(total) if total else None,
                 rem_minutes=int(rem) if rem else None,
                 deep_sleep_minutes=int(deep) if deep else None,
@@ -1837,13 +1841,14 @@ def sleep_add(request):
             return redirect('sleep_add')
     return render(request, 'sleep_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def sleep_edit(request, pk):
     entry = get_object_or_404(SleepLog, id=pk)
     if request.method == 'POST':
         try:
             entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.bedtime = request.POST.get('bedtime', '')
-            entry.wake_time = request.POST.get('wake_time', '')
+            entry.bedtime = request.POST.get('bedtime', '').strip() or None
+            entry.wake_time = request.POST.get('wake_time', '').strip() or None
             total = request.POST.get('total_sleep_minutes', '').strip()
             rem = request.POST.get('rem_minutes', '').strip()
             deep = request.POST.get('deep_sleep_minutes', '').strip()
@@ -1865,6 +1870,7 @@ def sleep_edit(request, pk):
             return redirect('sleep_edit', pk=pk)
     return render(request, 'sleep_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def sleep_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(SleepLog, id=pk).delete()
@@ -1874,10 +1880,12 @@ def sleep_delete(request, pk):
 
 # ===== Phase 6: Circadian Rhythm =====
 
+@login_required
 def circadian_list(request):
     entries = CircadianRhythmLog.objects.all().order_by('-date')
     return render(request, 'circadian_list.html', {'entries': entries})
 
+@login_required
 def circadian_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1889,10 +1897,10 @@ def circadian_add(request):
             light_exp = request.POST.get('light_exposure_minutes', '').strip()
             CircadianRhythmLog.objects.create(
                 date=date,
-                wake_time=request.POST.get('wake_time', ''),
-                sleep_onset=request.POST.get('sleep_onset', ''),
-                peak_energy_time=request.POST.get('peak_energy_time', ''),
-                lowest_energy_time=request.POST.get('lowest_energy_time', ''),
+                wake_time=request.POST.get('wake_time', '').strip() or None,
+                sleep_onset=request.POST.get('sleep_onset', '').strip() or None,
+                peak_energy_time=request.POST.get('peak_energy_time', '').strip() or None,
+                lowest_energy_time=request.POST.get('lowest_energy_time', '').strip() or None,
                 light_exposure_minutes=int(light_exp) if light_exp else None,
                 notes=request.POST.get('notes', ''),
             )
@@ -1903,15 +1911,16 @@ def circadian_add(request):
             return redirect('circadian_add')
     return render(request, 'circadian_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def circadian_edit(request, pk):
     entry = get_object_or_404(CircadianRhythmLog, id=pk)
     if request.method == 'POST':
         try:
             entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.wake_time = request.POST.get('wake_time', '')
-            entry.sleep_onset = request.POST.get('sleep_onset', '')
-            entry.peak_energy_time = request.POST.get('peak_energy_time', '')
-            entry.lowest_energy_time = request.POST.get('lowest_energy_time', '')
+            entry.wake_time = request.POST.get('wake_time', '').strip() or None
+            entry.sleep_onset = request.POST.get('sleep_onset', '').strip() or None
+            entry.peak_energy_time = request.POST.get('peak_energy_time', '').strip() or None
+            entry.lowest_energy_time = request.POST.get('lowest_energy_time', '').strip() or None
             light_exp = request.POST.get('light_exposure_minutes', '').strip()
             entry.light_exposure_minutes = int(light_exp) if light_exp else None
             entry.notes = request.POST.get('notes', '')
@@ -1923,6 +1932,7 @@ def circadian_edit(request, pk):
             return redirect('circadian_edit', pk=pk)
     return render(request, 'circadian_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def circadian_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(CircadianRhythmLog, id=pk).delete()
@@ -1932,10 +1942,12 @@ def circadian_delete(request, pk):
 
 # ===== Phase 6: Dream Journal =====
 
+@login_required
 def dream_list(request):
     entries = DreamJournal.objects.all().order_by('-date')
     return render(request, 'dream_list.html', {'entries': entries})
 
+@login_required
 def dream_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1959,6 +1971,7 @@ def dream_add(request):
             return redirect('dream_add')
     return render(request, 'dream_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def dream_edit(request, pk):
     entry = get_object_or_404(DreamJournal, id=pk)
     if request.method == 'POST':
@@ -1977,6 +1990,7 @@ def dream_edit(request, pk):
             return redirect('dream_edit', pk=pk)
     return render(request, 'dream_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def dream_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(DreamJournal, id=pk).delete()
@@ -1986,10 +2000,12 @@ def dream_delete(request, pk):
 
 # ===== Phase 6: Macronutrient Log =====
 
+@login_required
 def macro_list(request):
     entries = MacronutrientLog.objects.all().order_by('-date')
     return render(request, 'macro_list.html', {'entries': entries})
 
+@login_required
 def macro_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2019,6 +2035,7 @@ def macro_add(request):
             return redirect('macro_add')
     return render(request, 'macro_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def macro_edit(request, pk):
     entry = get_object_or_404(MacronutrientLog, id=pk)
     if request.method == 'POST':
@@ -2043,6 +2060,7 @@ def macro_edit(request, pk):
             return redirect('macro_edit', pk=pk)
     return render(request, 'macro_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def macro_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MacronutrientLog, id=pk).delete()
@@ -2052,10 +2070,12 @@ def macro_delete(request, pk):
 
 # ===== Phase 6: Micronutrient Log =====
 
+@login_required
 def micro_list(request):
     entries = MicronutrientLog.objects.all().order_by('-date')
     return render(request, 'micro_list.html', {'entries': entries})
 
+@login_required
 def micro_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2079,6 +2099,7 @@ def micro_add(request):
             return redirect('micro_add')
     return render(request, 'micro_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def micro_edit(request, pk):
     entry = get_object_or_404(MicronutrientLog, id=pk)
     if request.method == 'POST':
@@ -2097,6 +2118,7 @@ def micro_edit(request, pk):
             return redirect('micro_edit', pk=pk)
     return render(request, 'micro_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def micro_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MicronutrientLog, id=pk).delete()
@@ -2106,10 +2128,12 @@ def micro_delete(request, pk):
 
 # ===== Phase 6: Food Entry =====
 
+@login_required
 def food_list(request):
     entries = FoodEntry.objects.all().order_by('-date')
     return render(request, 'food_list.html', {'entries': entries})
 
+@login_required
 def food_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2141,6 +2165,7 @@ def food_add(request):
             return redirect('food_add')
     return render(request, 'food_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def food_edit(request, pk):
     entry = get_object_or_404(FoodEntry, id=pk)
     if request.method == 'POST':
@@ -2167,6 +2192,7 @@ def food_edit(request, pk):
             return redirect('food_edit', pk=pk)
     return render(request, 'food_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def food_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(FoodEntry, id=pk).delete()
@@ -2176,10 +2202,12 @@ def food_delete(request, pk):
 
 # ===== Phase 6: Fasting Log =====
 
+@login_required
 def fasting_list(request):
     entries = FastingLog.objects.all().order_by('-date')
     return render(request, 'fasting_list.html', {'entries': entries})
 
+@login_required
 def fasting_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2192,8 +2220,8 @@ def fasting_add(request):
             actual = request.POST.get('actual_hours', '').strip()
             FastingLog.objects.create(
                 date=date,
-                fast_start=request.POST.get('fast_start', ''),
-                fast_end=request.POST.get('fast_end', ''),
+                fast_start=request.POST.get('fast_start', '').strip() or None,
+                fast_end=request.POST.get('fast_end', '').strip() or None,
                 target_hours=float(target) if target else None,
                 actual_hours=float(actual) if actual else None,
                 notes=request.POST.get('notes', ''),
@@ -2205,13 +2233,14 @@ def fasting_add(request):
             return redirect('fasting_add')
     return render(request, 'fasting_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def fasting_edit(request, pk):
     entry = get_object_or_404(FastingLog, id=pk)
     if request.method == 'POST':
         try:
             entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.fast_start = request.POST.get('fast_start', '')
-            entry.fast_end = request.POST.get('fast_end', '')
+            entry.fast_start = request.POST.get('fast_start', '').strip() or None
+            entry.fast_end = request.POST.get('fast_end', '').strip() or None
             target = request.POST.get('target_hours', '').strip()
             actual = request.POST.get('actual_hours', '').strip()
             entry.target_hours = float(target) if target else None
@@ -2225,6 +2254,7 @@ def fasting_edit(request, pk):
             return redirect('fasting_edit', pk=pk)
     return render(request, 'fasting_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def fasting_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(FastingLog, id=pk).delete()
@@ -2234,10 +2264,12 @@ def fasting_delete(request, pk):
 
 # ===== Phase 6: Caffeine & Alcohol Log =====
 
+@login_required
 def caffeine_alcohol_list(request):
     entries = CaffeineAlcoholLog.objects.all().order_by('-date')
     return render(request, 'caffeine_alcohol_list.html', {'entries': entries})
 
+@login_required
 def caffeine_alcohol_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2252,7 +2284,7 @@ def caffeine_alcohol_add(request):
                 substance=request.POST.get('substance', ''),
                 amount_mg=float(amount) if amount else None,
                 drink_name=request.POST.get('drink_name', ''),
-                time_consumed=request.POST.get('time_consumed', ''),
+                time_consumed=request.POST.get('time_consumed', '').strip() or None,
                 notes=request.POST.get('notes', ''),
             )
             messages.success(request, 'Caffeine/alcohol log added!')
@@ -2262,6 +2294,7 @@ def caffeine_alcohol_add(request):
             return redirect('caffeine_alcohol_add')
     return render(request, 'caffeine_alcohol_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def caffeine_alcohol_edit(request, pk):
     entry = get_object_or_404(CaffeineAlcoholLog, id=pk)
     if request.method == 'POST':
@@ -2271,7 +2304,7 @@ def caffeine_alcohol_edit(request, pk):
             amount = request.POST.get('amount_mg', '').strip()
             entry.amount_mg = float(amount) if amount else None
             entry.drink_name = request.POST.get('drink_name', '')
-            entry.time_consumed = request.POST.get('time_consumed', '')
+            entry.time_consumed = request.POST.get('time_consumed', '').strip() or None
             entry.notes = request.POST.get('notes', '')
             entry.save()
             messages.success(request, 'Caffeine/alcohol log updated!')
@@ -2281,6 +2314,7 @@ def caffeine_alcohol_edit(request, pk):
             return redirect('caffeine_alcohol_edit', pk=pk)
     return render(request, 'caffeine_alcohol_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def caffeine_alcohol_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(CaffeineAlcoholLog, id=pk).delete()
