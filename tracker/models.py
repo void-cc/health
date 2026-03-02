@@ -566,7 +566,7 @@ class CaffeineAlcoholLog(models.Model):
 
 # ===== Phase 7: Multi-User Release Preparations =====
 
-class UserProfile(models.Model):
+class UserAccount(models.Model):
     ROLE_CHOICES = [
         ('admin', 'Administrator'),
         ('user', 'Standard User'),
@@ -582,7 +582,7 @@ class UserProfile(models.Model):
 
 
 class FamilyAccount(models.Model):
-    primary_user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='family_members')
+    primary_user = models.ForeignKey(UserAccount, on_delete=models.CASCADE, related_name='family_members')
     member_name = models.CharField(max_length=200)
     relationship = models.CharField(max_length=100, blank=True, default='')
     is_minor = models.BooleanField(default=False)
