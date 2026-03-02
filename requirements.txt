@@ -14,3 +14,7 @@ django-allauth
 django-otp
 qrcode
 Pillow
+
+# Phase 5: Wearable Integrations
+requests
+requests-oauthlib

@@ -194,3 +194,39 @@ SESSION_INACTIVITY_TIMEOUT = 1800  # 30 minutes of inactivity
 
 # Email backend (console for development)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# ===== Wearable Platform Integration Settings =====
+# Configure OAuth credentials for each platform via environment variables.
+
+# Withings (https://developer.withings.com/)
+WITHINGS_CLIENT_ID = os.environ.get("WITHINGS_CLIENT_ID", "")
+WITHINGS_CLIENT_SECRET = os.environ.get("WITHINGS_CLIENT_SECRET", "")
+
+# Google Fit (https://console.cloud.google.com/)
+GOOGLE_FIT_CLIENT_ID = os.environ.get("GOOGLE_FIT_CLIENT_ID", "")
+GOOGLE_FIT_CLIENT_SECRET = os.environ.get("GOOGLE_FIT_CLIENT_SECRET", "")
+
+# Fitbit (https://dev.fitbit.com/)
+FITBIT_CLIENT_ID = os.environ.get("FITBIT_CLIENT_ID", "")
+FITBIT_CLIENT_SECRET = os.environ.get("FITBIT_CLIENT_SECRET", "")
+
+# Oura (https://cloud.ouraring.com/v2/docs)
+OURA_CLIENT_ID = os.environ.get("OURA_CLIENT_ID", "")
+OURA_CLIENT_SECRET = os.environ.get("OURA_CLIENT_SECRET", "")
+
+# Strava (https://developers.strava.com/)
+STRAVA_CLIENT_ID = os.environ.get("STRAVA_CLIENT_ID", "")
+STRAVA_CLIENT_SECRET = os.environ.get("STRAVA_CLIENT_SECRET", "")
+
+# Garmin (https://developer.garmin.com/)
+GARMIN_CLIENT_ID = os.environ.get("GARMIN_CLIENT_ID", "")
+GARMIN_CLIENT_SECRET = os.environ.get("GARMIN_CLIENT_SECRET", "")
+
+# Dexcom (https://developer.dexcom.com/)
+DEXCOM_CLIENT_ID = os.environ.get("DEXCOM_CLIENT_ID", "")
+DEXCOM_CLIENT_SECRET = os.environ.get("DEXCOM_CLIENT_SECRET", "")
+DEXCOM_BASE_URL = os.environ.get("DEXCOM_BASE_URL", "https://sandbox-api.dexcom.com")
+
+# Samsung Health (https://developer.samsung.com/health)
+SAMSUNG_HEALTH_CLIENT_ID = os.environ.get("SAMSUNG_HEALTH_CLIENT_ID", "")
+SAMSUNG_HEALTH_CLIENT_SECRET = os.environ.get("SAMSUNG_HEALTH_CLIENT_SECRET", "")
