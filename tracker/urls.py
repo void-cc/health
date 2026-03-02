@@ -282,4 +282,7 @@ urlpatterns = [
     path('subtasks/add/', views.integration_subtask_add, name='integration_subtask_add'),
     path('subtasks/edit/<int:pk>/', views.integration_subtask_edit, name='integration_subtask_edit'),
     path('subtasks/delete/<int:pk>/', views.integration_subtask_delete, name='integration_subtask_delete'),
+
+    # Phase 11: Interoperability Dashboard
+    path('phase11/', views.phase11_dashboard, name='phase11_dashboard'),
 ]
