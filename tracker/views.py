@@ -3,11 +3,29 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from .models import (
-    BloodTest, BloodTestInfo, VitalSign,DataPointAnnotation, DashboardWidget,
+    BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
     BodyComposition, HydrationLog, EnergyFatigueLog,
     CustomVitalDefinition, CustomVitalEntry, PainLog,
     RestingMetabolicRate, OrthostaticReading, ReproductiveHealthLog,
     SymptomJournal, MetabolicLog, KetoneLog, BODY_REGIONS,
+    # Phase 5
+    WearableDevice, WearableSyncLog, WEARABLE_PLATFORMS,
+    # Phase 6
+    SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
+    MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
+    # Phase 7
+    UserProfile, FamilyAccount, EncryptionKey, AuditLog,
+    APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
+    # Phase 8
+    PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
+    BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
+    HealthGoal, CriticalAlert,
+    # Phase 9
+    SecureViewingLink, PractitionerAccess, IntakeSummary,
+    DataExportRequest, StakeholderEmail,
+    # Phase 10-12
+    IntegrationConfig, IntegrationSubTask,
+    INTEGRATION_CATEGORIES, INTEGRATION_FEATURE_TYPES,
 )
 from django.utils.http import url_has_allowed_host_and_scheme
 from datetime import datetime
@@ -1729,3 +1747,1489 @@ def global_search(request):
         })
 
     return JsonResponse({'results': results})
+
+
+
+# ===== Phase 5: Wearable Integrations =====
+
+def wearable_device_list(request):
+    entries = WearableDevice.objects.all().order_by('-created_at')
+    return render(request, 'wearable_device_list.html', {'entries': entries})
+
+def wearable_device_add(request):
+    if request.method == 'POST':
+        try:
+            WearableDevice.objects.create(
+                platform=request.POST.get('platform', ''),
+                device_name=request.POST.get('device_name', ''),
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'Wearable device added!')
+            return redirect('wearable_device_list')
+        except Exception:
+            messages.error(request, 'Error adding wearable device.')
+            return redirect('wearable_device_add')
+    return render(request, 'wearable_device_form.html', {'editing': False, 'platforms': WEARABLE_PLATFORMS})
+
+def wearable_device_edit(request, pk):
+    entry = get_object_or_404(WearableDevice, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.platform = request.POST.get('platform', '')
+            entry.device_name = request.POST.get('device_name', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'Wearable device updated!')
+            return redirect('wearable_device_list')
+        except Exception:
+            messages.error(request, 'Error updating wearable device.')
+            return redirect('wearable_device_edit', pk=pk)
+    return render(request, 'wearable_device_form.html', {'entry': entry, 'editing': True, 'platforms': WEARABLE_PLATFORMS})
+
+def wearable_device_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(WearableDevice, id=pk).delete()
+        messages.success(request, 'Wearable device deleted!')
+    return redirect('wearable_device_list')
+
+def sync_log_list(request):
+    entries = WearableSyncLog.objects.all().order_by('-started_at')
+    return render(request, 'sync_log_list.html', {'entries': entries})
+
+
+# ===== Phase 6: Sleep & Circadian =====
+
+def sleep_list(request):
+    entries = SleepLog.objects.all().order_by('-date')
+    return render(request, 'sleep_list.html', {'entries': entries})
+
+def sleep_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('sleep_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            total = request.POST.get('total_sleep_minutes', '').strip()
+            rem = request.POST.get('rem_minutes', '').strip()
+            deep = request.POST.get('deep_sleep_minutes', '').strip()
+            light = request.POST.get('light_sleep_minutes', '').strip()
+            awake = request.POST.get('awake_minutes', '').strip()
+            quality = request.POST.get('sleep_quality_score', '').strip()
+            SleepLog.objects.create(
+                date=date,
+                bedtime=request.POST.get('bedtime', ''),
+                wake_time=request.POST.get('wake_time', ''),
+                total_sleep_minutes=int(total) if total else None,
+                rem_minutes=int(rem) if rem else None,
+                deep_sleep_minutes=int(deep) if deep else None,
+                light_sleep_minutes=int(light) if light else None,
+                awake_minutes=int(awake) if awake else None,
+                sleep_quality_score=int(quality) if quality else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Sleep log added!')
+            return redirect('sleep_list')
+        except Exception:
+            messages.error(request, 'Error adding sleep log.')
+            return redirect('sleep_add')
+    return render(request, 'sleep_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def sleep_edit(request, pk):
+    entry = get_object_or_404(SleepLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.bedtime = request.POST.get('bedtime', '')
+            entry.wake_time = request.POST.get('wake_time', '')
+            total = request.POST.get('total_sleep_minutes', '').strip()
+            rem = request.POST.get('rem_minutes', '').strip()
+            deep = request.POST.get('deep_sleep_minutes', '').strip()
+            light = request.POST.get('light_sleep_minutes', '').strip()
+            awake = request.POST.get('awake_minutes', '').strip()
+            quality = request.POST.get('sleep_quality_score', '').strip()
+            entry.total_sleep_minutes = int(total) if total else None
+            entry.rem_minutes = int(rem) if rem else None
+            entry.deep_sleep_minutes = int(deep) if deep else None
+            entry.light_sleep_minutes = int(light) if light else None
+            entry.awake_minutes = int(awake) if awake else None
+            entry.sleep_quality_score = int(quality) if quality else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Sleep log updated!')
+            return redirect('sleep_list')
+        except Exception:
+            messages.error(request, 'Error updating sleep log.')
+            return redirect('sleep_edit', pk=pk)
+    return render(request, 'sleep_form.html', {'entry': entry, 'editing': True})
+
+def sleep_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(SleepLog, id=pk).delete()
+        messages.success(request, 'Sleep log deleted!')
+    return redirect('sleep_list')
+
+
+# ===== Phase 6: Circadian Rhythm =====
+
+def circadian_list(request):
+    entries = CircadianRhythmLog.objects.all().order_by('-date')
+    return render(request, 'circadian_list.html', {'entries': entries})
+
+def circadian_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('circadian_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            light_exp = request.POST.get('light_exposure_minutes', '').strip()
+            CircadianRhythmLog.objects.create(
+                date=date,
+                wake_time=request.POST.get('wake_time', ''),
+                sleep_onset=request.POST.get('sleep_onset', ''),
+                peak_energy_time=request.POST.get('peak_energy_time', ''),
+                lowest_energy_time=request.POST.get('lowest_energy_time', ''),
+                light_exposure_minutes=int(light_exp) if light_exp else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Circadian rhythm log added!')
+            return redirect('circadian_list')
+        except Exception:
+            messages.error(request, 'Error adding circadian rhythm log.')
+            return redirect('circadian_add')
+    return render(request, 'circadian_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def circadian_edit(request, pk):
+    entry = get_object_or_404(CircadianRhythmLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.wake_time = request.POST.get('wake_time', '')
+            entry.sleep_onset = request.POST.get('sleep_onset', '')
+            entry.peak_energy_time = request.POST.get('peak_energy_time', '')
+            entry.lowest_energy_time = request.POST.get('lowest_energy_time', '')
+            light_exp = request.POST.get('light_exposure_minutes', '').strip()
+            entry.light_exposure_minutes = int(light_exp) if light_exp else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Circadian rhythm log updated!')
+            return redirect('circadian_list')
+        except Exception:
+            messages.error(request, 'Error updating circadian rhythm log.')
+            return redirect('circadian_edit', pk=pk)
+    return render(request, 'circadian_form.html', {'entry': entry, 'editing': True})
+
+def circadian_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(CircadianRhythmLog, id=pk).delete()
+        messages.success(request, 'Circadian rhythm log deleted!')
+    return redirect('circadian_list')
+
+
+# ===== Phase 6: Dream Journal =====
+
+def dream_list(request):
+    entries = DreamJournal.objects.all().order_by('-date')
+    return render(request, 'dream_list.html', {'entries': entries})
+
+def dream_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('dream_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            lucidity = request.POST.get('lucidity_level', '').strip()
+            DreamJournal.objects.create(
+                date=date,
+                dream_description=request.POST.get('dream_description', ''),
+                lucidity_level=int(lucidity) if lucidity else None,
+                mood_on_waking=request.POST.get('mood_on_waking', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Dream journal entry added!')
+            return redirect('dream_list')
+        except Exception:
+            messages.error(request, 'Error adding dream journal entry.')
+            return redirect('dream_add')
+    return render(request, 'dream_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def dream_edit(request, pk):
+    entry = get_object_or_404(DreamJournal, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.dream_description = request.POST.get('dream_description', '')
+            lucidity = request.POST.get('lucidity_level', '').strip()
+            entry.lucidity_level = int(lucidity) if lucidity else None
+            entry.mood_on_waking = request.POST.get('mood_on_waking', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Dream journal entry updated!')
+            return redirect('dream_list')
+        except Exception:
+            messages.error(request, 'Error updating dream journal entry.')
+            return redirect('dream_edit', pk=pk)
+    return render(request, 'dream_form.html', {'entry': entry, 'editing': True})
+
+def dream_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(DreamJournal, id=pk).delete()
+        messages.success(request, 'Dream journal entry deleted!')
+    return redirect('dream_list')
+
+
+# ===== Phase 6: Macronutrient Log =====
+
+def macro_list(request):
+    entries = MacronutrientLog.objects.all().order_by('-date')
+    return render(request, 'macro_list.html', {'entries': entries})
+
+def macro_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('macro_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            protein = request.POST.get('protein_grams', '').strip()
+            carbs = request.POST.get('carbohydrate_grams', '').strip()
+            fat = request.POST.get('fat_grams', '').strip()
+            calories = request.POST.get('calories', '').strip()
+            fiber = request.POST.get('fiber_grams', '').strip()
+            MacronutrientLog.objects.create(
+                date=date,
+                protein_grams=float(protein) if protein else None,
+                carbohydrate_grams=float(carbs) if carbs else None,
+                fat_grams=float(fat) if fat else None,
+                calories=float(calories) if calories else None,
+                fiber_grams=float(fiber) if fiber else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Macronutrient log added!')
+            return redirect('macro_list')
+        except Exception:
+            messages.error(request, 'Error adding macronutrient log.')
+            return redirect('macro_add')
+    return render(request, 'macro_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def macro_edit(request, pk):
+    entry = get_object_or_404(MacronutrientLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            protein = request.POST.get('protein_grams', '').strip()
+            carbs = request.POST.get('carbohydrate_grams', '').strip()
+            fat = request.POST.get('fat_grams', '').strip()
+            calories = request.POST.get('calories', '').strip()
+            fiber = request.POST.get('fiber_grams', '').strip()
+            entry.protein_grams = float(protein) if protein else None
+            entry.carbohydrate_grams = float(carbs) if carbs else None
+            entry.fat_grams = float(fat) if fat else None
+            entry.calories = float(calories) if calories else None
+            entry.fiber_grams = float(fiber) if fiber else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Macronutrient log updated!')
+            return redirect('macro_list')
+        except Exception:
+            messages.error(request, 'Error updating macronutrient log.')
+            return redirect('macro_edit', pk=pk)
+    return render(request, 'macro_form.html', {'entry': entry, 'editing': True})
+
+def macro_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(MacronutrientLog, id=pk).delete()
+        messages.success(request, 'Macronutrient log deleted!')
+    return redirect('macro_list')
+
+
+# ===== Phase 6: Micronutrient Log =====
+
+def micro_list(request):
+    entries = MicronutrientLog.objects.all().order_by('-date')
+    return render(request, 'micro_list.html', {'entries': entries})
+
+def micro_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('micro_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            amount = request.POST.get('amount', '').strip()
+            MicronutrientLog.objects.create(
+                date=date,
+                nutrient_name=request.POST.get('nutrient_name', ''),
+                amount=float(amount) if amount else None,
+                unit=request.POST.get('unit', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Micronutrient log added!')
+            return redirect('micro_list')
+        except Exception:
+            messages.error(request, 'Error adding micronutrient log.')
+            return redirect('micro_add')
+    return render(request, 'micro_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def micro_edit(request, pk):
+    entry = get_object_or_404(MicronutrientLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.nutrient_name = request.POST.get('nutrient_name', '')
+            amount = request.POST.get('amount', '').strip()
+            entry.amount = float(amount) if amount else None
+            entry.unit = request.POST.get('unit', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Micronutrient log updated!')
+            return redirect('micro_list')
+        except Exception:
+            messages.error(request, 'Error updating micronutrient log.')
+            return redirect('micro_edit', pk=pk)
+    return render(request, 'micro_form.html', {'entry': entry, 'editing': True})
+
+def micro_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(MicronutrientLog, id=pk).delete()
+        messages.success(request, 'Micronutrient log deleted!')
+    return redirect('micro_list')
+
+
+# ===== Phase 6: Food Entry =====
+
+def food_list(request):
+    entries = FoodEntry.objects.all().order_by('-date')
+    return render(request, 'food_list.html', {'entries': entries})
+
+def food_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('food_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            calories = request.POST.get('calories', '').strip()
+            protein = request.POST.get('protein_grams', '').strip()
+            carbs = request.POST.get('carbohydrate_grams', '').strip()
+            fat = request.POST.get('fat_grams', '').strip()
+            FoodEntry.objects.create(
+                date=date,
+                food_name=request.POST.get('food_name', ''),
+                barcode=request.POST.get('barcode', ''),
+                serving_size=request.POST.get('serving_size', ''),
+                calories=float(calories) if calories else None,
+                protein_grams=float(protein) if protein else None,
+                carbohydrate_grams=float(carbs) if carbs else None,
+                fat_grams=float(fat) if fat else None,
+                source=request.POST.get('source', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Food entry added!')
+            return redirect('food_list')
+        except Exception:
+            messages.error(request, 'Error adding food entry.')
+            return redirect('food_add')
+    return render(request, 'food_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def food_edit(request, pk):
+    entry = get_object_or_404(FoodEntry, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.food_name = request.POST.get('food_name', '')
+            entry.barcode = request.POST.get('barcode', '')
+            entry.serving_size = request.POST.get('serving_size', '')
+            calories = request.POST.get('calories', '').strip()
+            protein = request.POST.get('protein_grams', '').strip()
+            carbs = request.POST.get('carbohydrate_grams', '').strip()
+            fat = request.POST.get('fat_grams', '').strip()
+            entry.calories = float(calories) if calories else None
+            entry.protein_grams = float(protein) if protein else None
+            entry.carbohydrate_grams = float(carbs) if carbs else None
+            entry.fat_grams = float(fat) if fat else None
+            entry.source = request.POST.get('source', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Food entry updated!')
+            return redirect('food_list')
+        except Exception:
+            messages.error(request, 'Error updating food entry.')
+            return redirect('food_edit', pk=pk)
+    return render(request, 'food_form.html', {'entry': entry, 'editing': True})
+
+def food_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(FoodEntry, id=pk).delete()
+        messages.success(request, 'Food entry deleted!')
+    return redirect('food_list')
+
+
+# ===== Phase 6: Fasting Log =====
+
+def fasting_list(request):
+    entries = FastingLog.objects.all().order_by('-date')
+    return render(request, 'fasting_list.html', {'entries': entries})
+
+def fasting_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('fasting_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            target = request.POST.get('target_hours', '').strip()
+            actual = request.POST.get('actual_hours', '').strip()
+            FastingLog.objects.create(
+                date=date,
+                fast_start=request.POST.get('fast_start', ''),
+                fast_end=request.POST.get('fast_end', ''),
+                target_hours=float(target) if target else None,
+                actual_hours=float(actual) if actual else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Fasting log added!')
+            return redirect('fasting_list')
+        except Exception:
+            messages.error(request, 'Error adding fasting log.')
+            return redirect('fasting_add')
+    return render(request, 'fasting_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def fasting_edit(request, pk):
+    entry = get_object_or_404(FastingLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.fast_start = request.POST.get('fast_start', '')
+            entry.fast_end = request.POST.get('fast_end', '')
+            target = request.POST.get('target_hours', '').strip()
+            actual = request.POST.get('actual_hours', '').strip()
+            entry.target_hours = float(target) if target else None
+            entry.actual_hours = float(actual) if actual else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Fasting log updated!')
+            return redirect('fasting_list')
+        except Exception:
+            messages.error(request, 'Error updating fasting log.')
+            return redirect('fasting_edit', pk=pk)
+    return render(request, 'fasting_form.html', {'entry': entry, 'editing': True})
+
+def fasting_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(FastingLog, id=pk).delete()
+        messages.success(request, 'Fasting log deleted!')
+    return redirect('fasting_list')
+
+
+# ===== Phase 6: Caffeine & Alcohol Log =====
+
+def caffeine_alcohol_list(request):
+    entries = CaffeineAlcoholLog.objects.all().order_by('-date')
+    return render(request, 'caffeine_alcohol_list.html', {'entries': entries})
+
+def caffeine_alcohol_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('caffeine_alcohol_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            amount = request.POST.get('amount_mg', '').strip()
+            CaffeineAlcoholLog.objects.create(
+                date=date,
+                substance=request.POST.get('substance', ''),
+                amount_mg=float(amount) if amount else None,
+                drink_name=request.POST.get('drink_name', ''),
+                time_consumed=request.POST.get('time_consumed', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Caffeine/alcohol log added!')
+            return redirect('caffeine_alcohol_list')
+        except Exception:
+            messages.error(request, 'Error adding caffeine/alcohol log.')
+            return redirect('caffeine_alcohol_add')
+    return render(request, 'caffeine_alcohol_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def caffeine_alcohol_edit(request, pk):
+    entry = get_object_or_404(CaffeineAlcoholLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.substance = request.POST.get('substance', '')
+            amount = request.POST.get('amount_mg', '').strip()
+            entry.amount_mg = float(amount) if amount else None
+            entry.drink_name = request.POST.get('drink_name', '')
+            entry.time_consumed = request.POST.get('time_consumed', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Caffeine/alcohol log updated!')
+            return redirect('caffeine_alcohol_list')
+        except Exception:
+            messages.error(request, 'Error updating caffeine/alcohol log.')
+            return redirect('caffeine_alcohol_edit', pk=pk)
+    return render(request, 'caffeine_alcohol_form.html', {'entry': entry, 'editing': True})
+
+def caffeine_alcohol_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(CaffeineAlcoholLog, id=pk).delete()
+        messages.success(request, 'Caffeine/alcohol log deleted!')
+    return redirect('caffeine_alcohol_list')
+
+
+# ===== Phase 7: User Profile =====
+
+def user_profile_list(request):
+    entries = UserProfile.objects.all().order_by('-created_at')
+    return render(request, 'user_profile_list.html', {'entries': entries})
+
+def user_profile_add(request):
+    if request.method == 'POST':
+        try:
+            UserProfile.objects.create(
+                username=request.POST.get('username', ''),
+                role=request.POST.get('role', ''),
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'User profile added!')
+            return redirect('user_profile_list')
+        except Exception:
+            messages.error(request, 'Error adding user profile.')
+            return redirect('user_profile_add')
+    return render(request, 'user_profile_form.html', {'editing': False})
+
+def user_profile_edit(request, pk):
+    entry = get_object_or_404(UserProfile, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.username = request.POST.get('username', '')
+            entry.role = request.POST.get('role', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'User profile updated!')
+            return redirect('user_profile_list')
+        except Exception:
+            messages.error(request, 'Error updating user profile.')
+            return redirect('user_profile_edit', pk=pk)
+    return render(request, 'user_profile_form.html', {'entry': entry, 'editing': True})
+
+def user_profile_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(UserProfile, id=pk).delete()
+        messages.success(request, 'User profile deleted!')
+    return redirect('user_profile_list')
+
+
+# ===== Phase 7: Family Account =====
+
+def family_account_list(request):
+    entries = FamilyAccount.objects.all().order_by('-created_at')
+    return render(request, 'family_account_list.html', {'entries': entries})
+
+def family_account_add(request):
+    if request.method == 'POST':
+        try:
+            FamilyAccount.objects.create(
+                primary_user=request.POST.get('primary_user', ''),
+                member_name=request.POST.get('member_name', ''),
+                relationship=request.POST.get('relationship', ''),
+                is_minor=request.POST.get('is_minor') == 'on',
+            )
+            messages.success(request, 'Family account added!')
+            return redirect('family_account_list')
+        except Exception:
+            messages.error(request, 'Error adding family account.')
+            return redirect('family_account_add')
+    return render(request, 'family_account_form.html', {'editing': False})
+
+def family_account_edit(request, pk):
+    entry = get_object_or_404(FamilyAccount, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.primary_user = request.POST.get('primary_user', '')
+            entry.member_name = request.POST.get('member_name', '')
+            entry.relationship = request.POST.get('relationship', '')
+            entry.is_minor = request.POST.get('is_minor') == 'on'
+            entry.save()
+            messages.success(request, 'Family account updated!')
+            return redirect('family_account_list')
+        except Exception:
+            messages.error(request, 'Error updating family account.')
+            return redirect('family_account_edit', pk=pk)
+    return render(request, 'family_account_form.html', {'entry': entry, 'editing': True})
+
+def family_account_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(FamilyAccount, id=pk).delete()
+        messages.success(request, 'Family account deleted!')
+    return redirect('family_account_list')
+
+
+# ===== Phase 7: Consent Log =====
+
+def consent_log_list(request):
+    entries = ConsentLog.objects.all().order_by('-accepted_at')
+    return render(request, 'consent_log_list.html', {'entries': entries})
+
+def consent_log_add(request):
+    if request.method == 'POST':
+        try:
+            ConsentLog.objects.create(
+                consent_type=request.POST.get('consent_type', ''),
+                version=request.POST.get('version', ''),
+                accepted=request.POST.get('accepted') == 'on',
+                ip_address=request.POST.get('ip_address', ''),
+            )
+            messages.success(request, 'Consent log added!')
+            return redirect('consent_log_list')
+        except Exception:
+            messages.error(request, 'Error adding consent log.')
+            return redirect('consent_log_add')
+    return render(request, 'consent_log_form.html', {'editing': False})
+
+def consent_log_edit(request, pk):
+    entry = get_object_or_404(ConsentLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.consent_type = request.POST.get('consent_type', '')
+            entry.version = request.POST.get('version', '')
+            entry.accepted = request.POST.get('accepted') == 'on'
+            entry.ip_address = request.POST.get('ip_address', '')
+            entry.save()
+            messages.success(request, 'Consent log updated!')
+            return redirect('consent_log_list')
+        except Exception:
+            messages.error(request, 'Error updating consent log.')
+            return redirect('consent_log_edit', pk=pk)
+    return render(request, 'consent_log_form.html', {'entry': entry, 'editing': True})
+
+def consent_log_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(ConsentLog, id=pk).delete()
+        messages.success(request, 'Consent log deleted!')
+    return redirect('consent_log_list')
+
+
+# ===== Phase 7: Tenant Config =====
+
+def tenant_config_list(request):
+    entries = TenantConfig.objects.all().order_by('-created_at')
+    return render(request, 'tenant_config_list.html', {'entries': entries})
+
+def tenant_config_add(request):
+    if request.method == 'POST':
+        try:
+            TenantConfig.objects.create(
+                tenant_name=request.POST.get('tenant_name', ''),
+                is_active=request.POST.get('is_active') == 'on',
+                data_isolation_level=request.POST.get('data_isolation_level', ''),
+            )
+            messages.success(request, 'Tenant config added!')
+            return redirect('tenant_config_list')
+        except Exception:
+            messages.error(request, 'Error adding tenant config.')
+            return redirect('tenant_config_add')
+    return render(request, 'tenant_config_form.html', {'editing': False})
+
+def tenant_config_edit(request, pk):
+    entry = get_object_or_404(TenantConfig, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.tenant_name = request.POST.get('tenant_name', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.data_isolation_level = request.POST.get('data_isolation_level', '')
+            entry.save()
+            messages.success(request, 'Tenant config updated!')
+            return redirect('tenant_config_list')
+        except Exception:
+            messages.error(request, 'Error updating tenant config.')
+            return redirect('tenant_config_edit', pk=pk)
+    return render(request, 'tenant_config_form.html', {'entry': entry, 'editing': True})
+
+def tenant_config_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(TenantConfig, id=pk).delete()
+        messages.success(request, 'Tenant config deleted!')
+    return redirect('tenant_config_list')
+
+
+# ===== Phase 7: Admin Telemetry =====
+
+def admin_telemetry_list(request):
+    entries = AdminTelemetry.objects.all().order_by('-recorded_at')
+    return render(request, 'admin_telemetry_list.html', {'entries': entries})
+
+def admin_telemetry_add(request):
+    if request.method == 'POST':
+        try:
+            metric_value = request.POST.get('metric_value', '').strip()
+            AdminTelemetry.objects.create(
+                metric_name=request.POST.get('metric_name', ''),
+                metric_value=float(metric_value) if metric_value else None,
+            )
+            messages.success(request, 'Admin telemetry added!')
+            return redirect('admin_telemetry_list')
+        except Exception:
+            messages.error(request, 'Error adding admin telemetry.')
+            return redirect('admin_telemetry_add')
+    return render(request, 'admin_telemetry_form.html', {'editing': False})
+
+def admin_telemetry_edit(request, pk):
+    entry = get_object_or_404(AdminTelemetry, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.metric_name = request.POST.get('metric_name', '')
+            metric_value = request.POST.get('metric_value', '').strip()
+            entry.metric_value = float(metric_value) if metric_value else None
+            entry.save()
+            messages.success(request, 'Admin telemetry updated!')
+            return redirect('admin_telemetry_list')
+        except Exception:
+            messages.error(request, 'Error updating admin telemetry.')
+            return redirect('admin_telemetry_edit', pk=pk)
+    return render(request, 'admin_telemetry_form.html', {'entry': entry, 'editing': True})
+
+def admin_telemetry_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(AdminTelemetry, id=pk).delete()
+        messages.success(request, 'Admin telemetry deleted!')
+    return redirect('admin_telemetry_list')
+
+
+# ===== Phase 7: API Rate Limit Config =====
+
+def api_rate_limit_list(request):
+    entries = APIRateLimitConfig.objects.all().order_by('endpoint')
+    return render(request, 'api_rate_limit_list.html', {'entries': entries})
+
+def api_rate_limit_add(request):
+    if request.method == 'POST':
+        try:
+            max_min = request.POST.get('max_requests_per_minute', '').strip()
+            max_hr = request.POST.get('max_requests_per_hour', '').strip()
+            APIRateLimitConfig.objects.create(
+                endpoint=request.POST.get('endpoint', ''),
+                max_requests_per_minute=int(max_min) if max_min else None,
+                max_requests_per_hour=int(max_hr) if max_hr else None,
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'API rate limit config added!')
+            return redirect('api_rate_limit_list')
+        except Exception:
+            messages.error(request, 'Error adding API rate limit config.')
+            return redirect('api_rate_limit_add')
+    return render(request, 'api_rate_limit_form.html', {'editing': False})
+
+def api_rate_limit_edit(request, pk):
+    entry = get_object_or_404(APIRateLimitConfig, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.endpoint = request.POST.get('endpoint', '')
+            max_min = request.POST.get('max_requests_per_minute', '').strip()
+            max_hr = request.POST.get('max_requests_per_hour', '').strip()
+            entry.max_requests_per_minute = int(max_min) if max_min else None
+            entry.max_requests_per_hour = int(max_hr) if max_hr else None
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'API rate limit config updated!')
+            return redirect('api_rate_limit_list')
+        except Exception:
+            messages.error(request, 'Error updating API rate limit config.')
+            return redirect('api_rate_limit_edit', pk=pk)
+    return render(request, 'api_rate_limit_form.html', {'entry': entry, 'editing': True})
+
+def api_rate_limit_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(APIRateLimitConfig, id=pk).delete()
+        messages.success(request, 'API rate limit config deleted!')
+    return redirect('api_rate_limit_list')
+
+
+# ===== Phase 8: Medication Schedule =====
+
+def medication_schedule_list(request):
+    entries = MedicationSchedule.objects.all().order_by('-start_date')
+    return render(request, 'medication_schedule_list.html', {'entries': entries})
+
+def medication_schedule_add(request):
+    if request.method == 'POST':
+        try:
+            start_str = request.POST.get('start_date', '').strip()
+            end_str = request.POST.get('end_date', '').strip()
+            MedicationSchedule.objects.create(
+                medication_name=request.POST.get('medication_name', ''),
+                dosage=request.POST.get('dosage', ''),
+                frequency=request.POST.get('frequency', ''),
+                start_date=datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else None,
+                end_date=datetime.strptime(end_str, '%Y-%m-%d').date() if end_str else None,
+                time_of_day=request.POST.get('time_of_day', ''),
+                is_active=request.POST.get('is_active') == 'on',
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Medication schedule added!')
+            return redirect('medication_schedule_list')
+        except Exception:
+            messages.error(request, 'Error adding medication schedule.')
+            return redirect('medication_schedule_add')
+    return render(request, 'medication_schedule_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def medication_schedule_edit(request, pk):
+    entry = get_object_or_404(MedicationSchedule, id=pk)
+    if request.method == 'POST':
+        try:
+            start_str = request.POST.get('start_date', '').strip()
+            end_str = request.POST.get('end_date', '').strip()
+            entry.medication_name = request.POST.get('medication_name', '')
+            entry.dosage = request.POST.get('dosage', '')
+            entry.frequency = request.POST.get('frequency', '')
+            entry.start_date = datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else None
+            entry.end_date = datetime.strptime(end_str, '%Y-%m-%d').date() if end_str else None
+            entry.time_of_day = request.POST.get('time_of_day', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Medication schedule updated!')
+            return redirect('medication_schedule_list')
+        except Exception:
+            messages.error(request, 'Error updating medication schedule.')
+            return redirect('medication_schedule_edit', pk=pk)
+    return render(request, 'medication_schedule_form.html', {'entry': entry, 'editing': True})
+
+def medication_schedule_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(MedicationSchedule, id=pk).delete()
+        messages.success(request, 'Medication schedule deleted!')
+    return redirect('medication_schedule_list')
+
+
+# ===== Phase 8: Health Goal =====
+
+def health_goal_list(request):
+    entries = HealthGoal.objects.all().order_by('-created_at')
+    return render(request, 'health_goal_list.html', {'entries': entries})
+
+def health_goal_add(request):
+    if request.method == 'POST':
+        try:
+            target_val = request.POST.get('target_value', '').strip()
+            current_val = request.POST.get('current_value', '').strip()
+            start_str = request.POST.get('start_date', '').strip()
+            target_str = request.POST.get('target_date', '').strip()
+            HealthGoal.objects.create(
+                title=request.POST.get('title', ''),
+                description=request.POST.get('description', ''),
+                target_value=float(target_val) if target_val else None,
+                current_value=float(current_val) if current_val else None,
+                unit=request.POST.get('unit', ''),
+                status=request.POST.get('status', ''),
+                start_date=datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else None,
+                target_date=datetime.strptime(target_str, '%Y-%m-%d').date() if target_str else None,
+            )
+            messages.success(request, 'Health goal added!')
+            return redirect('health_goal_list')
+        except Exception:
+            messages.error(request, 'Error adding health goal.')
+            return redirect('health_goal_add')
+    return render(request, 'health_goal_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def health_goal_edit(request, pk):
+    entry = get_object_or_404(HealthGoal, id=pk)
+    if request.method == 'POST':
+        try:
+            target_val = request.POST.get('target_value', '').strip()
+            current_val = request.POST.get('current_value', '').strip()
+            start_str = request.POST.get('start_date', '').strip()
+            target_str = request.POST.get('target_date', '').strip()
+            entry.title = request.POST.get('title', '')
+            entry.description = request.POST.get('description', '')
+            entry.target_value = float(target_val) if target_val else None
+            entry.current_value = float(current_val) if current_val else None
+            entry.unit = request.POST.get('unit', '')
+            entry.status = request.POST.get('status', '')
+            entry.start_date = datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else None
+            entry.target_date = datetime.strptime(target_str, '%Y-%m-%d').date() if target_str else None
+            entry.save()
+            messages.success(request, 'Health goal updated!')
+            return redirect('health_goal_list')
+        except Exception:
+            messages.error(request, 'Error updating health goal.')
+            return redirect('health_goal_edit', pk=pk)
+    return render(request, 'health_goal_form.html', {'entry': entry, 'editing': True})
+
+def health_goal_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(HealthGoal, id=pk).delete()
+        messages.success(request, 'Health goal deleted!')
+    return redirect('health_goal_list')
+
+
+# ===== Phase 8: Critical Alert =====
+
+def critical_alert_list(request):
+    entries = CriticalAlert.objects.all().order_by('-triggered_at')
+    return render(request, 'critical_alert_list.html', {'entries': entries})
+
+def critical_alert_add(request):
+    if request.method == 'POST':
+        try:
+            metric_value = request.POST.get('metric_value', '').strip()
+            threshold = request.POST.get('threshold_value', '').strip()
+            CriticalAlert.objects.create(
+                metric_name=request.POST.get('metric_name', ''),
+                metric_value=float(metric_value) if metric_value else None,
+                threshold_value=float(threshold) if threshold else None,
+                alert_level=request.POST.get('alert_level', ''),
+                message=request.POST.get('message', ''),
+                acknowledged=request.POST.get('acknowledged') == 'on',
+            )
+            messages.success(request, 'Critical alert added!')
+            return redirect('critical_alert_list')
+        except Exception:
+            messages.error(request, 'Error adding critical alert.')
+            return redirect('critical_alert_add')
+    return render(request, 'critical_alert_form.html', {'editing': False})
+
+def critical_alert_edit(request, pk):
+    entry = get_object_or_404(CriticalAlert, id=pk)
+    if request.method == 'POST':
+        try:
+            metric_value = request.POST.get('metric_value', '').strip()
+            threshold = request.POST.get('threshold_value', '').strip()
+            entry.metric_name = request.POST.get('metric_name', '')
+            entry.metric_value = float(metric_value) if metric_value else None
+            entry.threshold_value = float(threshold) if threshold else None
+            entry.alert_level = request.POST.get('alert_level', '')
+            entry.message = request.POST.get('message', '')
+            entry.acknowledged = request.POST.get('acknowledged') == 'on'
+            entry.save()
+            messages.success(request, 'Critical alert updated!')
+            return redirect('critical_alert_list')
+        except Exception:
+            messages.error(request, 'Error updating critical alert.')
+            return redirect('critical_alert_edit', pk=pk)
+    return render(request, 'critical_alert_form.html', {'entry': entry, 'editing': True})
+
+def critical_alert_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(CriticalAlert, id=pk).delete()
+        messages.success(request, 'Critical alert deleted!')
+    return redirect('critical_alert_list')
+
+
+# ===== Phase 8: Health Report =====
+
+def health_report_list(request):
+    entries = HealthReport.objects.all().order_by('-generated_at')
+    return render(request, 'health_report_list.html', {'entries': entries})
+
+def health_report_add(request):
+    if request.method == 'POST':
+        try:
+            period_start_str = request.POST.get('period_start', '').strip()
+            period_end_str = request.POST.get('period_end', '').strip()
+            HealthReport.objects.create(
+                report_type=request.POST.get('report_type', ''),
+                title=request.POST.get('title', ''),
+                content=request.POST.get('content', ''),
+                period_start=datetime.strptime(period_start_str, '%Y-%m-%d').date() if period_start_str else None,
+                period_end=datetime.strptime(period_end_str, '%Y-%m-%d').date() if period_end_str else None,
+            )
+            messages.success(request, 'Health report added!')
+            return redirect('health_report_list')
+        except Exception:
+            messages.error(request, 'Error adding health report.')
+            return redirect('health_report_add')
+    return render(request, 'health_report_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def health_report_edit(request, pk):
+    entry = get_object_or_404(HealthReport, id=pk)
+    if request.method == 'POST':
+        try:
+            period_start_str = request.POST.get('period_start', '').strip()
+            period_end_str = request.POST.get('period_end', '').strip()
+            entry.report_type = request.POST.get('report_type', '')
+            entry.title = request.POST.get('title', '')
+            entry.content = request.POST.get('content', '')
+            entry.period_start = datetime.strptime(period_start_str, '%Y-%m-%d').date() if period_start_str else None
+            entry.period_end = datetime.strptime(period_end_str, '%Y-%m-%d').date() if period_end_str else None
+            entry.save()
+            messages.success(request, 'Health report updated!')
+            return redirect('health_report_list')
+        except Exception:
+            messages.error(request, 'Error updating health report.')
+            return redirect('health_report_edit', pk=pk)
+    return render(request, 'health_report_form.html', {'entry': entry, 'editing': True})
+
+def health_report_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(HealthReport, id=pk).delete()
+        messages.success(request, 'Health report deleted!')
+    return redirect('health_report_list')
+
+
+# ===== Phase 8: Biological Age Calculation =====
+
+def biological_age_list(request):
+    entries = BiologicalAgeCalculation.objects.all().order_by('-date')
+    return render(request, 'biological_age_list.html', {'entries': entries})
+
+def biological_age_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('biological_age_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            chrono = request.POST.get('chronological_age', '').strip()
+            bio = request.POST.get('biological_age', '').strip()
+            BiologicalAgeCalculation.objects.create(
+                date=date,
+                chronological_age=float(chrono) if chrono else None,
+                biological_age=float(bio) if bio else None,
+                method=request.POST.get('method', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Biological age calculation added!')
+            return redirect('biological_age_list')
+        except Exception:
+            messages.error(request, 'Error adding biological age calculation.')
+            return redirect('biological_age_add')
+    return render(request, 'biological_age_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def biological_age_edit(request, pk):
+    entry = get_object_or_404(BiologicalAgeCalculation, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            chrono = request.POST.get('chronological_age', '').strip()
+            bio = request.POST.get('biological_age', '').strip()
+            entry.chronological_age = float(chrono) if chrono else None
+            entry.biological_age = float(bio) if bio else None
+            entry.method = request.POST.get('method', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Biological age calculation updated!')
+            return redirect('biological_age_list')
+        except Exception:
+            messages.error(request, 'Error updating biological age calculation.')
+            return redirect('biological_age_edit', pk=pk)
+    return render(request, 'biological_age_form.html', {'entry': entry, 'editing': True})
+
+def biological_age_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(BiologicalAgeCalculation, id=pk).delete()
+        messages.success(request, 'Biological age calculation deleted!')
+    return redirect('biological_age_list')
+
+
+# ===== Phase 8: Predictive Biomarker =====
+
+def predictive_biomarker_list(request):
+    entries = PredictiveBiomarker.objects.all().order_by('-generated_at')
+    return render(request, 'predictive_biomarker_list.html', {'entries': entries})
+
+def predictive_biomarker_add(request):
+    if request.method == 'POST':
+        try:
+            predicted = request.POST.get('predicted_value', '').strip()
+            confidence = request.POST.get('confidence_percent', '').strip()
+            pred_date_str = request.POST.get('prediction_date', '').strip()
+            PredictiveBiomarker.objects.create(
+                biomarker_name=request.POST.get('biomarker_name', ''),
+                predicted_value=float(predicted) if predicted else None,
+                confidence_percent=float(confidence) if confidence else None,
+                prediction_date=datetime.strptime(pred_date_str, '%Y-%m-%d').date() if pred_date_str else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Predictive biomarker added!')
+            return redirect('predictive_biomarker_list')
+        except Exception:
+            messages.error(request, 'Error adding predictive biomarker.')
+            return redirect('predictive_biomarker_add')
+    return render(request, 'predictive_biomarker_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def predictive_biomarker_edit(request, pk):
+    entry = get_object_or_404(PredictiveBiomarker, id=pk)
+    if request.method == 'POST':
+        try:
+            predicted = request.POST.get('predicted_value', '').strip()
+            confidence = request.POST.get('confidence_percent', '').strip()
+            pred_date_str = request.POST.get('prediction_date', '').strip()
+            entry.biomarker_name = request.POST.get('biomarker_name', '')
+            entry.predicted_value = float(predicted) if predicted else None
+            entry.confidence_percent = float(confidence) if confidence else None
+            entry.prediction_date = datetime.strptime(pred_date_str, '%Y-%m-%d').date() if pred_date_str else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Predictive biomarker updated!')
+            return redirect('predictive_biomarker_list')
+        except Exception:
+            messages.error(request, 'Error updating predictive biomarker.')
+            return redirect('predictive_biomarker_edit', pk=pk)
+    return render(request, 'predictive_biomarker_form.html', {'entry': entry, 'editing': True})
+
+def predictive_biomarker_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(PredictiveBiomarker, id=pk).delete()
+        messages.success(request, 'Predictive biomarker deleted!')
+    return redirect('predictive_biomarker_list')
+
+
+# ===== Phase 9: Secure Viewing Link =====
+
+def secure_viewing_link_list(request):
+    entries = SecureViewingLink.objects.all().order_by('-created_at')
+    return render(request, 'secure_viewing_link_list.html', {'entries': entries})
+
+def secure_viewing_link_add(request):
+    if request.method == 'POST':
+        try:
+            access_count = request.POST.get('access_count', '').strip()
+            SecureViewingLink.objects.create(
+                token=request.POST.get('token', ''),
+                data_types=request.POST.get('data_types', ''),
+                expires_at=request.POST.get('expires_at', '') or None,
+                is_active=request.POST.get('is_active') == 'on',
+                access_count=int(access_count) if access_count else 0,
+            )
+            messages.success(request, 'Secure viewing link added!')
+            return redirect('secure_viewing_link_list')
+        except Exception:
+            messages.error(request, 'Error adding secure viewing link.')
+            return redirect('secure_viewing_link_add')
+    return render(request, 'secure_viewing_link_form.html', {'editing': False})
+
+def secure_viewing_link_edit(request, pk):
+    entry = get_object_or_404(SecureViewingLink, id=pk)
+    if request.method == 'POST':
+        try:
+            access_count = request.POST.get('access_count', '').strip()
+            entry.token = request.POST.get('token', '')
+            entry.data_types = request.POST.get('data_types', '')
+            entry.expires_at = request.POST.get('expires_at', '') or None
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.access_count = int(access_count) if access_count else 0
+            entry.save()
+            messages.success(request, 'Secure viewing link updated!')
+            return redirect('secure_viewing_link_list')
+        except Exception:
+            messages.error(request, 'Error updating secure viewing link.')
+            return redirect('secure_viewing_link_edit', pk=pk)
+    return render(request, 'secure_viewing_link_form.html', {'entry': entry, 'editing': True})
+
+def secure_viewing_link_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(SecureViewingLink, id=pk).delete()
+        messages.success(request, 'Secure viewing link deleted!')
+    return redirect('secure_viewing_link_list')
+
+
+# ===== Phase 9: Practitioner Access =====
+
+def practitioner_access_list(request):
+    entries = PractitionerAccess.objects.all().order_by('-granted_at')
+    return render(request, 'practitioner_access_list.html', {'entries': entries})
+
+def practitioner_access_add(request):
+    if request.method == 'POST':
+        try:
+            PractitionerAccess.objects.create(
+                practitioner_name=request.POST.get('practitioner_name', ''),
+                practitioner_email=request.POST.get('practitioner_email', ''),
+                specialty=request.POST.get('specialty', ''),
+                access_status=request.POST.get('access_status', ''),
+                expires_at=request.POST.get('expires_at', '') or None,
+            )
+            messages.success(request, 'Practitioner access added!')
+            return redirect('practitioner_access_list')
+        except Exception:
+            messages.error(request, 'Error adding practitioner access.')
+            return redirect('practitioner_access_add')
+    return render(request, 'practitioner_access_form.html', {'editing': False})
+
+def practitioner_access_edit(request, pk):
+    entry = get_object_or_404(PractitionerAccess, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.practitioner_name = request.POST.get('practitioner_name', '')
+            entry.practitioner_email = request.POST.get('practitioner_email', '')
+            entry.specialty = request.POST.get('specialty', '')
+            entry.access_status = request.POST.get('access_status', '')
+            entry.expires_at = request.POST.get('expires_at', '') or None
+            entry.save()
+            messages.success(request, 'Practitioner access updated!')
+            return redirect('practitioner_access_list')
+        except Exception:
+            messages.error(request, 'Error updating practitioner access.')
+            return redirect('practitioner_access_edit', pk=pk)
+    return render(request, 'practitioner_access_form.html', {'entry': entry, 'editing': True})
+
+def practitioner_access_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(PractitionerAccess, id=pk).delete()
+        messages.success(request, 'Practitioner access deleted!')
+    return redirect('practitioner_access_list')
+
+
+# ===== Phase 9: Intake Summary =====
+
+def intake_summary_list(request):
+    entries = IntakeSummary.objects.all().order_by('-generated_at')
+    return render(request, 'intake_summary_list.html', {'entries': entries})
+
+def intake_summary_add(request):
+    if request.method == 'POST':
+        try:
+            IntakeSummary.objects.create(
+                title=request.POST.get('title', ''),
+                summary_text=request.POST.get('summary_text', ''),
+                conditions=request.POST.get('conditions', ''),
+                medications=request.POST.get('medications', ''),
+                allergies=request.POST.get('allergies', ''),
+            )
+            messages.success(request, 'Intake summary added!')
+            return redirect('intake_summary_list')
+        except Exception:
+            messages.error(request, 'Error adding intake summary.')
+            return redirect('intake_summary_add')
+    return render(request, 'intake_summary_form.html', {'editing': False})
+
+def intake_summary_edit(request, pk):
+    entry = get_object_or_404(IntakeSummary, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.title = request.POST.get('title', '')
+            entry.summary_text = request.POST.get('summary_text', '')
+            entry.conditions = request.POST.get('conditions', '')
+            entry.medications = request.POST.get('medications', '')
+            entry.allergies = request.POST.get('allergies', '')
+            entry.save()
+            messages.success(request, 'Intake summary updated!')
+            return redirect('intake_summary_list')
+        except Exception:
+            messages.error(request, 'Error updating intake summary.')
+            return redirect('intake_summary_edit', pk=pk)
+    return render(request, 'intake_summary_form.html', {'entry': entry, 'editing': True})
+
+def intake_summary_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(IntakeSummary, id=pk).delete()
+        messages.success(request, 'Intake summary deleted!')
+    return redirect('intake_summary_list')
+
+
+# ===== Phase 9: Data Export Request =====
+
+def data_export_list(request):
+    entries = DataExportRequest.objects.all().order_by('-requested_at')
+    return render(request, 'data_export_list.html', {'entries': entries})
+
+def data_export_add(request):
+    if request.method == 'POST':
+        try:
+            DataExportRequest.objects.create(
+                export_format=request.POST.get('export_format', ''),
+                status=request.POST.get('status', ''),
+                file_path=request.POST.get('file_path', ''),
+            )
+            messages.success(request, 'Data export request added!')
+            return redirect('data_export_list')
+        except Exception:
+            messages.error(request, 'Error adding data export request.')
+            return redirect('data_export_add')
+    return render(request, 'data_export_form.html', {'editing': False})
+
+def data_export_edit(request, pk):
+    entry = get_object_or_404(DataExportRequest, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.export_format = request.POST.get('export_format', '')
+            entry.status = request.POST.get('status', '')
+            entry.file_path = request.POST.get('file_path', '')
+            entry.save()
+            messages.success(request, 'Data export request updated!')
+            return redirect('data_export_list')
+        except Exception:
+            messages.error(request, 'Error updating data export request.')
+            return redirect('data_export_edit', pk=pk)
+    return render(request, 'data_export_form.html', {'entry': entry, 'editing': True})
+
+def data_export_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(DataExportRequest, id=pk).delete()
+        messages.success(request, 'Data export request deleted!')
+    return redirect('data_export_list')
+
+
+# ===== Phase 9: Stakeholder Email =====
+
+def stakeholder_email_list(request):
+    entries = StakeholderEmail.objects.all().order_by('-created_at')
+    return render(request, 'stakeholder_email_list.html', {'entries': entries})
+
+def stakeholder_email_add(request):
+    if request.method == 'POST':
+        try:
+            StakeholderEmail.objects.create(
+                recipient_name=request.POST.get('recipient_name', ''),
+                recipient_email=request.POST.get('recipient_email', ''),
+                frequency=request.POST.get('frequency', ''),
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'Stakeholder email added!')
+            return redirect('stakeholder_email_list')
+        except Exception:
+            messages.error(request, 'Error adding stakeholder email.')
+            return redirect('stakeholder_email_add')
+    return render(request, 'stakeholder_email_form.html', {'editing': False})
+
+def stakeholder_email_edit(request, pk):
+    entry = get_object_or_404(StakeholderEmail, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.recipient_name = request.POST.get('recipient_name', '')
+            entry.recipient_email = request.POST.get('recipient_email', '')
+            entry.frequency = request.POST.get('frequency', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'Stakeholder email updated!')
+            return redirect('stakeholder_email_list')
+        except Exception:
+            messages.error(request, 'Error updating stakeholder email.')
+            return redirect('stakeholder_email_edit', pk=pk)
+    return render(request, 'stakeholder_email_form.html', {'entry': entry, 'editing': True})
+
+def stakeholder_email_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(StakeholderEmail, id=pk).delete()
+        messages.success(request, 'Stakeholder email deleted!')
+    return redirect('stakeholder_email_list')
+
+
+# ===== Phase 10-12: Integration Config =====
+
+def integration_config_list(request):
+    entries = IntegrationConfig.objects.all().order_by('-created_at')
+    return render(request, 'integration_config_list.html', {'entries': entries})
+
+def integration_config_add(request):
+    if request.method == 'POST':
+        try:
+            IntegrationConfig.objects.create(
+                category=request.POST.get('category', ''),
+                feature_type=request.POST.get('feature_type', ''),
+                is_enabled=request.POST.get('is_enabled') == 'on',
+                configuration=request.POST.get('configuration', ''),
+            )
+            messages.success(request, 'Integration config added!')
+            return redirect('integration_config_list')
+        except Exception:
+            messages.error(request, 'Error adding integration config.')
+            return redirect('integration_config_add')
+    return render(request, 'integration_config_form.html', {
+        'editing': False,
+        'categories': INTEGRATION_CATEGORIES,
+        'feature_types': INTEGRATION_FEATURE_TYPES,
+    })
+
+def integration_config_edit(request, pk):
+    entry = get_object_or_404(IntegrationConfig, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.category = request.POST.get('category', '')
+            entry.feature_type = request.POST.get('feature_type', '')
+            entry.is_enabled = request.POST.get('is_enabled') == 'on'
+            entry.configuration = request.POST.get('configuration', '')
+            entry.save()
+            messages.success(request, 'Integration config updated!')
+            return redirect('integration_config_list')
+        except Exception:
+            messages.error(request, 'Error updating integration config.')
+            return redirect('integration_config_edit', pk=pk)
+    return render(request, 'integration_config_form.html', {
+        'entry': entry,
+        'editing': True,
+        'categories': INTEGRATION_CATEGORIES,
+        'feature_types': INTEGRATION_FEATURE_TYPES,
+    })
+
+def integration_config_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(IntegrationConfig, id=pk).delete()
+        messages.success(request, 'Integration config deleted!')
+    return redirect('integration_config_list')
+
+
+# ===== Phase 10-12: Integration Sub-Task =====
+
+def integration_subtask_list(request):
+    entries = IntegrationSubTask.objects.all().order_by('-created_at')
+    return render(request, 'integration_subtask_list.html', {'entries': entries})
+
+def integration_subtask_add(request):
+    if request.method == 'POST':
+        try:
+            phase = request.POST.get('phase', '').strip()
+            sub_task_number = request.POST.get('sub_task_number', '').strip()
+            IntegrationSubTask.objects.create(
+                phase=int(phase) if phase else None,
+                sub_task_number=int(sub_task_number) if sub_task_number else None,
+                title=request.POST.get('title', ''),
+                category=request.POST.get('category', ''),
+                feature_type=request.POST.get('feature_type', ''),
+                status=request.POST.get('status', ''),
+                details=request.POST.get('details', ''),
+            )
+            messages.success(request, 'Integration sub-task added!')
+            return redirect('integration_subtask_list')
+        except Exception:
+            messages.error(request, 'Error adding integration sub-task.')
+            return redirect('integration_subtask_add')
+    return render(request, 'integration_subtask_form.html', {
+        'editing': False,
+        'categories': INTEGRATION_CATEGORIES,
+        'feature_types': INTEGRATION_FEATURE_TYPES,
+    })
+
+def integration_subtask_edit(request, pk):
+    entry = get_object_or_404(IntegrationSubTask, id=pk)
+    if request.method == 'POST':
+        try:
+            phase = request.POST.get('phase', '').strip()
+            sub_task_number = request.POST.get('sub_task_number', '').strip()
+            entry.phase = int(phase) if phase else None
+            entry.sub_task_number = int(sub_task_number) if sub_task_number else None
+            entry.title = request.POST.get('title', '')
+            entry.category = request.POST.get('category', '')
+            entry.feature_type = request.POST.get('feature_type', '')
+            entry.status = request.POST.get('status', '')
+            entry.details = request.POST.get('details', '')
+            entry.save()
+            messages.success(request, 'Integration sub-task updated!')
+            return redirect('integration_subtask_list')
+        except Exception:
+            messages.error(request, 'Error updating integration sub-task.')
+            return redirect('integration_subtask_edit', pk=pk)
+    return render(request, 'integration_subtask_form.html', {
+        'entry': entry,
+        'editing': True,
+        'categories': INTEGRATION_CATEGORIES,
+        'feature_types': INTEGRATION_FEATURE_TYPES,
+    })
+
+def integration_subtask_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(IntegrationSubTask, id=pk).delete()
+        messages.success(request, 'Integration sub-task deleted!')
+    return redirect('integration_subtask_list')

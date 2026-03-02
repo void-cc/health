@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Intake Summary</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="title" class="form-label">Title:</label>
+      <input type="text" class="form-control" name="title" id="title" value="{% if editing and entry.title %}{{ entry.title }}{% endif %}" required />
+    </div>
+    <div class="mb-3">
+      <label for="summary_text" class="form-label">Summary Text:</label>
+      <textarea class="form-control" name="summary_text" id="summary_text" rows="4">{% if editing and entry.summary_text %}{{ entry.summary_text }}{% endif %}</textarea>
+    </div>
+    <div class="mb-3">
+      <label for="conditions" class="form-label">Conditions:</label>
+      <textarea class="form-control" name="conditions" id="conditions" rows="4">{% if editing and entry.conditions %}{{ entry.conditions }}{% endif %}</textarea>
+    </div>
+    <div class="mb-3">
+      <label for="medications" class="form-label">Medications:</label>
+      <textarea class="form-control" name="medications" id="medications" rows="4">{% if editing and entry.medications %}{{ entry.medications }}{% endif %}</textarea>
+    </div>
+    <div class="mb-3">
+      <label for="allergies" class="form-label">Allergies:</label>
+      <textarea class="form-control" name="allergies" id="allergies" rows="4">{% if editing and entry.allergies %}{{ entry.allergies }}{% endif %}</textarea>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'intake_summary_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

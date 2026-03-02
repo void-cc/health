@@ -114,4 +114,172 @@ urlpatterns = [
     path('accounts/mfa/setup/', auth_views.mfa_setup_view, name='mfa_setup'),
     path('accounts/mfa/verify/', auth_views.mfa_verify_view, name='mfa_verify'),
     path('accounts/mfa/disable/', auth_views.mfa_disable_view, name='mfa_disable'),
+    # Phase 5: Wearable Integrations
+    path('wearables/', views.wearable_device_list, name='wearable_device_list'),
+    path('wearables/add/', views.wearable_device_add, name='wearable_device_add'),
+    path('wearables/edit/<int:pk>/', views.wearable_device_edit, name='wearable_device_edit'),
+    path('wearables/delete/<int:pk>/', views.wearable_device_delete, name='wearable_device_delete'),
+    path('wearables/sync-logs/', views.sync_log_list, name='sync_log_list'),
+
+    # Phase 6: Sleep Tracking
+    path('sleep/', views.sleep_list, name='sleep_list'),
+    path('sleep/add/', views.sleep_add, name='sleep_add'),
+    path('sleep/edit/<int:pk>/', views.sleep_edit, name='sleep_edit'),
+    path('sleep/delete/<int:pk>/', views.sleep_delete, name='sleep_delete'),
+
+    # Phase 6: Circadian Rhythm
+    path('circadian/', views.circadian_list, name='circadian_list'),
+    path('circadian/add/', views.circadian_add, name='circadian_add'),
+    path('circadian/edit/<int:pk>/', views.circadian_edit, name='circadian_edit'),
+    path('circadian/delete/<int:pk>/', views.circadian_delete, name='circadian_delete'),
+
+    # Phase 6: Dream Journal
+    path('dreams/', views.dream_list, name='dream_list'),
+    path('dreams/add/', views.dream_add, name='dream_add'),
+    path('dreams/edit/<int:pk>/', views.dream_edit, name='dream_edit'),
+    path('dreams/delete/<int:pk>/', views.dream_delete, name='dream_delete'),
+
+    # Phase 6: Macronutrient Tracking
+    path('macros/', views.macro_list, name='macro_list'),
+    path('macros/add/', views.macro_add, name='macro_add'),
+    path('macros/edit/<int:pk>/', views.macro_edit, name='macro_edit'),
+    path('macros/delete/<int:pk>/', views.macro_delete, name='macro_delete'),
+
+    # Phase 6: Micronutrient Tracking
+    path('micros/', views.micro_list, name='micro_list'),
+    path('micros/add/', views.micro_add, name='micro_add'),
+    path('micros/edit/<int:pk>/', views.micro_edit, name='micro_edit'),
+    path('micros/delete/<int:pk>/', views.micro_delete, name='micro_delete'),
+
+    # Phase 6: Food Entries
+    path('food/', views.food_list, name='food_list'),
+    path('food/add/', views.food_add, name='food_add'),
+    path('food/edit/<int:pk>/', views.food_edit, name='food_edit'),
+    path('food/delete/<int:pk>/', views.food_delete, name='food_delete'),
+
+    # Phase 6: Fasting
+    path('fasting/', views.fasting_list, name='fasting_list'),
+    path('fasting/add/', views.fasting_add, name='fasting_add'),
+    path('fasting/edit/<int:pk>/', views.fasting_edit, name='fasting_edit'),
+    path('fasting/delete/<int:pk>/', views.fasting_delete, name='fasting_delete'),
+
+    # Phase 6: Caffeine & Alcohol
+    path('caffeine-alcohol/', views.caffeine_alcohol_list, name='caffeine_alcohol_list'),
+    path('caffeine-alcohol/add/', views.caffeine_alcohol_add, name='caffeine_alcohol_add'),
+    path('caffeine-alcohol/edit/<int:pk>/', views.caffeine_alcohol_edit, name='caffeine_alcohol_edit'),
+    path('caffeine-alcohol/delete/<int:pk>/', views.caffeine_alcohol_delete, name='caffeine_alcohol_delete'),
+
+    # Phase 7: User Profiles (RBAC)
+    path('profiles/', views.user_profile_list, name='user_profile_list'),
+    path('profiles/add/', views.user_profile_add, name='user_profile_add'),
+    path('profiles/edit/<int:pk>/', views.user_profile_edit, name='user_profile_edit'),
+    path('profiles/delete/<int:pk>/', views.user_profile_delete, name='user_profile_delete'),
+
+    # Phase 7: Family Accounts
+    path('family/', views.family_account_list, name='family_account_list'),
+    path('family/add/', views.family_account_add, name='family_account_add'),
+    path('family/edit/<int:pk>/', views.family_account_edit, name='family_account_edit'),
+    path('family/delete/<int:pk>/', views.family_account_delete, name='family_account_delete'),
+
+    # Phase 7: Consent Logs
+    path('consent/', views.consent_log_list, name='consent_log_list'),
+    path('consent/add/', views.consent_log_add, name='consent_log_add'),
+    path('consent/edit/<int:pk>/', views.consent_log_edit, name='consent_log_edit'),
+    path('consent/delete/<int:pk>/', views.consent_log_delete, name='consent_log_delete'),
+
+    # Phase 7: Tenant Config
+    path('tenants/', views.tenant_config_list, name='tenant_config_list'),
+    path('tenants/add/', views.tenant_config_add, name='tenant_config_add'),
+    path('tenants/edit/<int:pk>/', views.tenant_config_edit, name='tenant_config_edit'),
+    path('tenants/delete/<int:pk>/', views.tenant_config_delete, name='tenant_config_delete'),
+
+    # Phase 7: Admin Telemetry
+    path('telemetry/', views.admin_telemetry_list, name='admin_telemetry_list'),
+    path('telemetry/add/', views.admin_telemetry_add, name='admin_telemetry_add'),
+    path('telemetry/edit/<int:pk>/', views.admin_telemetry_edit, name='admin_telemetry_edit'),
+    path('telemetry/delete/<int:pk>/', views.admin_telemetry_delete, name='admin_telemetry_delete'),
+
+    # Phase 7: API Rate Limiting
+    path('rate-limits/', views.api_rate_limit_list, name='api_rate_limit_list'),
+    path('rate-limits/add/', views.api_rate_limit_add, name='api_rate_limit_add'),
+    path('rate-limits/edit/<int:pk>/', views.api_rate_limit_edit, name='api_rate_limit_edit'),
+    path('rate-limits/delete/<int:pk>/', views.api_rate_limit_delete, name='api_rate_limit_delete'),
+
+    # Phase 8: Medication Schedule
+    path('medications/', views.medication_schedule_list, name='medication_schedule_list'),
+    path('medications/add/', views.medication_schedule_add, name='medication_schedule_add'),
+    path('medications/edit/<int:pk>/', views.medication_schedule_edit, name='medication_schedule_edit'),
+    path('medications/delete/<int:pk>/', views.medication_schedule_delete, name='medication_schedule_delete'),
+
+    # Phase 8: Health Goals
+    path('goals/', views.health_goal_list, name='health_goal_list'),
+    path('goals/add/', views.health_goal_add, name='health_goal_add'),
+    path('goals/edit/<int:pk>/', views.health_goal_edit, name='health_goal_edit'),
+    path('goals/delete/<int:pk>/', views.health_goal_delete, name='health_goal_delete'),
+
+    # Phase 8: Critical Alerts
+    path('alerts/', views.critical_alert_list, name='critical_alert_list'),
+    path('alerts/add/', views.critical_alert_add, name='critical_alert_add'),
+    path('alerts/edit/<int:pk>/', views.critical_alert_edit, name='critical_alert_edit'),
+    path('alerts/delete/<int:pk>/', views.critical_alert_delete, name='critical_alert_delete'),
+
+    # Phase 8: Health Reports
+    path('reports/', views.health_report_list, name='health_report_list'),
+    path('reports/add/', views.health_report_add, name='health_report_add'),
+    path('reports/edit/<int:pk>/', views.health_report_edit, name='health_report_edit'),
+    path('reports/delete/<int:pk>/', views.health_report_delete, name='health_report_delete'),
+
+    # Phase 8: Biological Age
+    path('bio-age/', views.biological_age_list, name='biological_age_list'),
+    path('bio-age/add/', views.biological_age_add, name='biological_age_add'),
+    path('bio-age/edit/<int:pk>/', views.biological_age_edit, name='biological_age_edit'),
+    path('bio-age/delete/<int:pk>/', views.biological_age_delete, name='biological_age_delete'),
+
+    # Phase 8: Predictive Biomarkers
+    path('biomarkers/', views.predictive_biomarker_list, name='predictive_biomarker_list'),
+    path('biomarkers/add/', views.predictive_biomarker_add, name='predictive_biomarker_add'),
+    path('biomarkers/edit/<int:pk>/', views.predictive_biomarker_edit, name='predictive_biomarker_edit'),
+    path('biomarkers/delete/<int:pk>/', views.predictive_biomarker_delete, name='predictive_biomarker_delete'),
+
+    # Phase 9: Secure Viewing Links
+    path('secure-links/', views.secure_viewing_link_list, name='secure_viewing_link_list'),
+    path('secure-links/add/', views.secure_viewing_link_add, name='secure_viewing_link_add'),
+    path('secure-links/edit/<int:pk>/', views.secure_viewing_link_edit, name='secure_viewing_link_edit'),
+    path('secure-links/delete/<int:pk>/', views.secure_viewing_link_delete, name='secure_viewing_link_delete'),
+
+    # Phase 9: Practitioner Access
+    path('practitioners/', views.practitioner_access_list, name='practitioner_access_list'),
+    path('practitioners/add/', views.practitioner_access_add, name='practitioner_access_add'),
+    path('practitioners/edit/<int:pk>/', views.practitioner_access_edit, name='practitioner_access_edit'),
+    path('practitioners/delete/<int:pk>/', views.practitioner_access_delete, name='practitioner_access_delete'),
+
+    # Phase 9: Intake Summaries
+    path('intake-summaries/', views.intake_summary_list, name='intake_summary_list'),
+    path('intake-summaries/add/', views.intake_summary_add, name='intake_summary_add'),
+    path('intake-summaries/edit/<int:pk>/', views.intake_summary_edit, name='intake_summary_edit'),
+    path('intake-summaries/delete/<int:pk>/', views.intake_summary_delete, name='intake_summary_delete'),
+
+    # Phase 9: Data Export
+    path('exports/', views.data_export_list, name='data_export_list'),
+    path('exports/add/', views.data_export_add, name='data_export_add'),
+    path('exports/edit/<int:pk>/', views.data_export_edit, name='data_export_edit'),
+    path('exports/delete/<int:pk>/', views.data_export_delete, name='data_export_delete'),
+
+    # Phase 9: Stakeholder Emails
+    path('stakeholder-emails/', views.stakeholder_email_list, name='stakeholder_email_list'),
+    path('stakeholder-emails/add/', views.stakeholder_email_add, name='stakeholder_email_add'),
+    path('stakeholder-emails/edit/<int:pk>/', views.stakeholder_email_edit, name='stakeholder_email_edit'),
+    path('stakeholder-emails/delete/<int:pk>/', views.stakeholder_email_delete, name='stakeholder_email_delete'),
+
+    # Phase 10-12: Integration Config
+    path('integrations/', views.integration_config_list, name='integration_config_list'),
+    path('integrations/add/', views.integration_config_add, name='integration_config_add'),
+    path('integrations/edit/<int:pk>/', views.integration_config_edit, name='integration_config_edit'),
+    path('integrations/delete/<int:pk>/', views.integration_config_delete, name='integration_config_delete'),
+
+    # Phase 10-12: Integration Sub-tasks
+    path('subtasks/', views.integration_subtask_list, name='integration_subtask_list'),
+    path('subtasks/add/', views.integration_subtask_add, name='integration_subtask_add'),
+    path('subtasks/edit/<int:pk>/', views.integration_subtask_edit, name='integration_subtask_edit'),
+    path('subtasks/delete/<int:pk>/', views.integration_subtask_delete, name='integration_subtask_delete'),
 ]

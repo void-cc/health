@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Fasting Log</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Date:</label>
+      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="fast_start" class="form-label">Fast Start:</label>
+      <input type="datetime-local" class="form-control" name="fast_start" id="fast_start" value="{% if editing and entry.fast_start is not None %}{{ entry.fast_start|date:'Y-m-d\TH:i' }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="fast_end" class="form-label">Fast End:</label>
+      <input type="datetime-local" class="form-control" name="fast_end" id="fast_end" value="{% if editing and entry.fast_end is not None %}{{ entry.fast_end|date:'Y-m-d\TH:i' }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="target_hours" class="form-label">Target Hours:</label>
+      <input type="number" class="form-control" name="target_hours" id="target_hours" step="0.1" value="{% if editing and entry.target_hours is not None %}{{ entry.target_hours }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="actual_hours" class="form-label">Actual Hours:</label>
+      <input type="number" class="form-control" name="actual_hours" id="actual_hours" step="0.1" value="{% if editing and entry.actual_hours is not None %}{{ entry.actual_hours }}{% endif %}" />
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes:</label>
+      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'fasting_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

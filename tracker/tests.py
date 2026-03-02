@@ -1818,3 +1818,781 @@ class Phase4SidebarTests(TestCase):
         self.assertContains(response, 'Sessions')
         self.assertContains(response, 'Privacy')
         self.assertContains(response, 'Logout')
+# ===== Phase 5-12 Tests =====
+
+from tracker.models import (
+    WearableDevice, WearableSyncLog, WEARABLE_PLATFORMS,
+    SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
+    MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
+    UserProfile, FamilyAccount, EncryptionKey, AuditLog,
+    APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
+    PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
+    BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
+    HealthGoal, CriticalAlert,
+    SecureViewingLink, PractitionerAccess, IntakeSummary,
+    DataExportRequest, StakeholderEmail,
+    IntegrationConfig, IntegrationSubTask,
+    INTEGRATION_CATEGORIES, INTEGRATION_FEATURE_TYPES,
+)
+
+
+class Phase5ModelTests(TestCase):
+    """Test model creation, __str__, and defaults for Phase 5 models."""
+
+    def test_wearable_device_str(self):
+        d = WearableDevice.objects.create(platform='fitbit', device_name='Charge 5')
+        self.assertIn('Fitbit', str(d))
+
+    def test_wearable_device_default_active(self):
+        d = WearableDevice.objects.create(platform='fitbit', device_name='Charge 5')
+        self.assertTrue(d.is_active)
+
+    def test_sync_log_str(self):
+        d = WearableDevice.objects.create(platform='fitbit', device_name='Charge 5')
+        sl = WearableSyncLog.objects.create(device=d, status='success')
+        self.assertIn('success', str(sl))
+
+
+class Phase6ModelTests(TestCase):
+    """Test model creation, __str__, and calculated fields for Phase 6 models."""
+
+    def test_sleep_log_str(self):
+        s = SleepLog.objects.create(date=date(2026, 3, 1))
+        self.assertIn('2026-03-01', str(s))
+
+    def test_sleep_efficiency(self):
+        s = SleepLog.objects.create(
+            date=date(2026, 3, 1), total_sleep_minutes=420, awake_minutes=30,
+        )
+        self.assertEqual(s.sleep_efficiency, round(420 / 450 * 100, 1))
+
+    def test_sleep_efficiency_none(self):
+        s = SleepLog.objects.create(date=date(2026, 3, 1))
+        self.assertIsNone(s.sleep_efficiency)
+
+    def test_circadian_str(self):
+        c = CircadianRhythmLog.objects.create(date=date(2026, 3, 1))
+        self.assertIn('2026-03-01', str(c))
+
+    def test_dream_journal_str(self):
+        d = DreamJournal.objects.create(date=date(2026, 3, 1))
+        self.assertIn('2026-03-01', str(d))
+
+    def test_macronutrient_total_macros(self):
+        m = MacronutrientLog.objects.create(
+            date=date(2026, 3, 1), protein_grams=50, carbohydrate_grams=200, fat_grams=70,
+        )
+        self.assertEqual(m.total_macros_grams, 320.0)
+
+    def test_macronutrient_str(self):
+        m = MacronutrientLog.objects.create(date=date(2026, 3, 1))
+        self.assertIn('Macros', str(m))
+
+    def test_micronutrient_str(self):
+        m = MicronutrientLog.objects.create(
+            date=date(2026, 3, 1), nutrient_name='Vitamin D', amount=1000, unit='IU',
+        )
+        self.assertIn('Vitamin D', str(m))
+
+    def test_food_entry_str(self):
+        f = FoodEntry.objects.create(date=date(2026, 3, 1), food_name='Apple')
+        self.assertIn('Apple', str(f))
+
+    def test_fasting_goal_met_true(self):
+        f = FastingLog.objects.create(
+            date=date(2026, 3, 1), actual_hours=16, target_hours=16,
+        )
+        self.assertTrue(f.goal_met)
+
+    def test_fasting_goal_met_false(self):
+        f = FastingLog.objects.create(
+            date=date(2026, 3, 1), actual_hours=12, target_hours=16,
+        )
+        self.assertFalse(f.goal_met)
+
+    def test_fasting_goal_met_none(self):
+        f = FastingLog.objects.create(date=date(2026, 3, 1))
+        self.assertIsNone(f.goal_met)
+
+    def test_caffeine_alcohol_str(self):
+        c = CaffeineAlcoholLog.objects.create(date=date(2026, 3, 1), substance='caffeine')
+        self.assertIn('Caffeine', str(c))
+
+
+class Phase7ModelTests(TestCase):
+    """Test model creation and __str__ for Phase 7 models."""
+
+    def test_user_profile_str(self):
+        u = UserProfile.objects.create(username='testuser', role='admin')
+        self.assertIn('testuser', str(u))
+        self.assertIn('Administrator', str(u))
+
+    def test_family_account_str(self):
+        u = UserProfile.objects.create(username='primary', role='user')
+        fa = FamilyAccount.objects.create(primary_user=u, member_name='Child One')
+        self.assertIn('Child One', str(fa))
+
+    def test_encryption_key_str(self):
+        ek = EncryptionKey.objects.create(key_identifier='key-abc-123', public_key='pubdata')
+        self.assertIn('key-abc-123', str(ek))
+
+    def test_consent_log_str(self):
+        cl = ConsentLog.objects.create(consent_type='data_sharing', version='1.0')
+        self.assertIn('data_sharing', str(cl))
+
+    def test_tenant_config_str(self):
+        tc = TenantConfig.objects.create(tenant_name='Acme Corp')
+        self.assertIn('Acme Corp', str(tc))
+
+    def test_admin_telemetry_str(self):
+        at = AdminTelemetry.objects.create(metric_name='cpu_usage', metric_value=55.5)
+        self.assertIn('cpu_usage', str(at))
+
+    def test_api_rate_limit_str(self):
+        ar = APIRateLimitConfig.objects.create(endpoint='/api/v1/data')
+        self.assertIn('/api/v1/data', str(ar))
+
+
+class Phase8ModelTests(TestCase):
+    """Test model creation, __str__, and calculated fields for Phase 8 models."""
+
+    def test_biological_age_difference(self):
+        ba = BiologicalAgeCalculation.objects.create(
+            date=date(2026, 3, 1), chronological_age=40, biological_age=35,
+        )
+        self.assertEqual(ba.age_difference, -5.0)
+
+    def test_biological_age_str(self):
+        ba = BiologicalAgeCalculation.objects.create(
+            date=date(2026, 3, 1), chronological_age=40, biological_age=35,
+        )
+        s = str(ba)
+        self.assertIn('35', s)
+        self.assertIn('40', s)
+
+    def test_health_goal_progress(self):
+        g = HealthGoal.objects.create(
+            title='Test', target_value=100, current_value=75,
+            start_date=date(2026, 3, 1), status='active',
+        )
+        self.assertEqual(g.progress_percent, 75.0)
+
+    def test_health_goal_progress_none(self):
+        g = HealthGoal.objects.create(
+            title='Test', start_date=date(2026, 3, 1), status='active',
+        )
+        self.assertIsNone(g.progress_percent)
+
+    def test_health_goal_str(self):
+        g = HealthGoal.objects.create(
+            title='Lose Weight', start_date=date(2026, 3, 1), status='active',
+        )
+        s = str(g)
+        self.assertIn('Lose Weight', s)
+        self.assertIn('active', s)
+
+    def test_medication_schedule_str(self):
+        ms = MedicationSchedule.objects.create(
+            medication_name='Aspirin', dosage='100mg',
+            frequency='daily', start_date=date(2026, 3, 1),
+        )
+        self.assertIn('Aspirin', str(ms))
+
+    def test_critical_alert_str(self):
+        ca = CriticalAlert.objects.create(
+            metric_name='Heart Rate', metric_value=120,
+            threshold_value=100, alert_level='warning',
+        )
+        self.assertIn('Heart Rate', str(ca))
+
+    def test_health_report_str(self):
+        hr = HealthReport.objects.create(
+            title='Monthly Report', period_start=date(2026, 1, 1),
+            period_end=date(2026, 1, 31),
+        )
+        self.assertIn('Monthly Report', str(hr))
+
+    def test_predictive_biomarker_str(self):
+        pb = PredictiveBiomarker.objects.create(
+            biomarker_name='HbA1c', predicted_value=5.6,
+            prediction_date=date(2026, 3, 1),
+        )
+        self.assertIn('HbA1c', str(pb))
+
+
+class Phase9ModelTests(TestCase):
+    """Test model creation and __str__ for Phase 9 models."""
+
+    def test_secure_viewing_link_str(self):
+        from django.utils import timezone
+        svl = SecureViewingLink.objects.create(
+            token='abc123', expires_at=timezone.now(),
+        )
+        self.assertIn('expires', str(svl))
+
+    def test_practitioner_access_str(self):
+        pa = PractitionerAccess.objects.create(
+            practitioner_name='Smith', practitioner_email='s@example.com',
+        )
+        self.assertIn('Smith', str(pa))
+
+    def test_intake_summary_str(self):
+        i = IntakeSummary.objects.create(title='New Patient')
+        self.assertIn('New Patient', str(i))
+
+    def test_data_export_str(self):
+        de = DataExportRequest.objects.create(export_format='json')
+        self.assertIn('json', str(de))
+
+    def test_stakeholder_email_str(self):
+        se = StakeholderEmail.objects.create(
+            recipient_name='Jane Doe', recipient_email='jane@example.com',
+        )
+        self.assertIn('Jane Doe', str(se))
+
+
+class Phase10_12ModelTests(TestCase):
+    """Test model creation and __str__ for Phase 10-12 models."""
+
+    def test_integration_config_str(self):
+        ic = IntegrationConfig.objects.create(category='genomics', feature_type='export')
+        self.assertIn('Genomics', str(ic))
+
+    def test_integration_subtask_str(self):
+        ist = IntegrationSubTask.objects.create(
+            phase=10, sub_task_number=1, title='Test Task',
+            category='genomics', feature_type='export', status='pending',
+        )
+        self.assertIn('Phase 10', str(ist))
+
+
+class Phase5To12StatusCodeTests(TestCase):
+    """Test GET requests return 200 for all Phase 5-12 list and add pages."""
+
+    def setUp(self):
+        self.client = Client()
+
+    # Phase 5
+    def test_wearable_device_list(self):
+        self.assertEqual(self.client.get(reverse('wearable_device_list')).status_code, 200)
+
+    def test_wearable_device_add(self):
+        self.assertEqual(self.client.get(reverse('wearable_device_add')).status_code, 200)
+
+    def test_sync_log_list(self):
+        self.assertEqual(self.client.get(reverse('sync_log_list')).status_code, 200)
+
+    # Phase 6
+    def test_sleep_list(self):
+        self.assertEqual(self.client.get(reverse('sleep_list')).status_code, 200)
+
+    def test_sleep_add(self):
+        self.assertEqual(self.client.get(reverse('sleep_add')).status_code, 200)
+
+    def test_circadian_list(self):
+        self.assertEqual(self.client.get(reverse('circadian_list')).status_code, 200)
+
+    def test_circadian_add(self):
+        self.assertEqual(self.client.get(reverse('circadian_add')).status_code, 200)
+
+    def test_dream_list(self):
+        self.assertEqual(self.client.get(reverse('dream_list')).status_code, 200)
+
+    def test_dream_add(self):
+        self.assertEqual(self.client.get(reverse('dream_add')).status_code, 200)
+
+    def test_macro_list(self):
+        self.assertEqual(self.client.get(reverse('macro_list')).status_code, 200)
+
+    def test_macro_add(self):
+        self.assertEqual(self.client.get(reverse('macro_add')).status_code, 200)
+
+    def test_micro_list(self):
+        self.assertEqual(self.client.get(reverse('micro_list')).status_code, 200)
+
+    def test_micro_add(self):
+        self.assertEqual(self.client.get(reverse('micro_add')).status_code, 200)
+
+    def test_food_list(self):
+        self.assertEqual(self.client.get(reverse('food_list')).status_code, 200)
+
+    def test_food_add(self):
+        self.assertEqual(self.client.get(reverse('food_add')).status_code, 200)
+
+    def test_fasting_list(self):
+        self.assertEqual(self.client.get(reverse('fasting_list')).status_code, 200)
+
+    def test_fasting_add(self):
+        self.assertEqual(self.client.get(reverse('fasting_add')).status_code, 200)
+
+    def test_caffeine_alcohol_list(self):
+        self.assertEqual(self.client.get(reverse('caffeine_alcohol_list')).status_code, 200)
+
+    def test_caffeine_alcohol_add(self):
+        self.assertEqual(self.client.get(reverse('caffeine_alcohol_add')).status_code, 200)
+
+    # Phase 7
+    def test_user_profile_list(self):
+        self.assertEqual(self.client.get(reverse('user_profile_list')).status_code, 200)
+
+    def test_user_profile_add(self):
+        self.assertEqual(self.client.get(reverse('user_profile_add')).status_code, 200)
+
+    def test_family_account_list(self):
+        self.assertEqual(self.client.get(reverse('family_account_list')).status_code, 200)
+
+    def test_family_account_add(self):
+        self.assertEqual(self.client.get(reverse('family_account_add')).status_code, 200)
+
+    def test_consent_log_list(self):
+        self.assertEqual(self.client.get(reverse('consent_log_list')).status_code, 200)
+
+    def test_consent_log_add(self):
+        self.assertEqual(self.client.get(reverse('consent_log_add')).status_code, 200)
+
+    def test_tenant_config_list(self):
+        self.assertEqual(self.client.get(reverse('tenant_config_list')).status_code, 200)
+
+    def test_tenant_config_add(self):
+        self.assertEqual(self.client.get(reverse('tenant_config_add')).status_code, 200)
+
+    def test_admin_telemetry_list(self):
+        self.assertEqual(self.client.get(reverse('admin_telemetry_list')).status_code, 200)
+
+    def test_admin_telemetry_add(self):
+        self.assertEqual(self.client.get(reverse('admin_telemetry_add')).status_code, 200)
+
+    def test_api_rate_limit_list(self):
+        self.assertEqual(self.client.get(reverse('api_rate_limit_list')).status_code, 200)
+
+    def test_api_rate_limit_add(self):
+        self.assertEqual(self.client.get(reverse('api_rate_limit_add')).status_code, 200)
+
+    # Phase 8
+    def test_medication_schedule_list(self):
+        self.assertEqual(self.client.get(reverse('medication_schedule_list')).status_code, 200)
+
+    def test_medication_schedule_add(self):
+        self.assertEqual(self.client.get(reverse('medication_schedule_add')).status_code, 200)
+
+    def test_health_goal_list(self):
+        self.assertEqual(self.client.get(reverse('health_goal_list')).status_code, 200)
+
+    def test_health_goal_add(self):
+        self.assertEqual(self.client.get(reverse('health_goal_add')).status_code, 200)
+
+    def test_critical_alert_list(self):
+        self.assertEqual(self.client.get(reverse('critical_alert_list')).status_code, 200)
+
+    def test_critical_alert_add(self):
+        self.assertEqual(self.client.get(reverse('critical_alert_add')).status_code, 200)
+
+    def test_health_report_list(self):
+        self.assertEqual(self.client.get(reverse('health_report_list')).status_code, 200)
+
+    def test_health_report_add(self):
+        self.assertEqual(self.client.get(reverse('health_report_add')).status_code, 200)
+
+    def test_biological_age_list(self):
+        self.assertEqual(self.client.get(reverse('biological_age_list')).status_code, 200)
+
+    def test_biological_age_add(self):
+        self.assertEqual(self.client.get(reverse('biological_age_add')).status_code, 200)
+
+    def test_predictive_biomarker_list(self):
+        self.assertEqual(self.client.get(reverse('predictive_biomarker_list')).status_code, 200)
+
+    def test_predictive_biomarker_add(self):
+        self.assertEqual(self.client.get(reverse('predictive_biomarker_add')).status_code, 200)
+
+    # Phase 9
+    def test_secure_viewing_link_list(self):
+        self.assertEqual(self.client.get(reverse('secure_viewing_link_list')).status_code, 200)
+
+    def test_secure_viewing_link_add(self):
+        self.assertEqual(self.client.get(reverse('secure_viewing_link_add')).status_code, 200)
+
+    def test_practitioner_access_list(self):
+        self.assertEqual(self.client.get(reverse('practitioner_access_list')).status_code, 200)
+
+    def test_practitioner_access_add(self):
+        self.assertEqual(self.client.get(reverse('practitioner_access_add')).status_code, 200)
+
+    def test_intake_summary_list(self):
+        self.assertEqual(self.client.get(reverse('intake_summary_list')).status_code, 200)
+
+    def test_intake_summary_add(self):
+        self.assertEqual(self.client.get(reverse('intake_summary_add')).status_code, 200)
+
+    def test_data_export_list(self):
+        self.assertEqual(self.client.get(reverse('data_export_list')).status_code, 200)
+
+    def test_data_export_add(self):
+        self.assertEqual(self.client.get(reverse('data_export_add')).status_code, 200)
+
+    def test_stakeholder_email_list(self):
+        self.assertEqual(self.client.get(reverse('stakeholder_email_list')).status_code, 200)
+
+    def test_stakeholder_email_add(self):
+        self.assertEqual(self.client.get(reverse('stakeholder_email_add')).status_code, 200)
+
+    # Phases 10-12
+    def test_integration_config_list(self):
+        self.assertEqual(self.client.get(reverse('integration_config_list')).status_code, 200)
+
+    def test_integration_config_add(self):
+        self.assertEqual(self.client.get(reverse('integration_config_add')).status_code, 200)
+
+    def test_integration_subtask_list(self):
+        self.assertEqual(self.client.get(reverse('integration_subtask_list')).status_code, 200)
+
+    def test_integration_subtask_add(self):
+        self.assertEqual(self.client.get(reverse('integration_subtask_add')).status_code, 200)
+
+
+class Phase5To12CRUDTests(TestCase):
+    """Test POST create, edit, and delete for Phase 5-12 models."""
+
+    def setUp(self):
+        self.client = Client()
+
+    # ----- WearableDevice -----
+    def test_wearable_device_add_post(self):
+        response = self.client.post(reverse('wearable_device_add'), {
+            'platform': 'fitbit',
+            'device_name': 'Test',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(WearableDevice.objects.count(), 1)
+
+    def test_wearable_device_edit_post(self):
+        d = WearableDevice.objects.create(platform='fitbit', device_name='Test')
+        response = self.client.post(reverse('wearable_device_edit', kwargs={'pk': d.pk}), {
+            'platform': 'fitbit',
+            'device_name': 'Updated',
+        })
+        self.assertEqual(response.status_code, 302)
+        d.refresh_from_db()
+        self.assertEqual(d.device_name, 'Updated')
+
+    def test_wearable_device_delete_post(self):
+        d = WearableDevice.objects.create(platform='fitbit', device_name='Test')
+        response = self.client.post(reverse('wearable_device_delete', kwargs={'pk': d.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(WearableDevice.objects.count(), 0)
+
+    # ----- SleepLog -----
+    def test_sleep_add_post(self):
+        response = self.client.post(reverse('sleep_add'), {
+            'date': '2026-03-01',
+            'total_sleep_minutes': '420',
+            'bedtime': '22:00',
+            'wake_time': '06:00',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(SleepLog.objects.count(), 1)
+
+    def test_sleep_edit_post(self):
+        s = SleepLog.objects.create(date=date(2026, 3, 1), total_sleep_minutes=420)
+        response = self.client.post(reverse('sleep_edit', kwargs={'pk': s.pk}), {
+            'date': '2026-03-02',
+            'total_sleep_minutes': '480',
+            'bedtime': '22:00',
+            'wake_time': '06:00',
+        })
+        self.assertEqual(response.status_code, 302)
+        s.refresh_from_db()
+        self.assertEqual(s.total_sleep_minutes, 480)
+
+    def test_sleep_delete_post(self):
+        s = SleepLog.objects.create(date=date(2026, 3, 1), total_sleep_minutes=420)
+        response = self.client.post(reverse('sleep_delete', kwargs={'pk': s.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(SleepLog.objects.count(), 0)
+
+    # ----- MacronutrientLog -----
+    def test_macro_add_post(self):
+        response = self.client.post(reverse('macro_add'), {
+            'date': '2026-03-01',
+            'protein_grams': '50',
+            'carbohydrate_grams': '200',
+            'fat_grams': '70',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(MacronutrientLog.objects.count(), 1)
+
+    def test_macro_edit_post(self):
+        m = MacronutrientLog.objects.create(
+            date=date(2026, 3, 1), protein_grams=50, carbohydrate_grams=200, fat_grams=70,
+        )
+        response = self.client.post(reverse('macro_edit', kwargs={'pk': m.pk}), {
+            'date': '2026-03-01',
+            'protein_grams': '60',
+            'carbohydrate_grams': '200',
+            'fat_grams': '70',
+        })
+        self.assertEqual(response.status_code, 302)
+        m.refresh_from_db()
+        self.assertEqual(m.protein_grams, 60.0)
+
+    def test_macro_delete_post(self):
+        m = MacronutrientLog.objects.create(date=date(2026, 3, 1), protein_grams=50)
+        response = self.client.post(reverse('macro_delete', kwargs={'pk': m.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(MacronutrientLog.objects.count(), 0)
+
+    # ----- MicronutrientLog -----
+    def test_micro_add_post(self):
+        response = self.client.post(reverse('micro_add'), {
+            'date': '2026-03-01',
+            'nutrient_name': 'Iron',
+            'amount': '18',
+            'unit': 'mg',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(MicronutrientLog.objects.count(), 1)
+
+    def test_micro_edit_post(self):
+        m = MicronutrientLog.objects.create(
+            date=date(2026, 3, 1), nutrient_name='Iron', amount=18, unit='mg',
+        )
+        response = self.client.post(reverse('micro_edit', kwargs={'pk': m.pk}), {
+            'date': '2026-03-01',
+            'nutrient_name': 'Iron',
+            'amount': '25',
+            'unit': 'mg',
+        })
+        self.assertEqual(response.status_code, 302)
+        m.refresh_from_db()
+        self.assertEqual(m.amount, 25.0)
+
+    def test_micro_delete_post(self):
+        m = MicronutrientLog.objects.create(
+            date=date(2026, 3, 1), nutrient_name='Iron', amount=18, unit='mg',
+        )
+        response = self.client.post(reverse('micro_delete', kwargs={'pk': m.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(MicronutrientLog.objects.count(), 0)
+
+    # ----- FoodEntry -----
+    def test_food_add_post(self):
+        response = self.client.post(reverse('food_add'), {
+            'date': '2026-03-01',
+            'food_name': 'Apple',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(FoodEntry.objects.count(), 1)
+
+    def test_food_edit_post(self):
+        f = FoodEntry.objects.create(date=date(2026, 3, 1), food_name='Apple')
+        response = self.client.post(reverse('food_edit', kwargs={'pk': f.pk}), {
+            'date': '2026-03-01',
+            'food_name': 'Banana',
+        })
+        self.assertEqual(response.status_code, 302)
+        f.refresh_from_db()
+        self.assertEqual(f.food_name, 'Banana')
+
+    def test_food_delete_post(self):
+        f = FoodEntry.objects.create(date=date(2026, 3, 1), food_name='Apple')
+        response = self.client.post(reverse('food_delete', kwargs={'pk': f.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(FoodEntry.objects.count(), 0)
+
+    # ----- UserProfile -----
+    def test_user_profile_add_post(self):
+        response = self.client.post(reverse('user_profile_add'), {
+            'username': 'testuser',
+            'role': 'user',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(UserProfile.objects.count(), 1)
+
+    def test_user_profile_edit_post(self):
+        u = UserProfile.objects.create(username='testuser', role='user')
+        response = self.client.post(reverse('user_profile_edit', kwargs={'pk': u.pk}), {
+            'username': 'testuser',
+            'role': 'admin',
+        })
+        self.assertEqual(response.status_code, 302)
+        u.refresh_from_db()
+        self.assertEqual(u.role, 'admin')
+
+    def test_user_profile_delete_post(self):
+        u = UserProfile.objects.create(username='testuser', role='user')
+        response = self.client.post(reverse('user_profile_delete', kwargs={'pk': u.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(UserProfile.objects.count(), 0)
+
+    # ----- MedicationSchedule -----
+    def test_medication_schedule_add_post(self):
+        response = self.client.post(reverse('medication_schedule_add'), {
+            'medication_name': 'Aspirin',
+            'dosage': '100mg',
+            'frequency': 'daily',
+            'start_date': '2026-03-01',
+            'time_of_day': '08:00',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(MedicationSchedule.objects.count(), 1)
+
+    def test_medication_schedule_edit_post(self):
+        ms = MedicationSchedule.objects.create(
+            medication_name='Aspirin', dosage='100mg',
+            frequency='daily', start_date=date(2026, 3, 1),
+        )
+        response = self.client.post(reverse('medication_schedule_edit', kwargs={'pk': ms.pk}), {
+            'medication_name': 'Aspirin',
+            'dosage': '200mg',
+            'frequency': 'daily',
+            'start_date': '2026-03-01',
+            'time_of_day': '08:00',
+        })
+        self.assertEqual(response.status_code, 302)
+        ms.refresh_from_db()
+        self.assertEqual(ms.dosage, '200mg')
+
+    def test_medication_schedule_delete_post(self):
+        ms = MedicationSchedule.objects.create(
+            medication_name='Aspirin', dosage='100mg',
+            frequency='daily', start_date=date(2026, 3, 1),
+        )
+        response = self.client.post(reverse('medication_schedule_delete', kwargs={'pk': ms.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(MedicationSchedule.objects.count(), 0)
+
+    # ----- HealthGoal -----
+    def test_health_goal_add_post(self):
+        response = self.client.post(reverse('health_goal_add'), {
+            'title': 'Lose Weight',
+            'target_value': '70',
+            'unit': 'kg',
+            'status': 'active',
+            'start_date': '2026-03-01',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(HealthGoal.objects.count(), 1)
+
+    def test_health_goal_edit_post(self):
+        g = HealthGoal.objects.create(
+            title='Lose Weight', target_value=70, unit='kg',
+            status='active', start_date=date(2026, 3, 1),
+        )
+        response = self.client.post(reverse('health_goal_edit', kwargs={'pk': g.pk}), {
+            'title': 'Lose Weight',
+            'target_value': '65',
+            'unit': 'kg',
+            'status': 'active',
+            'start_date': '2026-03-01',
+        })
+        self.assertEqual(response.status_code, 302)
+        g.refresh_from_db()
+        self.assertEqual(g.target_value, 65.0)
+
+    def test_health_goal_delete_post(self):
+        g = HealthGoal.objects.create(
+            title='Lose Weight', target_value=70, unit='kg',
+            status='active', start_date=date(2026, 3, 1),
+        )
+        response = self.client.post(reverse('health_goal_delete', kwargs={'pk': g.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(HealthGoal.objects.count(), 0)
+
+    # ----- CriticalAlert -----
+    def test_critical_alert_add_post(self):
+        response = self.client.post(reverse('critical_alert_add'), {
+            'metric_name': 'Heart Rate',
+            'metric_value': '120',
+            'threshold_value': '100',
+            'alert_level': 'warning',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(CriticalAlert.objects.count(), 1)
+
+    def test_critical_alert_edit_post(self):
+        ca = CriticalAlert.objects.create(
+            metric_name='Heart Rate', metric_value=120,
+            threshold_value=100, alert_level='warning',
+        )
+        response = self.client.post(reverse('critical_alert_edit', kwargs={'pk': ca.pk}), {
+            'metric_name': 'Heart Rate',
+            'metric_value': '130',
+            'threshold_value': '100',
+            'alert_level': 'critical',
+        })
+        self.assertEqual(response.status_code, 302)
+        ca.refresh_from_db()
+        self.assertEqual(ca.metric_value, 130.0)
+
+    def test_critical_alert_delete_post(self):
+        ca = CriticalAlert.objects.create(
+            metric_name='Heart Rate', metric_value=120,
+            threshold_value=100, alert_level='warning',
+        )
+        response = self.client.post(reverse('critical_alert_delete', kwargs={'pk': ca.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(CriticalAlert.objects.count(), 0)
+
+    # ----- IntegrationConfig -----
+    def test_integration_config_add_post(self):
+        response = self.client.post(reverse('integration_config_add'), {
+            'category': 'genomics',
+            'feature_type': 'export',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(IntegrationConfig.objects.count(), 1)
+
+    def test_integration_config_edit_post(self):
+        ic = IntegrationConfig.objects.create(category='genomics', feature_type='export')
+        response = self.client.post(reverse('integration_config_edit', kwargs={'pk': ic.pk}), {
+            'category': 'genomics',
+            'feature_type': 'reporting',
+        })
+        self.assertEqual(response.status_code, 302)
+        ic.refresh_from_db()
+        self.assertEqual(ic.feature_type, 'reporting')
+
+    def test_integration_config_delete_post(self):
+        ic = IntegrationConfig.objects.create(category='genomics', feature_type='export')
+        response = self.client.post(reverse('integration_config_delete', kwargs={'pk': ic.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(IntegrationConfig.objects.count(), 0)
+
+    # ----- IntegrationSubTask -----
+    def test_integration_subtask_add_post(self):
+        response = self.client.post(reverse('integration_subtask_add'), {
+            'phase': '10',
+            'sub_task_number': '1',
+            'title': 'Test',
+            'category': 'genomics',
+            'feature_type': 'export',
+            'status': 'pending',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(IntegrationSubTask.objects.count(), 1)
+
+    def test_integration_subtask_edit_post(self):
+        ist = IntegrationSubTask.objects.create(
+            phase=10, sub_task_number=1, title='Test',
+            category='genomics', feature_type='export', status='pending',
+        )
+        response = self.client.post(reverse('integration_subtask_edit', kwargs={'pk': ist.pk}), {
+            'phase': '10',
+            'sub_task_number': '1',
+            'title': 'Updated',
+            'category': 'genomics',
+            'feature_type': 'export',
+            'status': 'in_progress',
+        })
+        self.assertEqual(response.status_code, 302)
+        ist.refresh_from_db()
+        self.assertEqual(ist.title, 'Updated')
+
+    def test_integration_subtask_delete_post(self):
+        ist = IntegrationSubTask.objects.create(
+            phase=10, sub_task_number=1, title='Test',
+            category='genomics', feature_type='export', status='pending',
+        )
+        response = self.client.post(reverse('integration_subtask_delete', kwargs={'pk': ist.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(IntegrationSubTask.objects.count(), 0)

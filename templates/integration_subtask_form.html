@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Integration Sub-task</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="phase" class="form-label">Phase:</label>
+      <select class="form-select" name="phase" id="phase">
+        <option value="10" {% if editing and entry.phase == 10 %}selected{% endif %}>Phase 10</option>
+        <option value="11" {% if editing and entry.phase == 11 %}selected{% endif %}>Phase 11</option>
+        <option value="12" {% if editing and entry.phase == 12 %}selected{% endif %}>Phase 12</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="sub_task_number" class="form-label">Sub-task Number:</label>
+      <input type="number" class="form-control" name="sub_task_number" id="sub_task_number" value="{% if editing and entry.sub_task_number is not None %}{{ entry.sub_task_number }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="title" class="form-label">Title:</label>
+      <input type="text" class="form-control" name="title" id="title" value="{% if editing and entry.title %}{{ entry.title }}{% endif %}" />
+    </div>
+    <div class="mb-3">
+      <label for="category" class="form-label">Category:</label>
+      <select class="form-select" name="category" id="category">
+        {% for value, label in categories %}
+        <option value="{{ value }}" {% if editing and entry.category == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="feature_type" class="form-label">Feature Type:</label>
+      <select class="form-select" name="feature_type" id="feature_type">
+        {% for value, label in feature_types %}
+        <option value="{{ value }}" {% if editing and entry.feature_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="status" class="form-label">Status:</label>
+      <select class="form-select" name="status" id="status">
+        <option value="pending" {% if editing and entry.status == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="in_progress" {% if editing and entry.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+        <option value="completed" {% if editing and entry.status == 'completed' %}selected{% endif %}>Completed</option>
+        <option value="failed" {% if editing and entry.status == 'failed' %}selected{% endif %}>Failed</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="details" class="form-label">Details:</label>
+      <textarea class="form-control" name="details" id="details" rows="4">{% if editing and entry.details %}{{ entry.details }}{% endif %}</textarea>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'integration_subtask_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

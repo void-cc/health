@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Health Report</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="title" class="form-label">Title:</label>
+      <input type="text" class="form-control" id="title" name="title" value="{% if editing %}{{ entry.title }}{% endif %}" required>
+    </div>
+    <div class="mb-3">
+      <label for="report_type" class="form-label">Report Type:</label>
+      <select class="form-select" id="report_type" name="report_type">
+        <option value="monthly" {% if editing and entry.report_type == 'monthly' %}selected{% endif %}>Monthly</option>
+        <option value="quarterly" {% if editing and entry.report_type == 'quarterly' %}selected{% endif %}>Quarterly</option>
+        <option value="annual" {% if editing and entry.report_type == 'annual' %}selected{% endif %}>Annual</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="period_start" class="form-label">Period Start:</label>
+      <input type="date" class="form-control" id="period_start" name="period_start" value="{% if editing %}{{ entry.period_start|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required>
+    </div>
+    <div class="mb-3">
+      <label for="period_end" class="form-label">Period End:</label>
+      <input type="date" class="form-control" id="period_end" name="period_end" value="{% if editing %}{{ entry.period_end|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required>
+    </div>
+    <div class="mb-3">
+      <label for="content" class="form-label">Content:</label>
+      <textarea class="form-control" id="content" name="content" rows="3">{% if editing %}{{ entry.content }}{% endif %}</textarea>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'health_report_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
