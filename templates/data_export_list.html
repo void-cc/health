@@ -2,7 +2,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2>Data Exports</h2>
-  <a href="{% url 'data_export_add' %}" class="btn btn-primary">Add Entry</a>
+  <a href="{% url 'data_export_add' %}" class="btn btn-primary">New Export</a>
 </div>
 
 {% if entries %}
@@ -20,11 +20,26 @@
     <tbody>
       {% for entry in entries %}
       <tr>
-        <td>{% if entry.export_format %}{{ entry.export_format }}{% else %}-{% endif %}</td>
-        <td>{% if entry.status %}{{ entry.status }}{% else %}-{% endif %}</td>
+        <td>{% if entry.export_format %}{{ entry.export_format|upper }}{% else %}-{% endif %}</td>
+        <td>
+          {% if entry.status == 'completed' %}
+            <span class="badge bg-success">Completed</span>
+          {% elif entry.status == 'processing' %}
+            <span class="badge bg-warning">Processing</span>
+          {% elif entry.status == 'failed' %}
+            <span class="badge bg-danger">Failed</span>
+          {% else %}
+            <span class="badge bg-secondary">Pending</span>
+          {% endif %}
+        </td>
         <td>{% if entry.requested_at %}{{ entry.requested_at }}{% else %}-{% endif %}</td>
         <td>{% if entry.completed_at %}{{ entry.completed_at }}{% else %}-{% endif %}</td>
         <td>
+          {% if entry.status == 'completed' %}
+          <a href="{% url 'data_export_download' pk=entry.id %}" class="btn btn-sm btn-success">
+            <i class="fas fa-download"></i> Download
+          </a>
+          {% endif %}
           <a href="{% url 'data_export_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
             <i class="fas fa-edit"></i> Edit
           </a>
@@ -61,7 +76,7 @@
 {% else %}
 <div class="alert alert-info">
   <p>No data exports recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'data_export_add' %}">Add Your First Data Export</a>
+  <a class="btn btn-primary" href="{% url 'data_export_add' %}">Create Your First Export</a>
 </div>
 {% endif %}
 {% endblock %}

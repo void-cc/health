@@ -843,6 +843,19 @@ class SecureViewingLink(models.Model):
     def __str__(self):
         return f"Secure Link (expires {self.expires_at})"
 
+    @property
+    def is_expired(self):
+        return self.expires_at is not None and timezone.now() > self.expires_at
+
+    @property
+    def is_valid(self):
+        return self.is_active and not self.is_expired
+
+    @staticmethod
+    def generate_token():
+        import secrets
+        return secrets.token_urlsafe(32)
+
 
 class PractitionerAccess(models.Model):
     ACCESS_STATUS = [

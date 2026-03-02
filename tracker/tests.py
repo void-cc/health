@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from tracker.models import (
     BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
     UserProfile, SecurityLog, UserSession, PrivacyPreference,
+    SecureViewingLink, PractitionerAccess, IntakeSummary,
+    DataExportRequest, StakeholderEmail, MedicationSchedule,
 )
 from datetime import date
 import json
@@ -2805,3 +2807,464 @@ class Phase5To12CRUDTests(TestCase):
         response = self.client.post(reverse('integration_subtask_delete', kwargs={'pk': ist.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(IntegrationSubTask.objects.count(), 0)
+
+
+class Phase9SecureViewingLinkTests(TestCase):
+    """Test secure viewing link token generation, expiration, and public share view."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_auto_token_generation(self):
+        """Tokens should be auto-generated when creating a link."""
+        from django.utils import timezone
+        from datetime import timedelta
+        expires = (timezone.now() + timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M')
+        response = self.client.post(reverse('secure_viewing_link_add'), {
+            'data_types': 'blood_tests,vitals',
+            'expires_at': expires,
+            'is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(SecureViewingLink.objects.count(), 1)
+        link = SecureViewingLink.objects.first()
+        self.assertTrue(len(link.token) > 20)
+        self.assertTrue(link.is_active)
+
+    def test_token_uniqueness(self):
+        """Each generated token should be unique."""
+        token1 = SecureViewingLink.generate_token()
+        token2 = SecureViewingLink.generate_token()
+        self.assertNotEqual(token1, token2)
+
+    def test_is_valid_property(self):
+        """is_valid should return True for active, non-expired links."""
+        from django.utils import timezone
+        from datetime import timedelta
+        valid_link = SecureViewingLink.objects.create(
+            token='valid-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True,
+        )
+        self.assertTrue(valid_link.is_valid)
+
+    def test_is_expired_property(self):
+        """is_expired should return True for expired links."""
+        from django.utils import timezone
+        from datetime import timedelta
+        expired_link = SecureViewingLink.objects.create(
+            token='expired-token', expires_at=timezone.now() - timedelta(hours=1),
+            is_active=True,
+        )
+        self.assertTrue(expired_link.is_expired)
+        self.assertFalse(expired_link.is_valid)
+
+    def test_inactive_link_not_valid(self):
+        """Inactive links should not be valid."""
+        from django.utils import timezone
+        from datetime import timedelta
+        inactive_link = SecureViewingLink.objects.create(
+            token='inactive-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=False,
+        )
+        self.assertFalse(inactive_link.is_valid)
+
+    def test_shared_view_valid_link(self):
+        """Public share view should work for valid links."""
+        from django.utils import timezone
+        from datetime import timedelta
+        link = SecureViewingLink.objects.create(
+            token='share-test-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True,
+        )
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'share-test-token'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Shared Health Data')
+        link.refresh_from_db()
+        self.assertEqual(link.access_count, 1)
+
+    def test_shared_view_increments_access_count(self):
+        """Each view should increment access count."""
+        from django.utils import timezone
+        from datetime import timedelta
+        link = SecureViewingLink.objects.create(
+            token='count-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True,
+        )
+        self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'count-token'}))
+        self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'count-token'}))
+        link.refresh_from_db()
+        self.assertEqual(link.access_count, 2)
+
+    def test_shared_view_expired_link(self):
+        """Expired link should show expired page."""
+        from django.utils import timezone
+        from datetime import timedelta
+        SecureViewingLink.objects.create(
+            token='expired-share-token', expires_at=timezone.now() - timedelta(hours=1),
+            is_active=True,
+        )
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'expired-share-token'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Expired')
+
+    def test_shared_view_inactive_link(self):
+        """Inactive link should show expired page."""
+        from django.utils import timezone
+        from datetime import timedelta
+        SecureViewingLink.objects.create(
+            token='inactive-share-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=False,
+        )
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'inactive-share-token'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'deactivated')
+
+    def test_shared_view_with_data(self):
+        """Shared view should display health data when available."""
+        from django.utils import timezone
+        from datetime import timedelta
+        BloodTest.objects.create(test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1))
+        link = SecureViewingLink.objects.create(
+            token='data-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True, data_types='blood_tests',
+        )
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'data-token'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Glucose')
+
+    def test_shared_view_invalid_token_404(self):
+        """Non-existent tokens should return 404."""
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'nonexistent'}))
+        self.assertEqual(response.status_code, 404)
+
+    def test_edit_link(self):
+        """Editing should not change the token."""
+        from django.utils import timezone
+        from datetime import timedelta
+        link = SecureViewingLink.objects.create(
+            token='edit-test-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True,
+        )
+        new_expires = (timezone.now() + timedelta(hours=48)).strftime('%Y-%m-%dT%H:%M')
+        self.client.post(reverse('secure_viewing_link_edit', kwargs={'pk': link.pk}), {
+            'data_types': 'vitals',
+            'expires_at': new_expires,
+            'is_active': 'on',
+        })
+        link.refresh_from_db()
+        self.assertEqual(link.token, 'edit-test-token')
+        self.assertEqual(link.data_types, 'vitals')
+
+
+class Phase9PractitionerPortalTests(TestCase):
+    """Test practitioner portal and access request workflow."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_portal_page_loads(self):
+        response = self.client.get(reverse('practitioner_portal'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Practitioner Portal')
+
+    def test_request_access_page_loads(self):
+        response = self.client.get(reverse('practitioner_request_access'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Request Patient Data Access')
+
+    def test_submit_access_request(self):
+        response = self.client.post(reverse('practitioner_request_access'), {
+            'practitioner_name': 'Dr. Smith',
+            'practitioner_email': 'smith@hospital.com',
+            'specialty': 'Cardiology',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PractitionerAccess.objects.count(), 1)
+        pa = PractitionerAccess.objects.first()
+        self.assertEqual(pa.access_status, 'pending')
+        self.assertEqual(pa.practitioner_name, 'Dr. Smith')
+
+    def test_portal_with_approved_access(self):
+        """Portal should show patient data for approved practitioners."""
+        from django.utils import timezone
+        PractitionerAccess.objects.create(
+            practitioner_name='Dr. Jones',
+            practitioner_email='jones@hospital.com',
+            access_status='approved',
+            granted_at=timezone.now(),
+        )
+        response = self.client.post(reverse('practitioner_portal'), {
+            'practitioner_email': 'jones@hospital.com',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Approved Access Records')
+
+    def test_portal_with_no_access(self):
+        """Portal should show error for unapproved emails."""
+        response = self.client.post(reverse('practitioner_portal'), {
+            'practitioner_email': 'unknown@hospital.com',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No approved access found')
+
+    def test_portal_with_pending_access(self):
+        """Pending access should not grant portal data."""
+        PractitionerAccess.objects.create(
+            practitioner_name='Dr. Pending',
+            practitioner_email='pending@hospital.com',
+            access_status='pending',
+        )
+        response = self.client.post(reverse('practitioner_portal'), {
+            'practitioner_email': 'pending@hospital.com',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No approved access found')
+
+    def test_approve_practitioner_sets_granted_at(self):
+        """Approving a practitioner should set granted_at timestamp."""
+        pa = PractitionerAccess.objects.create(
+            practitioner_name='Dr. New',
+            practitioner_email='new@hospital.com',
+            access_status='pending',
+        )
+        self.assertIsNone(pa.granted_at)
+        self.client.post(reverse('practitioner_access_edit', kwargs={'pk': pa.pk}), {
+            'practitioner_name': 'Dr. New',
+            'practitioner_email': 'new@hospital.com',
+            'specialty': 'General',
+            'access_status': 'approved',
+        })
+        pa.refresh_from_db()
+        self.assertEqual(pa.access_status, 'approved')
+        self.assertIsNotNone(pa.granted_at)
+
+    def test_request_access_requires_name_and_email(self):
+        """Access request without name/email should not create entry."""
+        response = self.client.post(reverse('practitioner_request_access'), {
+            'practitioner_name': '',
+            'practitioner_email': '',
+        })
+        self.assertEqual(PractitionerAccess.objects.count(), 0)
+
+
+class Phase9IntakeSummaryGenerateTests(TestCase):
+    """Test automated intake summary generation."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_generate_empty_data(self):
+        """Generate should work even with no health data."""
+        response = self.client.get(reverse('intake_summary_generate'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(IntakeSummary.objects.count(), 1)
+        summary = IntakeSummary.objects.first()
+        self.assertIn('Intake Summary', summary.title)
+        self.assertIn('No health data available', summary.summary_text)
+
+    def test_generate_with_blood_tests(self):
+        """Generate should include blood test data."""
+        BloodTest.objects.create(
+            test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1),
+            normal_min=70, normal_max=100,
+        )
+        BloodTest.objects.create(
+            test_name='Cholesterol', value=250, unit='mg/dL', date=date(2026, 3, 1),
+            normal_min=100, normal_max=200,
+        )
+        response = self.client.get(reverse('intake_summary_generate'))
+        self.assertEqual(response.status_code, 302)
+        summary = IntakeSummary.objects.first()
+        self.assertIn('Glucose', summary.summary_text)
+        self.assertIn('Cholesterol', summary.conditions)
+
+    def test_generate_with_vitals(self):
+        """Generate should include vital signs."""
+        VitalSign.objects.create(
+            date=date(2026, 3, 1), systolic_bp=120, diastolic_bp=80,
+            heart_rate=72, bbt=36.6,
+        )
+        response = self.client.get(reverse('intake_summary_generate'))
+        self.assertEqual(response.status_code, 302)
+        summary = IntakeSummary.objects.first()
+        self.assertIn('BP: 120/80', summary.summary_text)
+        self.assertIn('HR: 72', summary.summary_text)
+
+    def test_generate_with_medications(self):
+        """Generate should include medications."""
+        MedicationSchedule.objects.create(
+            medication_name='Aspirin', dosage='100mg',
+            frequency='daily', start_date=date(2026, 3, 1),
+        )
+        response = self.client.get(reverse('intake_summary_generate'))
+        self.assertEqual(response.status_code, 302)
+        summary = IntakeSummary.objects.first()
+        self.assertIn('Aspirin', summary.medications)
+
+    def test_generate_out_of_range(self):
+        """Generate should flag out-of-range results."""
+        BloodTest.objects.create(
+            test_name='TSH', value=8.5, unit='mIU/L', date=date(2026, 3, 1),
+            normal_min=0.5, normal_max=4.5,
+        )
+        self.client.get(reverse('intake_summary_generate'))
+        summary = IntakeSummary.objects.first()
+        self.assertIn('Out-of-range', summary.conditions)
+        self.assertIn('TSH', summary.conditions)
+
+
+class Phase9DataExportTests(TestCase):
+    """Test comprehensive data export in JSON and XML formats."""
+
+    def setUp(self):
+        self.client = Client()
+        BloodTest.objects.create(
+            test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1),
+        )
+        VitalSign.objects.create(
+            date=date(2026, 3, 1), systolic_bp=120, diastolic_bp=80, heart_rate=72,
+        )
+
+    def test_create_export_request(self):
+        response = self.client.post(reverse('data_export_add'), {
+            'export_format': 'json',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(DataExportRequest.objects.count(), 1)
+        export = DataExportRequest.objects.first()
+        self.assertEqual(export.status, 'completed')
+        self.assertIsNotNone(export.completed_at)
+
+    def test_json_download(self):
+        """JSON export should return valid JSON with health data."""
+        export = DataExportRequest.objects.create(
+            export_format='json', status='completed',
+        )
+        response = self.client.get(reverse('data_export_download', kwargs={'pk': export.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/json')
+        self.assertIn('attachment', response['Content-Disposition'])
+        data = json.loads(response.content)
+        self.assertIn('blood_tests', data)
+        self.assertIn('vitals', data)
+        self.assertEqual(len(data['blood_tests']), 1)
+        self.assertEqual(data['blood_tests'][0]['test_name'], 'Glucose')
+
+    def test_xml_download(self):
+        """XML export should return valid XML with health data."""
+        export = DataExportRequest.objects.create(
+            export_format='xml', status='completed',
+        )
+        response = self.client.get(reverse('data_export_download', kwargs={'pk': export.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/xml')
+        self.assertIn('attachment', response['Content-Disposition'])
+        content = response.content.decode()
+        self.assertIn('<?xml', content)
+        self.assertIn('<health_data', content)
+        self.assertIn('<blood_tests>', content)
+        self.assertIn('Glucose', content)
+
+    def test_download_nonexistent_export(self):
+        """Downloading non-existent export should return 404."""
+        response = self.client.get(reverse('data_export_download', kwargs={'pk': 99999}))
+        self.assertEqual(response.status_code, 404)
+
+    def test_json_export_contains_all_sections(self):
+        """JSON export should contain all data sections."""
+        export = DataExportRequest.objects.create(
+            export_format='json', status='completed',
+        )
+        response = self.client.get(reverse('data_export_download', kwargs={'pk': export.pk}))
+        data = json.loads(response.content)
+        for section in ['blood_tests', 'vitals', 'medications', 'body_composition', 'sleep_logs']:
+            self.assertIn(section, data)
+
+    def test_xml_export_filename(self):
+        """XML export filename should include the export ID."""
+        export = DataExportRequest.objects.create(
+            export_format='xml', status='completed',
+        )
+        response = self.client.get(reverse('data_export_download', kwargs={'pk': export.pk}))
+        self.assertIn(f'health_export_{export.pk}.xml', response['Content-Disposition'])
+
+
+class Phase9StakeholderEmailTests(TestCase):
+    """Test stakeholder email sending functionality."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_send_email_to_active_stakeholder(self):
+        """Sending to active stakeholder should succeed."""
+        from django.core import mail
+        se = StakeholderEmail.objects.create(
+            recipient_name='Jane Doe',
+            recipient_email='jane@example.com',
+            frequency='monthly',
+            is_active=True,
+        )
+        response = self.client.get(reverse('stakeholder_email_send', kwargs={'pk': se.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Health Summary', mail.outbox[0].subject)
+        self.assertIn('jane@example.com', mail.outbox[0].to)
+        se.refresh_from_db()
+        self.assertIsNotNone(se.last_sent)
+
+    def test_send_email_to_inactive_stakeholder(self):
+        """Sending to inactive stakeholder should fail gracefully."""
+        from django.core import mail
+        se = StakeholderEmail.objects.create(
+            recipient_name='John Doe',
+            recipient_email='john@example.com',
+            frequency='monthly',
+            is_active=False,
+        )
+        response = self.client.get(reverse('stakeholder_email_send', kwargs={'pk': se.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_send_email_contains_health_data(self):
+        """Email should contain health summary data."""
+        from django.core import mail
+        VitalSign.objects.create(
+            date=date(2026, 3, 1), systolic_bp=120, diastolic_bp=80, heart_rate=72,
+        )
+        BloodTest.objects.create(
+            test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1),
+        )
+        se = StakeholderEmail.objects.create(
+            recipient_name='Care Team',
+            recipient_email='careteam@example.com',
+            frequency='monthly',
+            is_active=True,
+        )
+        self.client.get(reverse('stakeholder_email_send', kwargs={'pk': se.pk}))
+        self.assertEqual(len(mail.outbox), 1)
+        body = mail.outbox[0].body
+        self.assertIn('Blood Pressure: 120/80', body)
+        self.assertIn('Glucose', body)
+        self.assertIn('Health Summary Report', body)
+
+    def test_send_email_flags_out_of_range(self):
+        """Email should flag out-of-range values."""
+        from django.core import mail
+        BloodTest.objects.create(
+            test_name='Cholesterol', value=280, unit='mg/dL', date=date(2026, 3, 1),
+            normal_min=100, normal_max=200,
+        )
+        se = StakeholderEmail.objects.create(
+            recipient_name='Family',
+            recipient_email='family@example.com',
+            frequency='monthly',
+            is_active=True,
+        )
+        self.client.get(reverse('stakeholder_email_send', kwargs={'pk': se.pk}))
+        body = mail.outbox[0].body
+        self.assertIn('OUT OF RANGE', body)
+
+    def test_send_nonexistent_stakeholder(self):
+        """Sending to nonexistent stakeholder should return 404."""
+        response = self.client.get(reverse('stakeholder_email_send', kwargs={'pk': 99999}))
+        self.assertEqual(response.status_code, 404)

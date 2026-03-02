@@ -276,30 +276,36 @@ urlpatterns = [
     path('secure-links/add/', views.secure_viewing_link_add, name='secure_viewing_link_add'),
     path('secure-links/edit/<int:pk>/', views.secure_viewing_link_edit, name='secure_viewing_link_edit'),
     path('secure-links/delete/<int:pk>/', views.secure_viewing_link_delete, name='secure_viewing_link_delete'),
+    path('share/<str:token>/', views.secure_link_shared_view, name='secure_link_shared_view'),
 
     # Phase 9: Practitioner Access
     path('practitioners/', views.practitioner_access_list, name='practitioner_access_list'),
     path('practitioners/add/', views.practitioner_access_add, name='practitioner_access_add'),
     path('practitioners/edit/<int:pk>/', views.practitioner_access_edit, name='practitioner_access_edit'),
     path('practitioners/delete/<int:pk>/', views.practitioner_access_delete, name='practitioner_access_delete'),
+    path('practitioner-portal/', views.practitioner_portal, name='practitioner_portal'),
+    path('practitioner-portal/request/', views.practitioner_request_access, name='practitioner_request_access'),
 
     # Phase 9: Intake Summaries
     path('intake-summaries/', views.intake_summary_list, name='intake_summary_list'),
     path('intake-summaries/add/', views.intake_summary_add, name='intake_summary_add'),
     path('intake-summaries/edit/<int:pk>/', views.intake_summary_edit, name='intake_summary_edit'),
     path('intake-summaries/delete/<int:pk>/', views.intake_summary_delete, name='intake_summary_delete'),
+    path('intake-summaries/generate/', views.intake_summary_generate, name='intake_summary_generate'),
 
     # Phase 9: Data Export
     path('exports/', views.data_export_list, name='data_export_list'),
     path('exports/add/', views.data_export_add, name='data_export_add'),
     path('exports/edit/<int:pk>/', views.data_export_edit, name='data_export_edit'),
     path('exports/delete/<int:pk>/', views.data_export_delete, name='data_export_delete'),
+    path('exports/download/<int:pk>/', views.data_export_download, name='data_export_download'),
 
     # Phase 9: Stakeholder Emails
     path('stakeholder-emails/', views.stakeholder_email_list, name='stakeholder_email_list'),
     path('stakeholder-emails/add/', views.stakeholder_email_add, name='stakeholder_email_add'),
     path('stakeholder-emails/edit/<int:pk>/', views.stakeholder_email_edit, name='stakeholder_email_edit'),
     path('stakeholder-emails/delete/<int:pk>/', views.stakeholder_email_delete, name='stakeholder_email_delete'),
+    path('stakeholder-emails/send/<int:pk>/', views.stakeholder_email_send, name='stakeholder_email_send'),
 
     # Phase 10-12: Integration Config
     path('integrations/', views.integration_config_list, name='integration_config_list'),
