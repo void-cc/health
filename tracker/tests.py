@@ -1820,6 +1820,94 @@ class Phase4SidebarTests(TestCase):
         self.assertContains(response, 'Sessions')
         self.assertContains(response, 'Privacy')
         self.assertContains(response, 'Logout')
+
+
+class DynamicSidebarTests(TestCase):
+    """Tests for the dynamic sidebar context processor."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com'
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_sidebar_context_processor_provides_sidebar_nav(self):
+        response = self.client.get(reverse('index'))
+        self.assertIn('sidebar_nav', response.context)
+        self.assertIsInstance(response.context['sidebar_nav'], list)
+        self.assertTrue(len(response.context['sidebar_nav']) > 0)
+
+    def test_sidebar_has_all_categories(self):
+        response = self.client.get(reverse('index'))
+        expected = [
+            'Core', 'Charts &amp; Visualizations', 'Body &amp; Metrics',
+            'Health Tracking', 'Wearables &amp; Devices',
+            'Sleep &amp; Circadian', 'Nutrition', 'Health Intelligence',
+            'Sharing &amp; Access', 'Administration', 'Integrations',
+            'Data Management', 'Account',
+        ]
+        for cat in expected:
+            self.assertContains(response, cat)
+
+    def test_sidebar_has_new_phase5_features(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Wearable Devices')
+        self.assertContains(response, 'Sync Logs')
+
+    def test_sidebar_has_new_phase6_features(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Sleep Tracking')
+        self.assertContains(response, 'Circadian Rhythm')
+        self.assertContains(response, 'Dream Journal')
+        self.assertContains(response, 'Macronutrients')
+        self.assertContains(response, 'Micronutrients')
+        self.assertContains(response, 'Food Entries')
+        self.assertContains(response, 'Fasting')
+        self.assertContains(response, 'Caffeine &amp; Alcohol')
+
+    def test_sidebar_has_new_phase7_features(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Audit Logs')
+        self.assertContains(response, 'Encryption Keys')
+        self.assertContains(response, 'Tenant Config')
+        self.assertContains(response, 'Backup Config')
+
+    def test_sidebar_has_new_phase8_features(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Medications')
+        self.assertContains(response, 'Health Goals')
+        self.assertContains(response, 'Critical Alerts')
+        self.assertContains(response, 'Health Reports')
+        self.assertContains(response, 'Biological Age')
+        self.assertContains(response, 'Predictive Biomarkers')
+
+    def test_sidebar_has_new_phase9_features(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Secure Links')
+        self.assertContains(response, 'Practitioner Access')
+        self.assertContains(response, 'Intake Summaries')
+        self.assertContains(response, 'Data Exports')
+        self.assertContains(response, 'Stakeholder Emails')
+
+    def test_sidebar_has_integration_features(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Integration Config')
+        self.assertContains(response, 'Integration Sub-tasks')
+
+    def test_sidebar_active_state_on_dashboard(self):
+        response = self.client.get(reverse('index'))
+        content = response.content.decode()
+        self.assertIn('active', content)
+
+    def test_sidebar_context_processor_items_have_urls(self):
+        response = self.client.get(reverse('index'))
+        nav = response.context['sidebar_nav']
+        for section in nav:
+            for item in section['items']:
+                self.assertTrue(item['url'].startswith('/'))
+
+
 # ===== Phase 5-12 Tests =====
 
 from tracker.models import (
