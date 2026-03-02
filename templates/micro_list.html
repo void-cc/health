@@ -14,6 +14,7 @@
         <th>Nutrient Name</th>
         <th>Amount</th>
         <th>Unit</th>
+        <th>Deficiency Risk</th>
         <th>Notes</th>
         <th>Actions</th>
       </tr>
@@ -25,6 +26,7 @@
         <td>{% if entry.nutrient_name %}{{ entry.nutrient_name }}{% else %}-{% endif %}</td>
         <td>{% if entry.amount is not None %}{{ entry.amount }}{% else %}-{% endif %}</td>
         <td>{% if entry.unit %}{{ entry.unit }}{% else %}-{% endif %}</td>
+        <td>{% if entry.deficiency_risk %}{{ entry.deficiency_risk }}{% else %}-{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'micro_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">

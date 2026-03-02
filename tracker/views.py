@@ -2090,6 +2090,7 @@ def micro_add(request):
                 nutrient_name=request.POST.get('nutrient_name', ''),
                 amount=float(amount) if amount else None,
                 unit=request.POST.get('unit', ''),
+                deficiency_risk=request.POST.get('deficiency_risk', ''),
                 notes=request.POST.get('notes', ''),
             )
             messages.success(request, 'Micronutrient log added!')
@@ -2109,6 +2110,7 @@ def micro_edit(request, pk):
             amount = request.POST.get('amount', '').strip()
             entry.amount = float(amount) if amount else None
             entry.unit = request.POST.get('unit', '')
+            entry.deficiency_risk = request.POST.get('deficiency_risk', '')
             entry.notes = request.POST.get('notes', '')
             entry.save()
             messages.success(request, 'Micronutrient log updated!')
@@ -2156,6 +2158,7 @@ def food_add(request):
                 carbohydrate_grams=float(carbs) if carbs else None,
                 fat_grams=float(fat) if fat else None,
                 source=request.POST.get('source', ''),
+                food_database_id=request.POST.get('food_database_id', ''),
                 notes=request.POST.get('notes', ''),
             )
             messages.success(request, 'Food entry added!')
@@ -2183,6 +2186,7 @@ def food_edit(request, pk):
             entry.carbohydrate_grams = float(carbs) if carbs else None
             entry.fat_grams = float(fat) if fat else None
             entry.source = request.POST.get('source', '')
+            entry.food_database_id = request.POST.get('food_database_id', '')
             entry.notes = request.POST.get('notes', '')
             entry.save()
             messages.success(request, 'Food entry updated!')

@@ -19,6 +19,7 @@
         <th>Carbs</th>
         <th>Fat</th>
         <th>Source</th>
+        <th>Database ID</th>
         <th>Notes</th>
         <th>Actions</th>
       </tr>
@@ -35,6 +36,7 @@
         <td>{% if entry.carbohydrate_grams is not None %}{{ entry.carbohydrate_grams }}{% else %}-{% endif %}</td>
         <td>{% if entry.fat_grams is not None %}{{ entry.fat_grams }}{% else %}-{% endif %}</td>
         <td>{% if entry.source %}{{ entry.source }}{% else %}-{% endif %}</td>
+        <td>{% if entry.food_database_id %}{{ entry.food_database_id }}{% else %}-{% endif %}</td>
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'food_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
