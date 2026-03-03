@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load json_filters %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} {{ page_title }}</h2>
+  <form method="POST">
+    {% csrf_token %}
+
+    {% for f in fields %}
+      <div class="mb-3">
+        <label for="{{ f.name }}" class="form-label">{{ f.label }}{% if f.required %} <span class="text-danger">*</span>{% endif %}:</label>
+
+        {% if f.widget == 'textarea' %}
+          <textarea class="form-control" name="{{ f.name }}" id="{{ f.name }}" rows="3" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %}>{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% endif %}</textarea>
+
+        {% elif f.widget == 'select' or f.choices %}
+          <select class="form-control" name="{{ f.name }}" id="{{ f.name }}" {% if f.required %}required{% endif %}>
+            <option value="">-- Select --</option>
+            {% for choice_val, choice_label in f.choices %}
+              <option value="{{ choice_val }}" {% if editing %}{% with val=entry|get_field:f.name %}{% if val == choice_val %}selected{% endif %}{% endwith %}{% endif %}>{{ choice_label }}</option>
+            {% endfor %}
+          </select>
+
+        {% elif f.type == 'bool' %}
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" name="{{ f.name }}" id="{{ f.name }}" {% if editing %}{% with val=entry|get_field:f.name %}{% if val %}checked{% endif %}{% endwith %}{% endif %} />
+          </div>
+
+        {% elif f.type == 'float' or f.type == 'int' %}
+          <input type="number" {% if f.step %}step="{{ f.step }}"{% elif f.type == 'float' %}step="0.1"{% endif %} class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% elif f.type == 'date' %}{{ date }}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
+
+        {% elif f.type == 'time' %}
+          <input type="time" class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
+
+        {% elif f.type == 'datetime' %}
+          <input type="datetime-local" class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val|date:'Y-m-d\TH:i' }}{% endif %}{% endwith %}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
+
+        {% elif f.type == 'date' %}
+          <input type="date" class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val|date:'Y-m-d' }}{% endif %}{% endwith %}{% else %}{{ date }}{% endif %}" {% if f.required %}required{% endif %} />
+
+        {% else %}
+          <input type="text" class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url list_url_name %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -21,3 +21,12 @@ def lookup(dictionary, key):
     if isinstance(dictionary, dict):
         return dictionary.get(key)
     return None
+
+
+@register.filter(name='get_field')
+def get_field(obj, field_name):
+    """Return the value of a named attribute on a model instance."""
+    try:
+        return getattr(obj, field_name, None)
+    except Exception:
+        return None
