@@ -4,8 +4,8 @@
   "description": "Comprehensive health and blood test tracking application",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#0f3460",
+  "background_color": "#f9fafb",
+  "theme_color": "#2563eb",
   "orientation": "any",
   "icons": [
     {
