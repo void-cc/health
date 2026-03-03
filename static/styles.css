@@ -14,13 +14,14 @@ body {
 
 /* ---- Footer ---- */
 .footer {
-  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-  color: rgba(255, 255, 255, 0.85);
+  background-color: #f8f9fa;
+  color: #6c757d;
   padding: 1rem 0;
   width: 100%;
   margin-top: auto;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   letter-spacing: 0.01em;
+  border-top: 1px solid #e5e7eb;
 }
 
 /* ---- Tables ---- */
@@ -248,12 +249,13 @@ main h4 {
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-  color: #fff;
+  background-color: #ffffff;
+  color: var(--text-primary, #212529);
   position: sticky;
   top: 0;
   z-index: 1020;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .top-navbar-left {
@@ -277,7 +279,7 @@ main h4 {
 .sidebar-toggle-btn {
   background: none;
   border: none;
-  color: #fff;
+  color: var(--text-secondary, #495057);
   font-size: 1.25rem;
   cursor: pointer;
   padding: 0.25rem 0.5rem;
@@ -286,7 +288,7 @@ main h4 {
 }
 
 .sidebar-toggle-btn:hover {
-  background-color: rgba(255, 255, 255, 0.12);
+  background-color: var(--bg-tertiary, #e9ecef);
 }
 
 /* ---- Responsive: stack on mobile ---- */
@@ -304,6 +306,52 @@ main h4 {
     padding: 0.2rem 0.4rem;
     font-size: 0.8rem;
   }
+}
+
+/* ---- Collapsible sidebar groups ---- */
+.sidebar-category--collapsible {
+  list-style: none;
+}
+
+.sidebar-collapse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem 1rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #6c757d);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.sidebar-collapse-toggle:hover {
+  color: var(--text-secondary, #495057);
+}
+
+.sidebar-collapse-icon {
+  font-size: 0.6rem;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-category--expanded .sidebar-collapse-icon {
+  transform: rotate(180deg);
+}
+
+.sidebar-collapse-body {
+  display: none;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.sidebar-collapse-body--open {
+  display: block;
 }
 
 /* ---- Dark mode overrides for sidebar and new styles ---- */
@@ -359,9 +407,14 @@ main h4 {
 }
 
 [data-theme="dark"] .footer {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background-color: var(--bg-secondary, #16213e);
+  color: var(--text-muted);
+  border-top-color: var(--border-color);
 }
 
 [data-theme="dark"] .top-navbar {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background-color: var(--bg-secondary, #16213e);
+  color: var(--text-primary);
+  border-bottom-color: var(--border-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }

@@ -4,36 +4,36 @@
   <h2 class="mb-4">Phase 11: Interoperability Dashboard (IHE_XDM, HL7, FHIR)</h2>
 
   <!-- Summary Cards -->
-  <div class="row mb-4">
-    <div class="col-md-3 col-sm-6 mb-3">
-      <div class="card text-white bg-primary h-100">
+  <div class="row mb-4 g-3">
+    <div class="col-md-3 col-sm-6">
+      <div class="card h-100">
         <div class="card-body text-center">
-          <h5 class="card-title">Total</h5>
-          <p class="card-text display-6">{{ total }}</p>
+          <div class="text-muted small text-uppercase mb-1">Total</div>
+          <p class="h3 mb-0">{{ total }}</p>
         </div>
       </div>
     </div>
-    <div class="col-md-3 col-sm-6 mb-3">
-      <div class="card text-white bg-success h-100">
+    <div class="col-md-3 col-sm-6">
+      <div class="card h-100">
         <div class="card-body text-center">
-          <h5 class="card-title">Completed</h5>
-          <p class="card-text display-6">{{ completed }}</p>
+          <div class="text-muted small text-uppercase mb-1"><i class="fas fa-check-circle text-success me-1"></i>Completed</div>
+          <p class="h3 mb-0">{{ completed }}</p>
         </div>
       </div>
     </div>
-    <div class="col-md-3 col-sm-6 mb-3">
-      <div class="card text-white bg-warning h-100">
+    <div class="col-md-3 col-sm-6">
+      <div class="card h-100">
         <div class="card-body text-center">
-          <h5 class="card-title">In Progress</h5>
-          <p class="card-text display-6">{{ in_progress }}</p>
+          <div class="text-muted small text-uppercase mb-1"><i class="fas fa-spinner text-warning me-1"></i>In Progress</div>
+          <p class="h3 mb-0">{{ in_progress }}</p>
         </div>
       </div>
     </div>
-    <div class="col-md-3 col-sm-6 mb-3">
-      <div class="card text-white bg-secondary h-100">
+    <div class="col-md-3 col-sm-6">
+      <div class="card h-100">
         <div class="card-body text-center">
-          <h5 class="card-title">Pending</h5>
-          <p class="card-text display-6">{{ pending }}</p>
+          <div class="text-muted small text-uppercase mb-1"><i class="fas fa-clock text-secondary me-1"></i>Pending</div>
+          <p class="h3 mb-0">{{ pending }}</p>
         </div>
       </div>
     </div>

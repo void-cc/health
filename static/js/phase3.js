@@ -323,6 +323,20 @@
         }
       }
     });
+
+    // Collapsible sidebar category groups
+    document.querySelectorAll('.sidebar-collapse-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var parent = btn.closest('.sidebar-category--collapsible');
+        if (!parent) return;
+        var bodyEl = parent.querySelector('.sidebar-collapse-body');
+        var isExpanded = parent.classList.toggle('sidebar-category--expanded');
+        btn.setAttribute('aria-expanded', String(isExpanded));
+        if (bodyEl) {
+          bodyEl.classList.toggle('sidebar-collapse-body--open', isExpanded);
+        }
+      });
+    });
   }
 
   /* =========================================================
