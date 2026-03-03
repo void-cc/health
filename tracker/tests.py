@@ -4349,3 +4349,317 @@ class IntegrationConfigActivateTests(TestCase):
         )
         response = self.client.post(reverse('integration_config_run', kwargs={'pk': config.pk}))
         self.assertEqual(response.status_code, 302)
+
+
+# ===== Enhanced List View Tests =====
+
+class SleepListEnhancedTests(TestCase):
+    """Tests for enhanced sleep list view with pagination, filtering, and stats."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        for i in range(25):
+            SleepLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                total_sleep_minutes=420 + i,
+                deep_sleep_minutes=90 + i,
+                sleep_quality_score=60 + i,
+            )
+
+    def test_sleep_list_has_pagination(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('page_obj', response.context)
+        self.assertEqual(response.context['page_obj'].paginator.count, 25)
+        self.assertEqual(len(response.context['page_obj']), 20)
+
+    def test_sleep_list_page_2(self):
+        response = self.client.get(reverse('sleep_list'), {'page': 2})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['page_obj']), 5)
+
+    def test_sleep_list_has_stats(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertIn('stats', response.context)
+        self.assertEqual(response.context['stats']['total_entries'], 25)
+        self.assertIsNotNone(response.context['stats']['avg_total_sleep'])
+        self.assertIsNotNone(response.context['stats']['avg_quality'])
+
+    def test_sleep_list_date_filtering(self):
+        response = self.client.get(reverse('sleep_list'), {
+            'start_date': '2026-01-10',
+            'end_date': '2026-01-15',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].paginator.count, 6)
+
+    def test_sleep_list_date_filtering_start_only(self):
+        response = self.client.get(reverse('sleep_list'), {'start_date': '2026-01-20'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].paginator.count, 6)
+
+    def test_sleep_list_has_chart_data(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertIn('chart_dates', response.context)
+        self.assertIn('chart_quality', response.context)
+        self.assertIn('chart_total', response.context)
+
+    def test_sleep_list_renders_summary_stats(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertContains(response, 'Avg Sleep (min)')
+        self.assertContains(response, 'Avg Quality Score')
+
+    def test_sleep_list_renders_filter_form(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertContains(response, 'startDate')
+        self.assertContains(response, 'endDate')
+
+    def test_sleep_list_renders_trend_chart(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertContains(response, 'sleepTrendChart')
+
+
+class HydrationListEnhancedTests(TestCase):
+    """Tests for enhanced hydration list view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        for i in range(25):
+            HydrationLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                fluid_intake_ml=2000 + i * 50,
+                goal_ml=2500,
+            )
+
+    def test_hydration_list_has_pagination(self):
+        response = self.client.get(reverse('hydration_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].paginator.count, 25)
+        self.assertEqual(len(response.context['page_obj']), 20)
+
+    def test_hydration_list_has_stats(self):
+        response = self.client.get(reverse('hydration_list'))
+        stats = response.context['stats']
+        self.assertEqual(stats['total_entries'], 25)
+        self.assertIsNotNone(stats['avg_intake'])
+        self.assertIsNotNone(stats['avg_goal_pct'])
+        self.assertIsNotNone(stats['days_goal_met'])
+
+    def test_hydration_list_date_filtering(self):
+        response = self.client.get(reverse('hydration_list'), {
+            'start_date': '2026-01-10',
+            'end_date': '2026-01-15',
+        })
+        self.assertEqual(response.context['page_obj'].paginator.count, 6)
+
+    def test_hydration_list_renders_summary(self):
+        response = self.client.get(reverse('hydration_list'))
+        self.assertContains(response, 'Avg Daily Intake')
+        self.assertContains(response, 'Days Goal Met')
+
+    def test_hydration_list_renders_chart(self):
+        response = self.client.get(reverse('hydration_list'))
+        self.assertContains(response, 'hydrationTrendChart')
+
+
+class BodyCompositionListEnhancedTests(TestCase):
+    """Tests for enhanced body composition list view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        for i in range(5):
+            BodyComposition.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i * 7),
+                body_fat_percentage=18.0 + i * 0.5,
+                skeletal_muscle_mass=35.0 + i * 0.2,
+                waist_circumference=80 + i,
+                hip_circumference=100,
+            )
+
+    def test_body_composition_list_has_stats(self):
+        response = self.client.get(reverse('body_composition_list'))
+        self.assertEqual(response.status_code, 200)
+        stats = response.context['stats']
+        self.assertEqual(stats['total_entries'], 5)
+        self.assertIsNotNone(stats['avg_body_fat'])
+        self.assertIsNotNone(stats['avg_muscle_mass'])
+
+    def test_body_composition_list_date_filtering(self):
+        response = self.client.get(reverse('body_composition_list'), {
+            'start_date': '2026-01-01',
+            'end_date': '2026-01-14',
+        })
+        self.assertEqual(response.context['page_obj'].paginator.count, 2)
+
+    def test_body_composition_list_has_chart_data(self):
+        response = self.client.get(reverse('body_composition_list'))
+        self.assertIn('chart_dates', response.context)
+        self.assertIn('chart_body_fat', response.context)
+        self.assertIn('chart_muscle', response.context)
+
+    def test_body_composition_list_renders_stats(self):
+        response = self.client.get(reverse('body_composition_list'))
+        self.assertContains(response, 'Avg Body Fat')
+        self.assertContains(response, 'Avg Muscle Mass')
+
+
+class MedicationScheduleListEnhancedTests(TestCase):
+    """Tests for enhanced medication schedule list view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        MedicationSchedule.objects.create(
+            medication_name='Aspirin', dosage='100mg', frequency='Daily',
+            start_date=date(2026, 1, 1), is_active=True,
+        )
+        MedicationSchedule.objects.create(
+            medication_name='Ibuprofen', dosage='200mg', frequency='As needed',
+            start_date=date(2026, 1, 1), is_active=False,
+        )
+        MedicationSchedule.objects.create(
+            medication_name='Vitamin D', dosage='1000IU', frequency='Daily',
+            start_date=date(2026, 1, 1), is_active=True,
+        )
+
+    def test_medication_list_has_search(self):
+        response = self.client.get(reverse('medication_schedule_list'), {'q': 'Aspirin'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
+
+    def test_medication_list_filter_active(self):
+        response = self.client.get(reverse('medication_schedule_list'), {'status': 'active'})
+        self.assertEqual(response.context['page_obj'].paginator.count, 2)
+
+    def test_medication_list_filter_inactive(self):
+        response = self.client.get(reverse('medication_schedule_list'), {'status': 'inactive'})
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
+
+    def test_medication_list_has_summary_counts(self):
+        response = self.client.get(reverse('medication_schedule_list'))
+        self.assertEqual(response.context['total_count'], 3)
+        self.assertEqual(response.context['total_active'], 2)
+
+    def test_medication_list_renders_search_form(self):
+        response = self.client.get(reverse('medication_schedule_list'))
+        self.assertContains(response, 'searchQuery')
+        self.assertContains(response, 'statusFilter')
+
+    def test_medication_list_has_pagination(self):
+        response = self.client.get(reverse('medication_schedule_list'))
+        self.assertIn('page_obj', response.context)
+
+
+class HealthGoalListEnhancedTests(TestCase):
+    """Tests for enhanced health goal list view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        HealthGoal.objects.create(
+            title='Lose Weight', target_value=70, current_value=65,
+            unit='kg', status='active', start_date=date(2026, 1, 1),
+        )
+        HealthGoal.objects.create(
+            title='Run 5K', target_value=5, current_value=5,
+            unit='km', status='completed', start_date=date(2026, 1, 1),
+        )
+        HealthGoal.objects.create(
+            title='Sleep 8 hours', target_value=8, current_value=6,
+            unit='hours', status='paused', start_date=date(2026, 1, 1),
+        )
+
+    def test_health_goal_list_has_stats(self):
+        response = self.client.get(reverse('health_goal_list'))
+        self.assertEqual(response.status_code, 200)
+        stats = response.context['stats']
+        self.assertEqual(stats['total'], 3)
+        self.assertEqual(stats['completed'], 1)
+        self.assertEqual(stats['in_progress'], 1)
+        self.assertEqual(stats['paused'], 1)
+
+    def test_health_goal_list_filter_by_status(self):
+        response = self.client.get(reverse('health_goal_list'), {'status': 'active'})
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
+
+    def test_health_goal_list_search_by_title(self):
+        response = self.client.get(reverse('health_goal_list'), {'q': 'Weight'})
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
+
+    def test_health_goal_list_completion_rate(self):
+        response = self.client.get(reverse('health_goal_list'))
+        stats = response.context['stats']
+        self.assertAlmostEqual(stats['completion_rate'], 33.3, places=1)
+
+    def test_health_goal_list_renders_stats(self):
+        response = self.client.get(reverse('health_goal_list'))
+        self.assertContains(response, 'Completion Rate')
+        self.assertContains(response, 'Active')  # replaces 'In Progress'
+
+    def test_health_goal_list_has_pagination(self):
+        response = self.client.get(reverse('health_goal_list'))
+        self.assertIn('page_obj', response.context)
+
+
+class MacroListEnhancedTests(TestCase):
+    """Tests for enhanced macronutrient list view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        for i in range(25):
+            MacronutrientLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                protein_grams=120 + i,
+                carbohydrate_grams=200 + i,
+                fat_grams=60 + i,
+                calories=2000 + i * 20,
+                fiber_grams=25 + i,
+            )
+
+    def test_macro_list_has_pagination(self):
+        response = self.client.get(reverse('macro_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].paginator.count, 25)
+        self.assertEqual(len(response.context['page_obj']), 20)
+
+    def test_macro_list_has_stats(self):
+        response = self.client.get(reverse('macro_list'))
+        stats = response.context['stats']
+        self.assertEqual(stats['total_entries'], 25)
+        self.assertIsNotNone(stats['avg_protein'])
+        self.assertIsNotNone(stats['avg_carbs'])
+        self.assertIsNotNone(stats['avg_fat'])
+        self.assertIsNotNone(stats['avg_calories'])
+
+    def test_macro_list_date_filtering(self):
+        response = self.client.get(reverse('macro_list'), {
+            'start_date': '2026-01-10',
+            'end_date': '2026-01-15',
+        })
+        self.assertEqual(response.context['page_obj'].paginator.count, 6)
+
+    def test_macro_list_renders_summary(self):
+        response = self.client.get(reverse('macro_list'))
+        self.assertContains(response, 'Avg Calories')
+        self.assertContains(response, 'Avg Protein')
+        self.assertContains(response, 'Avg Carbs')
+
+    def test_macro_list_has_chart_data(self):
+        response = self.client.get(reverse('macro_list'))
+        self.assertIn('chart_dates', response.context)
+        self.assertIn('chart_protein', response.context)
+        self.assertIn('chart_calories', response.context)
+
+    def test_macro_list_renders_chart(self):
+        response = self.client.get(reverse('macro_list'))
+        self.assertContains(response, 'macroTrendChart')

@@ -43,7 +43,8 @@ import io
 import json
 import re
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Q as models_Q
+from django.db.models import Q as models_Q, Avg, Sum, Count
+from django.core.paginator import Paginator
 
 @login_required
 def index(request):
@@ -885,6 +886,254 @@ def export_data(request):
 
 # ===== Phase 2: Body Composition =====
 
+@login_required
+def body_composition_list(request):
+    entries = BodyComposition.objects.all().order_by('-date')
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_body_fat=Avg('body_fat_percentage'),
+        avg_muscle_mass=Avg('skeletal_muscle_mass'),
+        avg_whr=Avg('waist_to_hip_ratio'),
+        total_entries=Count('id'),
+    )
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_body_fat = [e.body_fat_percentage for e in chart_entries if e.body_fat_percentage is not None]
+    chart_muscle = [e.skeletal_muscle_mass for e in chart_entries if e.skeletal_muscle_mass is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_body_fat': json.dumps(chart_body_fat),
+        'chart_muscle': json.dumps(chart_muscle),
+    }
+    return render(request, 'body_composition_list.html', context)
+
+@login_required
+def body_composition_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('body_composition_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            BodyComposition.objects.create(
+                date=date,
+                body_fat_percentage=float(request.POST.get('body_fat_percentage')) if request.POST.get('body_fat_percentage') else None,
+                skeletal_muscle_mass=float(request.POST.get('skeletal_muscle_mass')) if request.POST.get('skeletal_muscle_mass') else None,
+                bone_density=float(request.POST.get('bone_density')) if request.POST.get('bone_density') else None,
+                waist_circumference=float(request.POST.get('waist_circumference')) if request.POST.get('waist_circumference') else None,
+                hip_circumference=float(request.POST.get('hip_circumference')) if request.POST.get('hip_circumference') else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Body composition entry added!')
+            return redirect('body_composition_list')
+        except Exception:
+            messages.error(request, 'Error adding body composition. Please try again.')
+            return redirect('body_composition_add')
+    return render(request, 'body_composition_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def body_composition_edit(request, pk):
+    entry = get_object_or_404(BodyComposition, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.body_fat_percentage = float(request.POST.get('body_fat_percentage')) if request.POST.get('body_fat_percentage') else None
+            entry.skeletal_muscle_mass = float(request.POST.get('skeletal_muscle_mass')) if request.POST.get('skeletal_muscle_mass') else None
+            entry.bone_density = float(request.POST.get('bone_density')) if request.POST.get('bone_density') else None
+            entry.waist_circumference = float(request.POST.get('waist_circumference')) if request.POST.get('waist_circumference') else None
+            entry.hip_circumference = float(request.POST.get('hip_circumference')) if request.POST.get('hip_circumference') else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Body composition updated!')
+            return redirect('body_composition_list')
+        except Exception:
+            messages.error(request, 'Error updating body composition.')
+            return redirect('body_composition_edit', pk=pk)
+    return render(request, 'body_composition_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def body_composition_delete(request, pk):
+    if request.method == 'POST':
+        entry = get_object_or_404(BodyComposition, id=pk)
+        entry.delete()
+        messages.success(request, 'Body composition entry deleted!')
+    return redirect('body_composition_list')
+
+
+# ===== Phase 2: Hydration Tracking =====
+
+@login_required
+def hydration_list(request):
+    entries = HydrationLog.objects.all().order_by('-date')
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_intake=Avg('fluid_intake_ml'),
+        avg_goal=Avg('goal_ml'),
+        total_entries=Count('id'),
+    )
+    # Calculate average goal achievement percentage
+    all_entries_for_stats = list(entries)
+    goal_percentages = [e.goal_percentage for e in all_entries_for_stats if e.goal_percentage is not None]
+    stats['avg_goal_pct'] = round(sum(goal_percentages) / len(goal_percentages), 1) if goal_percentages else None
+    stats['days_goal_met'] = sum(1 for p in goal_percentages if p >= 100)
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_intake = [e.fluid_intake_ml for e in chart_entries]
+    chart_goal = [e.goal_ml for e in chart_entries if e.goal_ml is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_intake': json.dumps(chart_intake),
+        'chart_goal': json.dumps(chart_goal),
+    }
+    return render(request, 'hydration_list.html', context)
+
+@login_required
+def hydration_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('hydration_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            fluid_val = request.POST.get('fluid_intake_ml', '').strip()
+            goal_val = request.POST.get('goal_ml', '').strip()
+            HydrationLog.objects.create(
+                date=date,
+                fluid_intake_ml=float(fluid_val) if fluid_val else 0,
+                goal_ml=float(goal_val) if goal_val else 2500,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Hydration log added!')
+            return redirect('hydration_list')
+        except Exception:
+            messages.error(request, 'Error adding hydration log.')
+            return redirect('hydration_add')
+    return render(request, 'hydration_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def hydration_edit(request, pk):
+    entry = get_object_or_404(HydrationLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            fluid_val = request.POST.get('fluid_intake_ml', '').strip()
+            goal_val = request.POST.get('goal_ml', '').strip()
+            entry.fluid_intake_ml = float(fluid_val) if fluid_val else 0
+            entry.goal_ml = float(goal_val) if goal_val else 2500
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Hydration log updated!')
+            return redirect('hydration_list')
+        except Exception:
+            messages.error(request, 'Error updating hydration log.')
+            return redirect('hydration_edit', pk=pk)
+    return render(request, 'hydration_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def hydration_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(HydrationLog, id=pk).delete()
+        messages.success(request, 'Hydration log deleted!')
+    return redirect('hydration_list')
+
+
+# ===== Phase 2: Energy and Fatigue Scoring =====
+
+@login_required
+def energy_list(request):
+    entries = EnergyFatigueLog.objects.all().order_by('-date')
+    return render(request, 'energy_list.html', {'entries': entries})
+
+@login_required
+def energy_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('energy_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            EnergyFatigueLog.objects.create(
+                date=date,
+                energy_score=int(request.POST.get('energy_score', 5)),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Energy log added!')
+            return redirect('energy_list')
+        except Exception:
+            messages.error(request, 'Error adding energy log.')
+            return redirect('energy_add')
+    return render(request, 'energy_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def energy_edit(request, pk):
+    entry = get_object_or_404(EnergyFatigueLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.energy_score = int(request.POST.get('energy_score', 5))
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Energy log updated!')
+            return redirect('energy_list')
+        except Exception:
+            messages.error(request, 'Error updating energy log.')
+            return redirect('energy_edit', pk=pk)
+    return render(request, 'energy_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def energy_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(EnergyFatigueLog, id=pk).delete()
+        messages.success(request, 'Energy log deleted!')
+    return redirect('energy_list')
+
+
+# ===== Phase 2: Custom Vital Signs =====
 
 @login_required
 def custom_vitals_list(request):
@@ -1347,6 +1596,1331 @@ def wearable_oauth_callback(request, platform):
 @login_required
 def wearable_disconnect(request, pk):
     """Disconnect (revoke tokens) for a wearable device."""
+    if request.method == 'POST':
+        device = get_object_or_404(WearableDevice, id=pk)
+        device.access_token = ''
+        device.refresh_token = ''
+        device.token_expires_at = None
+        device.scope = ''
+        device.save(update_fields=['access_token', 'refresh_token', 'token_expires_at', 'scope'])
+        messages.success(request, f'{device.get_platform_display()} disconnected.')
+    return redirect('wearable_device_list')
+
+
+@login_required
+def wearable_sync(request, pk):
+    """Trigger a data sync for a wearable device."""
+    if request.method == 'POST':
+        device = get_object_or_404(WearableDevice, id=pk)
+        if not device.access_token:
+            messages.error(request, f'{device.get_platform_display()} is not connected. Please connect first.')
+            return redirect('wearable_device_list')
+
+        from tracker.integrations.registry import get_client
+        client = get_client(device.platform)
+        if not client:
+            messages.error(request, f'No integration client for {device.get_platform_display()}.')
+            return redirect('wearable_device_list')
+
+        sync_log = client.sync_data(device)
+        if sync_log.status == 'success':
+            messages.success(request, f'Synced {sync_log.records_synced} records from {device.get_platform_display()}.')
+        else:
+            messages.error(request, f'Sync failed: {sync_log.error_message}')
+    return redirect('wearable_device_list')
+
+
+# ===== Phase 6: Sleep & Circadian =====
+
+@login_required
+def sleep_list(request):
+    entries = SleepLog.objects.all().order_by('-date')
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_total_sleep=Avg('total_sleep_minutes'),
+        avg_quality=Avg('sleep_quality_score'),
+        avg_rem=Avg('rem_minutes'),
+        avg_deep=Avg('deep_sleep_minutes'),
+        total_entries=Count('id'),
+    )
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_quality = [e.sleep_quality_score for e in chart_entries if e.sleep_quality_score is not None]
+    chart_total = [e.total_sleep_minutes for e in chart_entries if e.total_sleep_minutes is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_quality': json.dumps(chart_quality),
+        'chart_total': json.dumps(chart_total),
+    }
+    return render(request, 'sleep_list.html', context)
+
+@login_required
+def sleep_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('sleep_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            total = request.POST.get('total_sleep_minutes', '').strip()
+            rem = request.POST.get('rem_minutes', '').strip()
+            deep = request.POST.get('deep_sleep_minutes', '').strip()
+            light = request.POST.get('light_sleep_minutes', '').strip()
+            awake = request.POST.get('awake_minutes', '').strip()
+            quality = request.POST.get('sleep_quality_score', '').strip()
+            bedtime_val = request.POST.get('bedtime', '').strip() or None
+            wake_val = request.POST.get('wake_time', '').strip() or None
+            SleepLog.objects.create(
+                date=date,
+                bedtime=bedtime_val,
+                wake_time=wake_val,
+                total_sleep_minutes=int(total) if total else None,
+                rem_minutes=int(rem) if rem else None,
+                deep_sleep_minutes=int(deep) if deep else None,
+                light_sleep_minutes=int(light) if light else None,
+                awake_minutes=int(awake) if awake else None,
+                sleep_quality_score=int(quality) if quality else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Sleep log added!')
+            return redirect('sleep_list')
+        except Exception:
+            messages.error(request, 'Error adding sleep log.')
+            return redirect('sleep_add')
+    return render(request, 'sleep_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def sleep_edit(request, pk):
+    entry = get_object_or_404(SleepLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.bedtime = request.POST.get('bedtime', '').strip() or None
+            entry.wake_time = request.POST.get('wake_time', '').strip() or None
+            total = request.POST.get('total_sleep_minutes', '').strip()
+            rem = request.POST.get('rem_minutes', '').strip()
+            deep = request.POST.get('deep_sleep_minutes', '').strip()
+            light = request.POST.get('light_sleep_minutes', '').strip()
+            awake = request.POST.get('awake_minutes', '').strip()
+            quality = request.POST.get('sleep_quality_score', '').strip()
+            entry.total_sleep_minutes = int(total) if total else None
+            entry.rem_minutes = int(rem) if rem else None
+            entry.deep_sleep_minutes = int(deep) if deep else None
+            entry.light_sleep_minutes = int(light) if light else None
+            entry.awake_minutes = int(awake) if awake else None
+            entry.sleep_quality_score = int(quality) if quality else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Sleep log updated!')
+            return redirect('sleep_list')
+        except Exception:
+            messages.error(request, 'Error updating sleep log.')
+            return redirect('sleep_edit', pk=pk)
+    return render(request, 'sleep_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def sleep_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(SleepLog, id=pk).delete()
+        messages.success(request, 'Sleep log deleted!')
+    return redirect('sleep_list')
+
+
+# ===== Phase 6: Circadian Rhythm =====
+
+@login_required
+def circadian_list(request):
+    entries = CircadianRhythmLog.objects.all().order_by('-date')
+    return render(request, 'circadian_list.html', {'entries': entries})
+
+@login_required
+def circadian_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('circadian_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            light_exp = request.POST.get('light_exposure_minutes', '').strip()
+            CircadianRhythmLog.objects.create(
+                date=date,
+                wake_time=request.POST.get('wake_time', '').strip() or None,
+                sleep_onset=request.POST.get('sleep_onset', '').strip() or None,
+                peak_energy_time=request.POST.get('peak_energy_time', '').strip() or None,
+                lowest_energy_time=request.POST.get('lowest_energy_time', '').strip() or None,
+                light_exposure_minutes=int(light_exp) if light_exp else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Circadian rhythm log added!')
+            return redirect('circadian_list')
+        except Exception:
+            messages.error(request, 'Error adding circadian rhythm log.')
+            return redirect('circadian_add')
+    return render(request, 'circadian_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def circadian_edit(request, pk):
+    entry = get_object_or_404(CircadianRhythmLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.wake_time = request.POST.get('wake_time', '').strip() or None
+            entry.sleep_onset = request.POST.get('sleep_onset', '').strip() or None
+            entry.peak_energy_time = request.POST.get('peak_energy_time', '').strip() or None
+            entry.lowest_energy_time = request.POST.get('lowest_energy_time', '').strip() or None
+            light_exp = request.POST.get('light_exposure_minutes', '').strip()
+            entry.light_exposure_minutes = int(light_exp) if light_exp else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Circadian rhythm log updated!')
+            return redirect('circadian_list')
+        except Exception:
+            messages.error(request, 'Error updating circadian rhythm log.')
+            return redirect('circadian_edit', pk=pk)
+    return render(request, 'circadian_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def circadian_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(CircadianRhythmLog, id=pk).delete()
+        messages.success(request, 'Circadian rhythm log deleted!')
+    return redirect('circadian_list')
+
+
+# ===== Phase 6: Dream Journal =====
+
+@login_required
+def dream_list(request):
+    entries = DreamJournal.objects.all().order_by('-date')
+    return render(request, 'dream_list.html', {'entries': entries})
+
+@login_required
+def dream_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('dream_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            lucidity = request.POST.get('lucidity_level', '').strip()
+            DreamJournal.objects.create(
+                date=date,
+                dream_description=request.POST.get('dream_description', ''),
+                lucidity_level=int(lucidity) if lucidity else None,
+                mood_on_waking=request.POST.get('mood_on_waking', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Dream journal entry added!')
+            return redirect('dream_list')
+        except Exception:
+            messages.error(request, 'Error adding dream journal entry.')
+            return redirect('dream_add')
+    return render(request, 'dream_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def dream_edit(request, pk):
+    entry = get_object_or_404(DreamJournal, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.dream_description = request.POST.get('dream_description', '')
+            lucidity = request.POST.get('lucidity_level', '').strip()
+            entry.lucidity_level = int(lucidity) if lucidity else None
+            entry.mood_on_waking = request.POST.get('mood_on_waking', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Dream journal entry updated!')
+            return redirect('dream_list')
+        except Exception:
+            messages.error(request, 'Error updating dream journal entry.')
+            return redirect('dream_edit', pk=pk)
+    return render(request, 'dream_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def dream_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(DreamJournal, id=pk).delete()
+        messages.success(request, 'Dream journal entry deleted!')
+    return redirect('dream_list')
+
+
+# ===== Phase 6: Macronutrient Log =====
+
+@login_required
+def macro_list(request):
+    entries = MacronutrientLog.objects.all().order_by('-date')
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_protein=Avg('protein_grams'),
+        avg_carbs=Avg('carbohydrate_grams'),
+        avg_fat=Avg('fat_grams'),
+        avg_calories=Avg('calories'),
+        avg_fiber=Avg('fiber_grams'),
+        total_entries=Count('id'),
+    )
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_protein = [e.protein_grams for e in chart_entries if e.protein_grams is not None]
+    chart_carbs = [e.carbohydrate_grams for e in chart_entries if e.carbohydrate_grams is not None]
+    chart_fat = [e.fat_grams for e in chart_entries if e.fat_grams is not None]
+    chart_calories = [e.calories for e in chart_entries if e.calories is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_protein': json.dumps(chart_protein),
+        'chart_carbs': json.dumps(chart_carbs),
+        'chart_fat': json.dumps(chart_fat),
+        'chart_calories': json.dumps(chart_calories),
+    }
+    return render(request, 'macro_list.html', context)
+
+@login_required
+def macro_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('macro_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            protein = request.POST.get('protein_grams', '').strip()
+            carbs = request.POST.get('carbohydrate_grams', '').strip()
+            fat = request.POST.get('fat_grams', '').strip()
+            calories = request.POST.get('calories', '').strip()
+            fiber = request.POST.get('fiber_grams', '').strip()
+            MacronutrientLog.objects.create(
+                date=date,
+                protein_grams=float(protein) if protein else None,
+                carbohydrate_grams=float(carbs) if carbs else None,
+                fat_grams=float(fat) if fat else None,
+                calories=float(calories) if calories else None,
+                fiber_grams=float(fiber) if fiber else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Macronutrient log added!')
+            return redirect('macro_list')
+        except Exception:
+            messages.error(request, 'Error adding macronutrient log.')
+            return redirect('macro_add')
+    return render(request, 'macro_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def macro_edit(request, pk):
+    entry = get_object_or_404(MacronutrientLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            protein = request.POST.get('protein_grams', '').strip()
+            carbs = request.POST.get('carbohydrate_grams', '').strip()
+            fat = request.POST.get('fat_grams', '').strip()
+            calories = request.POST.get('calories', '').strip()
+            fiber = request.POST.get('fiber_grams', '').strip()
+            entry.protein_grams = float(protein) if protein else None
+            entry.carbohydrate_grams = float(carbs) if carbs else None
+            entry.fat_grams = float(fat) if fat else None
+            entry.calories = float(calories) if calories else None
+            entry.fiber_grams = float(fiber) if fiber else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Macronutrient log updated!')
+            return redirect('macro_list')
+        except Exception:
+            messages.error(request, 'Error updating macronutrient log.')
+            return redirect('macro_edit', pk=pk)
+    return render(request, 'macro_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def macro_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(MacronutrientLog, id=pk).delete()
+        messages.success(request, 'Macronutrient log deleted!')
+    return redirect('macro_list')
+
+
+# ===== Phase 6: Micronutrient Log =====
+
+@login_required
+def micro_list(request):
+    entries = MicronutrientLog.objects.all().order_by('-date')
+    return render(request, 'micro_list.html', {'entries': entries})
+
+@login_required
+def micro_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('micro_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            amount = request.POST.get('amount', '').strip()
+            MicronutrientLog.objects.create(
+                date=date,
+                nutrient_name=request.POST.get('nutrient_name', ''),
+                amount=float(amount) if amount else None,
+                unit=request.POST.get('unit', ''),
+                deficiency_risk=request.POST.get('deficiency_risk', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Micronutrient log added!')
+            return redirect('micro_list')
+        except Exception:
+            messages.error(request, 'Error adding micronutrient log.')
+            return redirect('micro_add')
+    return render(request, 'micro_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def micro_edit(request, pk):
+    entry = get_object_or_404(MicronutrientLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.nutrient_name = request.POST.get('nutrient_name', '')
+            amount = request.POST.get('amount', '').strip()
+            entry.amount = float(amount) if amount else None
+            entry.unit = request.POST.get('unit', '')
+            entry.deficiency_risk = request.POST.get('deficiency_risk', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Micronutrient log updated!')
+            return redirect('micro_list')
+        except Exception:
+            messages.error(request, 'Error updating micronutrient log.')
+            return redirect('micro_edit', pk=pk)
+    return render(request, 'micro_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def micro_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(MicronutrientLog, id=pk).delete()
+        messages.success(request, 'Micronutrient log deleted!')
+    return redirect('micro_list')
+
+
+# ===== Phase 6: Food Entry =====
+
+@login_required
+def food_list(request):
+    entries = FoodEntry.objects.all().order_by('-date')
+    return render(request, 'food_list.html', {'entries': entries})
+
+@login_required
+def food_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('food_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            calories = request.POST.get('calories', '').strip()
+            protein = request.POST.get('protein_grams', '').strip()
+            carbs = request.POST.get('carbohydrate_grams', '').strip()
+            fat = request.POST.get('fat_grams', '').strip()
+            FoodEntry.objects.create(
+                date=date,
+                food_name=request.POST.get('food_name', ''),
+                barcode=request.POST.get('barcode', ''),
+                serving_size=request.POST.get('serving_size', ''),
+                calories=float(calories) if calories else None,
+                protein_grams=float(protein) if protein else None,
+                carbohydrate_grams=float(carbs) if carbs else None,
+                fat_grams=float(fat) if fat else None,
+                source=request.POST.get('source', ''),
+                food_database_id=request.POST.get('food_database_id', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Food entry added!')
+            return redirect('food_list')
+        except Exception:
+            messages.error(request, 'Error adding food entry.')
+            return redirect('food_add')
+    return render(request, 'food_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def food_edit(request, pk):
+    entry = get_object_or_404(FoodEntry, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.food_name = request.POST.get('food_name', '')
+            entry.barcode = request.POST.get('barcode', '')
+            entry.serving_size = request.POST.get('serving_size', '')
+            calories = request.POST.get('calories', '').strip()
+            protein = request.POST.get('protein_grams', '').strip()
+            carbs = request.POST.get('carbohydrate_grams', '').strip()
+            fat = request.POST.get('fat_grams', '').strip()
+            entry.calories = float(calories) if calories else None
+            entry.protein_grams = float(protein) if protein else None
+            entry.carbohydrate_grams = float(carbs) if carbs else None
+            entry.fat_grams = float(fat) if fat else None
+            entry.source = request.POST.get('source', '')
+            entry.food_database_id = request.POST.get('food_database_id', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Food entry updated!')
+            return redirect('food_list')
+        except Exception:
+            messages.error(request, 'Error updating food entry.')
+            return redirect('food_edit', pk=pk)
+    return render(request, 'food_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def food_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(FoodEntry, id=pk).delete()
+        messages.success(request, 'Food entry deleted!')
+    return redirect('food_list')
+
+
+# ===== Phase 6: Fasting Log =====
+
+@login_required
+def fasting_list(request):
+    entries = FastingLog.objects.all().order_by('-date')
+    return render(request, 'fasting_list.html', {'entries': entries})
+
+@login_required
+def fasting_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('fasting_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            target = request.POST.get('target_hours', '').strip()
+            actual = request.POST.get('actual_hours', '').strip()
+            FastingLog.objects.create(
+                date=date,
+                fast_start=request.POST.get('fast_start', '').strip() or None,
+                fast_end=request.POST.get('fast_end', '').strip() or None,
+                target_hours=float(target) if target else None,
+                actual_hours=float(actual) if actual else None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Fasting log added!')
+            return redirect('fasting_list')
+        except Exception:
+            messages.error(request, 'Error adding fasting log.')
+            return redirect('fasting_add')
+    return render(request, 'fasting_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def fasting_edit(request, pk):
+    entry = get_object_or_404(FastingLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.fast_start = request.POST.get('fast_start', '').strip() or None
+            entry.fast_end = request.POST.get('fast_end', '').strip() or None
+            target = request.POST.get('target_hours', '').strip()
+            actual = request.POST.get('actual_hours', '').strip()
+            entry.target_hours = float(target) if target else None
+            entry.actual_hours = float(actual) if actual else None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Fasting log updated!')
+            return redirect('fasting_list')
+        except Exception:
+            messages.error(request, 'Error updating fasting log.')
+            return redirect('fasting_edit', pk=pk)
+    return render(request, 'fasting_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def fasting_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(FastingLog, id=pk).delete()
+        messages.success(request, 'Fasting log deleted!')
+    return redirect('fasting_list')
+
+
+# ===== Phase 6: Caffeine & Alcohol Log =====
+
+@login_required
+def caffeine_alcohol_list(request):
+    entries = CaffeineAlcoholLog.objects.all().order_by('-date')
+    return render(request, 'caffeine_alcohol_list.html', {'entries': entries})
+
+@login_required
+def caffeine_alcohol_add(request):
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        if not date_str:
+            messages.error(request, 'Please select a date.')
+            return redirect('caffeine_alcohol_add')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            amount = request.POST.get('amount_mg', '').strip()
+            CaffeineAlcoholLog.objects.create(
+                date=date,
+                substance=request.POST.get('substance', ''),
+                amount_mg=float(amount) if amount else None,
+                drink_name=request.POST.get('drink_name', ''),
+                time_consumed=request.POST.get('time_consumed', '').strip() or None,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Caffeine/alcohol log added!')
+            return redirect('caffeine_alcohol_list')
+        except Exception:
+            messages.error(request, 'Error adding caffeine/alcohol log.')
+            return redirect('caffeine_alcohol_add')
+    return render(request, 'caffeine_alcohol_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+@login_required
+def caffeine_alcohol_edit(request, pk):
+    entry = get_object_or_404(CaffeineAlcoholLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            entry.substance = request.POST.get('substance', '')
+            amount = request.POST.get('amount_mg', '').strip()
+            entry.amount_mg = float(amount) if amount else None
+            entry.drink_name = request.POST.get('drink_name', '')
+            entry.time_consumed = request.POST.get('time_consumed', '').strip() or None
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Caffeine/alcohol log updated!')
+            return redirect('caffeine_alcohol_list')
+        except Exception:
+            messages.error(request, 'Error updating caffeine/alcohol log.')
+            return redirect('caffeine_alcohol_edit', pk=pk)
+    return render(request, 'caffeine_alcohol_form.html', {'entry': entry, 'editing': True})
+
+@login_required
+def caffeine_alcohol_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(CaffeineAlcoholLog, id=pk).delete()
+        messages.success(request, 'Caffeine/alcohol log deleted!')
+    return redirect('caffeine_alcohol_list')
+
+
+# ===== Phase 7: User Profile =====
+
+def user_profile_list(request):
+    entries = UserProfile.objects.select_related('user').all().order_by('-created_at')
+    return render(request, 'user_profile_list.html', {'entries': entries})
+
+def user_profile_add(request):
+    if request.method == 'POST':
+        try:
+            username = request.POST.get('username', '')
+            user = User.objects.create_user(username=username)
+            user.set_unusable_password()
+            user.save()
+            UserProfile.objects.create(
+                user=user,
+                role=request.POST.get('role', 'user'),
+            )
+            messages.success(request, 'User profile added!')
+            return redirect('user_profile_list')
+        except Exception:
+            messages.error(request, 'Error adding user profile.')
+            return redirect('user_profile_add')
+    return render(request, 'user_profile_form.html', {'editing': False})
+
+def user_profile_edit(request, pk):
+    entry = get_object_or_404(UserProfile, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.user.username = request.POST.get('username', '')
+            entry.user.is_active = request.POST.get('is_active') == 'on'
+            entry.user.save()
+            entry.role = request.POST.get('role', '')
+            entry.save()
+            messages.success(request, 'User profile updated!')
+            return redirect('user_profile_list')
+        except Exception:
+            messages.error(request, 'Error updating user profile.')
+            return redirect('user_profile_edit', pk=pk)
+    return render(request, 'user_profile_form.html', {'entry': entry, 'editing': True})
+
+def user_profile_delete(request, pk):
+    if request.method == 'POST':
+        profile = get_object_or_404(UserProfile, id=pk)
+        profile.user.delete()
+        messages.success(request, 'User profile deleted!')
+    return redirect('user_profile_list')
+
+
+# ===== Phase 7: Family Account =====
+
+def family_account_list(request):
+    entries = FamilyAccount.objects.all().order_by('-created_at')
+    return render(request, 'family_account_list.html', {'entries': entries})
+
+def family_account_add(request):
+    if request.method == 'POST':
+        try:
+            FamilyAccount.objects.create(
+                primary_user=request.POST.get('primary_user', ''),
+                member_name=request.POST.get('member_name', ''),
+                relationship=request.POST.get('relationship', ''),
+                is_minor=request.POST.get('is_minor') == 'on',
+            )
+            messages.success(request, 'Family account added!')
+            return redirect('family_account_list')
+        except Exception:
+            messages.error(request, 'Error adding family account.')
+            return redirect('family_account_add')
+    return render(request, 'family_account_form.html', {'editing': False})
+
+def family_account_edit(request, pk):
+    entry = get_object_or_404(FamilyAccount, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.primary_user = request.POST.get('primary_user', '')
+            entry.member_name = request.POST.get('member_name', '')
+            entry.relationship = request.POST.get('relationship', '')
+            entry.is_minor = request.POST.get('is_minor') == 'on'
+            entry.save()
+            messages.success(request, 'Family account updated!')
+            return redirect('family_account_list')
+        except Exception:
+            messages.error(request, 'Error updating family account.')
+            return redirect('family_account_edit', pk=pk)
+    return render(request, 'family_account_form.html', {'entry': entry, 'editing': True})
+
+def family_account_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(FamilyAccount, id=pk).delete()
+        messages.success(request, 'Family account deleted!')
+    return redirect('family_account_list')
+
+
+# ===== Phase 7: Consent Log =====
+
+def consent_log_list(request):
+    entries = ConsentLog.objects.all().order_by('-accepted_at')
+    return render(request, 'consent_log_list.html', {'entries': entries})
+
+def consent_log_add(request):
+    if request.method == 'POST':
+        try:
+            ConsentLog.objects.create(
+                consent_type=request.POST.get('consent_type', ''),
+                version=request.POST.get('version', ''),
+                accepted=request.POST.get('accepted') == 'on',
+                ip_address=request.POST.get('ip_address', ''),
+            )
+            messages.success(request, 'Consent log added!')
+            return redirect('consent_log_list')
+        except Exception:
+            messages.error(request, 'Error adding consent log.')
+            return redirect('consent_log_add')
+    return render(request, 'consent_log_form.html', {'editing': False})
+
+def consent_log_edit(request, pk):
+    entry = get_object_or_404(ConsentLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.consent_type = request.POST.get('consent_type', '')
+            entry.version = request.POST.get('version', '')
+            entry.accepted = request.POST.get('accepted') == 'on'
+            entry.ip_address = request.POST.get('ip_address', '')
+            entry.save()
+            messages.success(request, 'Consent log updated!')
+            return redirect('consent_log_list')
+        except Exception:
+            messages.error(request, 'Error updating consent log.')
+            return redirect('consent_log_edit', pk=pk)
+    return render(request, 'consent_log_form.html', {'entry': entry, 'editing': True})
+
+def consent_log_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(ConsentLog, id=pk).delete()
+        messages.success(request, 'Consent log deleted!')
+    return redirect('consent_log_list')
+
+
+# ===== Phase 7: Tenant Config =====
+
+def tenant_config_list(request):
+    entries = TenantConfig.objects.all().order_by('-created_at')
+    return render(request, 'tenant_config_list.html', {'entries': entries})
+
+def tenant_config_add(request):
+    if request.method == 'POST':
+        try:
+            TenantConfig.objects.create(
+                tenant_name=request.POST.get('tenant_name', ''),
+                is_active=request.POST.get('is_active') == 'on',
+                data_isolation_level=request.POST.get('data_isolation_level', ''),
+            )
+            messages.success(request, 'Tenant config added!')
+            return redirect('tenant_config_list')
+        except Exception:
+            messages.error(request, 'Error adding tenant config.')
+            return redirect('tenant_config_add')
+    return render(request, 'tenant_config_form.html', {'editing': False})
+
+def tenant_config_edit(request, pk):
+    entry = get_object_or_404(TenantConfig, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.tenant_name = request.POST.get('tenant_name', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.data_isolation_level = request.POST.get('data_isolation_level', '')
+            entry.save()
+            messages.success(request, 'Tenant config updated!')
+            return redirect('tenant_config_list')
+        except Exception:
+            messages.error(request, 'Error updating tenant config.')
+            return redirect('tenant_config_edit', pk=pk)
+    return render(request, 'tenant_config_form.html', {'entry': entry, 'editing': True})
+
+def tenant_config_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(TenantConfig, id=pk).delete()
+        messages.success(request, 'Tenant config deleted!')
+    return redirect('tenant_config_list')
+
+
+# ===== Phase 7: Admin Telemetry =====
+
+def admin_telemetry_list(request):
+    entries = AdminTelemetry.objects.all().order_by('-recorded_at')
+    return render(request, 'admin_telemetry_list.html', {'entries': entries})
+
+def admin_telemetry_add(request):
+    if request.method == 'POST':
+        try:
+            metric_value = request.POST.get('metric_value', '').strip()
+            AdminTelemetry.objects.create(
+                metric_name=request.POST.get('metric_name', ''),
+                metric_value=float(metric_value) if metric_value else None,
+            )
+            messages.success(request, 'Admin telemetry added!')
+            return redirect('admin_telemetry_list')
+        except Exception:
+            messages.error(request, 'Error adding admin telemetry.')
+            return redirect('admin_telemetry_add')
+    return render(request, 'admin_telemetry_form.html', {'editing': False})
+
+def admin_telemetry_edit(request, pk):
+    entry = get_object_or_404(AdminTelemetry, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.metric_name = request.POST.get('metric_name', '')
+            metric_value = request.POST.get('metric_value', '').strip()
+            entry.metric_value = float(metric_value) if metric_value else None
+            entry.save()
+            messages.success(request, 'Admin telemetry updated!')
+            return redirect('admin_telemetry_list')
+        except Exception:
+            messages.error(request, 'Error updating admin telemetry.')
+            return redirect('admin_telemetry_edit', pk=pk)
+    return render(request, 'admin_telemetry_form.html', {'entry': entry, 'editing': True})
+
+def admin_telemetry_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(AdminTelemetry, id=pk).delete()
+        messages.success(request, 'Admin telemetry deleted!')
+    return redirect('admin_telemetry_list')
+
+
+# ===== Phase 7: API Rate Limit Config =====
+
+def api_rate_limit_list(request):
+    entries = APIRateLimitConfig.objects.all().order_by('endpoint')
+    return render(request, 'api_rate_limit_list.html', {'entries': entries})
+
+def api_rate_limit_add(request):
+    if request.method == 'POST':
+        try:
+            max_min = request.POST.get('max_requests_per_minute', '').strip()
+            max_hr = request.POST.get('max_requests_per_hour', '').strip()
+            APIRateLimitConfig.objects.create(
+                endpoint=request.POST.get('endpoint', ''),
+                max_requests_per_minute=int(max_min) if max_min else None,
+                max_requests_per_hour=int(max_hr) if max_hr else None,
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'API rate limit config added!')
+            return redirect('api_rate_limit_list')
+        except Exception:
+            messages.error(request, 'Error adding API rate limit config.')
+            return redirect('api_rate_limit_add')
+    return render(request, 'api_rate_limit_form.html', {'editing': False})
+
+def api_rate_limit_edit(request, pk):
+    entry = get_object_or_404(APIRateLimitConfig, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.endpoint = request.POST.get('endpoint', '')
+            max_min = request.POST.get('max_requests_per_minute', '').strip()
+            max_hr = request.POST.get('max_requests_per_hour', '').strip()
+            entry.max_requests_per_minute = int(max_min) if max_min else None
+            entry.max_requests_per_hour = int(max_hr) if max_hr else None
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'API rate limit config updated!')
+            return redirect('api_rate_limit_list')
+        except Exception:
+            messages.error(request, 'Error updating API rate limit config.')
+            return redirect('api_rate_limit_edit', pk=pk)
+    return render(request, 'api_rate_limit_form.html', {'entry': entry, 'editing': True})
+
+def api_rate_limit_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(APIRateLimitConfig, id=pk).delete()
+        messages.success(request, 'API rate limit config deleted!')
+    return redirect('api_rate_limit_list')
+
+
+# ===== Phase 7: Encryption Keys =====
+
+def encryption_key_list(request):
+    entries = EncryptionKey.objects.all().order_by('-created_at')
+    return render(request, 'encryption_key_list.html', {'entries': entries})
+
+def encryption_key_add(request):
+    if request.method == 'POST':
+        try:
+            EncryptionKey.objects.create(
+                key_identifier=request.POST.get('key_identifier', ''),
+                public_key=request.POST.get('public_key', ''),
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'Encryption key added!')
+            return redirect('encryption_key_list')
+        except Exception:
+            messages.error(request, 'Error adding encryption key.')
+            return redirect('encryption_key_add')
+    return render(request, 'encryption_key_form.html', {'editing': False})
+
+def encryption_key_edit(request, pk):
+    entry = get_object_or_404(EncryptionKey, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.key_identifier = request.POST.get('key_identifier', '')
+            entry.public_key = request.POST.get('public_key', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'Encryption key updated!')
+            return redirect('encryption_key_list')
+        except Exception:
+            messages.error(request, 'Error updating encryption key.')
+            return redirect('encryption_key_edit', pk=pk)
+    return render(request, 'encryption_key_form.html', {'entry': entry, 'editing': True})
+
+def encryption_key_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(EncryptionKey, id=pk).delete()
+        messages.success(request, 'Encryption key deleted!')
+    return redirect('encryption_key_list')
+
+
+# ===== Phase 7: Audit Logs =====
+
+def audit_log_list(request):
+    entries = AuditLog.objects.all().order_by('-created_at')
+    return render(request, 'audit_log_list.html', {'entries': entries})
+
+def audit_log_add(request):
+    if request.method == 'POST':
+        try:
+            AuditLog.objects.create(
+                action=request.POST.get('action', ''),
+                details=request.POST.get('details', ''),
+                ip_address=request.POST.get('ip_address', '') or None,
+            )
+            messages.success(request, 'Audit log added!')
+            return redirect('audit_log_list')
+        except Exception:
+            messages.error(request, 'Error adding audit log.')
+            return redirect('audit_log_add')
+    return render(request, 'audit_log_form.html', {'editing': False})
+
+def audit_log_edit(request, pk):
+    entry = get_object_or_404(AuditLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.action = request.POST.get('action', '')
+            entry.details = request.POST.get('details', '')
+            entry.ip_address = request.POST.get('ip_address', '') or None
+            entry.save()
+            messages.success(request, 'Audit log updated!')
+            return redirect('audit_log_list')
+        except Exception:
+            messages.error(request, 'Error updating audit log.')
+            return redirect('audit_log_edit', pk=pk)
+    return render(request, 'audit_log_form.html', {'entry': entry, 'editing': True})
+
+def audit_log_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(AuditLog, id=pk).delete()
+        messages.success(request, 'Audit log deleted!')
+    return redirect('audit_log_list')
+
+
+# ===== Phase 7: Anonymized Data Reports =====
+
+def anonymized_data_list(request):
+    entries = AnonymizedDataReport.objects.all().order_by('-generated_at')
+    return render(request, 'anonymized_data_list.html', {'entries': entries})
+
+def anonymized_data_add(request):
+    if request.method == 'POST':
+        try:
+            total = request.POST.get('total_records', '').strip()
+            AnonymizedDataReport.objects.create(
+                report_title=request.POST.get('report_title', ''),
+                report_type=request.POST.get('report_type', ''),
+                total_records=int(total) if total else 0,
+                anonymization_method=request.POST.get('anonymization_method', ''),
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Anonymized data report added!')
+            return redirect('anonymized_data_list')
+        except Exception:
+            messages.error(request, 'Error adding anonymized data report.')
+            return redirect('anonymized_data_add')
+    return render(request, 'anonymized_data_form.html', {'editing': False})
+
+def anonymized_data_edit(request, pk):
+    entry = get_object_or_404(AnonymizedDataReport, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.report_title = request.POST.get('report_title', '')
+            entry.report_type = request.POST.get('report_type', '')
+            total = request.POST.get('total_records', '').strip()
+            entry.total_records = int(total) if total else 0
+            entry.anonymization_method = request.POST.get('anonymization_method', '')
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Anonymized data report updated!')
+            return redirect('anonymized_data_list')
+        except Exception:
+            messages.error(request, 'Error updating anonymized data report.')
+            return redirect('anonymized_data_edit', pk=pk)
+    return render(request, 'anonymized_data_form.html', {'entry': entry, 'editing': True})
+
+def anonymized_data_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(AnonymizedDataReport, id=pk).delete()
+        messages.success(request, 'Anonymized data report deleted!')
+    return redirect('anonymized_data_list')
+
+
+# ===== Phase 7: Database Scaling Config =====
+
+def database_scaling_list(request):
+    entries = DatabaseScalingConfig.objects.all().order_by('-created_at')
+    return render(request, 'database_scaling_list.html', {'entries': entries})
+
+def database_scaling_add(request):
+    if request.method == 'POST':
+        try:
+            max_conn = request.POST.get('max_connections', '').strip()
+            DatabaseScalingConfig.objects.create(
+                config_name=request.POST.get('config_name', ''),
+                scaling_type=request.POST.get('scaling_type', ''),
+                is_active=request.POST.get('is_active') == 'on',
+                max_connections=int(max_conn) if max_conn else 100,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Database scaling config added!')
+            return redirect('database_scaling_list')
+        except Exception:
+            messages.error(request, 'Error adding database scaling config.')
+            return redirect('database_scaling_add')
+    return render(request, 'database_scaling_form.html', {'editing': False})
+
+def database_scaling_edit(request, pk):
+    entry = get_object_or_404(DatabaseScalingConfig, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.config_name = request.POST.get('config_name', '')
+            entry.scaling_type = request.POST.get('scaling_type', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            max_conn = request.POST.get('max_connections', '').strip()
+            entry.max_connections = int(max_conn) if max_conn else 100
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Database scaling config updated!')
+            return redirect('database_scaling_list')
+        except Exception:
+            messages.error(request, 'Error updating database scaling config.')
+            return redirect('database_scaling_edit', pk=pk)
+    return render(request, 'database_scaling_form.html', {'entry': entry, 'editing': True})
+
+def database_scaling_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(DatabaseScalingConfig, id=pk).delete()
+        messages.success(request, 'Database scaling config deleted!')
+    return redirect('database_scaling_list')
+
+
+# ===== Phase 7: Backup Configuration =====
+
+def backup_config_list(request):
+    entries = BackupConfiguration.objects.all().order_by('-created_at')
+    return render(request, 'backup_config_list.html', {'entries': entries})
+
+def backup_config_add(request):
+    if request.method == 'POST':
+        try:
+            ret = request.POST.get('retention_days', '').strip()
+            BackupConfiguration.objects.create(
+                backup_name=request.POST.get('backup_name', ''),
+                frequency=request.POST.get('frequency', ''),
+                retention_days=int(ret) if ret else 30,
+                is_active=request.POST.get('is_active') == 'on',
+                storage_location=request.POST.get('storage_location', ''),
+            )
+            messages.success(request, 'Backup configuration added!')
+            return redirect('backup_config_list')
+        except Exception:
+            messages.error(request, 'Error adding backup configuration.')
+            return redirect('backup_config_add')
+    return render(request, 'backup_config_form.html', {'editing': False})
+
+def backup_config_edit(request, pk):
+    entry = get_object_or_404(BackupConfiguration, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.backup_name = request.POST.get('backup_name', '')
+            entry.frequency = request.POST.get('frequency', '')
+            ret = request.POST.get('retention_days', '').strip()
+            entry.retention_days = int(ret) if ret else 30
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.storage_location = request.POST.get('storage_location', '')
+            entry.save()
+            messages.success(request, 'Backup configuration updated!')
+            return redirect('backup_config_list')
+        except Exception:
+            messages.error(request, 'Error updating backup configuration.')
+            return redirect('backup_config_edit', pk=pk)
+    return render(request, 'backup_config_form.html', {'entry': entry, 'editing': True})
+
+def backup_config_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(BackupConfiguration, id=pk).delete()
+        messages.success(request, 'Backup configuration deleted!')
+    return redirect('backup_config_list')
+
+
+# ===== Phase 8: Medication Schedule =====
+
+def medication_schedule_list(request):
+    entries = MedicationSchedule.objects.all().order_by('-start_date')
+
+    # Search by medication name
+    search_query = request.GET.get('q', '')
+    if search_query:
+        entries = entries.filter(medication_name__icontains=search_query)
+
+    # Filter by active status
+    status_filter = request.GET.get('status', '')
+    if status_filter == 'active':
+        entries = entries.filter(is_active=True)
+    elif status_filter == 'inactive':
+        entries = entries.filter(is_active=False)
+
+    overdue_count = sum(1 for e in entries if e.is_overdue)
+
+    # Summary statistics
+    total_active = entries.filter(is_active=True).count()
+    total_count = entries.count()
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'overdue_count': overdue_count,
+        'total_active': total_active,
+        'total_count': total_count,
+        'search_query': search_query,
+        'status_filter': status_filter,
+    }
+    return render(request, 'medication_schedule_list.html', context)
+
+def medication_schedule_add(request):
+    if request.method == 'POST':
+        try:
+            start_str = request.POST.get('start_date', '').strip()
+            end_str = request.POST.get('end_date', '').strip()
+            MedicationSchedule.objects.create(
+                medication_name=request.POST.get('medication_name', ''),
+                dosage=request.POST.get('dosage', ''),
+                frequency=request.POST.get('frequency', ''),
+                start_date=datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else None,
+                end_date=datetime.strptime(end_str, '%Y-%m-%d').date() if end_str else None,
+                time_of_day=request.POST.get('time_of_day', ''),
+                is_active=request.POST.get('is_active') == 'on',
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, 'Medication schedule added!')
+            return redirect('medication_schedule_list')
+        except Exception:
+            messages.error(request, 'Error adding medication schedule.')
+            return redirect('medication_schedule_add')
+    return render(request, 'medication_schedule_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def medication_schedule_edit(request, pk):
+    entry = get_object_or_404(MedicationSchedule, id=pk)
+    if request.method == 'POST':
+        try:
+            start_str = request.POST.get('start_date', '').strip()
+            end_str = request.POST.get('end_date', '').strip()
+            entry.medication_name = request.POST.get('medication_name', '')
+            entry.dosage = request.POST.get('dosage', '')
+            entry.frequency = request.POST.get('frequency', '')
+            entry.start_date = datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else None
+            entry.end_date = datetime.strptime(end_str, '%Y-%m-%d').date() if end_str else None
+            entry.time_of_day = request.POST.get('time_of_day', '')
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.notes = request.POST.get('notes', '')
+            entry.save()
+            messages.success(request, 'Medication schedule updated!')
+            return redirect('medication_schedule_list')
+        except Exception:
+            messages.error(request, 'Error updating medication schedule.')
+            return redirect('medication_schedule_edit', pk=pk)
+    return render(request, 'medication_schedule_form.html', {'entry': entry, 'editing': True})
+
+def medication_schedule_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(MedicationSchedule, id=pk).delete()
+        messages.success(request, 'Medication schedule deleted!')
+    return redirect('medication_schedule_list')
+
+
+# ===== Phase 8: Health Goal =====
+
+def health_goal_list(request):
+    entries = HealthGoal.objects.all().order_by('-created_at')
+
+    # Filter by status
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        entries = entries.filter(status=status_filter)
+
+    # Search by title
+    search_query = request.GET.get('q', '')
+    if search_query:
+        entries = entries.filter(title__icontains=search_query)
+
+    # Summary statistics
+    all_goals = HealthGoal.objects.all()
+    stats = {
+        'total': all_goals.count(),
+        'completed': all_goals.filter(status='completed').count(),
+        'in_progress': all_goals.filter(status='active').count(),
+        'paused': all_goals.filter(status='paused').count(),
+    }
+    stats['completion_rate'] = round((stats['completed'] / stats['total']) * 100, 1) if stats['total'] > 0 else 0
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'status_filter': status_filter,
+        'search_query': search_query,
+    }
+    return render(request, 'health_goal_list.html', context)
+
+def health_goal_add(request):
+    if request.method == 'POST':
+        try:
+            target_val = request.POST.get('target_value', '').strip()
+            current_val = request.POST.get('current_value', '').strip()
+            start_str = request.POST.get('start_date', '').strip()
+            target_str = request.POST.get('target_date', '').strip()
+            HealthGoal.objects.create(
+                title=request.POST.get('title', ''),
+                description=request.POST.get('description', ''),
+                target_value=float(target_val) if target_val else None,
+                current_value=float(current_val) if current_val else None,
+                unit=request.POST.get('unit', ''),
+                status=request.POST.get('status', ''),
+                start_date=datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else None,
+                target_date=datetime.strptime(target_str, '%Y-%m-%d').date() if target_str else None,
+            )
+            messages.success(request, 'Health goal added!')
+            return redirect('health_goal_list')
+        except Exception:
+            messages.error(request, 'Error adding health goal.')
+            return redirect('health_goal_add')
+    return render(request, 'health_goal_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
+
+def health_goal_edit(request, pk):
+    entry = get_object_or_404(HealthGoal, id=pk)
+    if request.method == 'POST':
+        try:
+            target_val = request.POST.get('target_value', '').strip()
+            current_val = request.POST.get('current_value', '').strip()
+            start_str = request.POST.get('start_date', '').strip()
+            target_str = request.POST.get('target_date', '').strip()
+            entry.title = request.POST.get('title', '')
+            entry.description = request.POST.get('description', '')
+            entry.target_value = float(target_val) if target_val else None
+            entry.current_value = float(current_val) if current_val else None
+            entry.unit = request.POST.get('unit', '')
+            entry.status = request.POST.get('status', '')
+            entry.start_date = datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else None
+            entry.target_date = datetime.strptime(target_str, '%Y-%m-%d').date() if target_str else None
+            entry.save()
+            messages.success(request, 'Health goal updated!')
+            return redirect('health_goal_list')
+        except Exception:
+            messages.error(request, 'Error updating health goal.')
+            return redirect('health_goal_edit', pk=pk)
+    return render(request, 'health_goal_form.html', {'entry': entry, 'editing': True})
+
+def health_goal_delete(request, pk):
     if request.method == 'POST':
         device = get_object_or_404(WearableDevice, id=pk)
         device.access_token = ''
