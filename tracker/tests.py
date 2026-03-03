@@ -1223,10 +1223,10 @@ class Phase3NavigationTests(TestCase):
     def test_sidebar_has_categories(self):
         response = self.client.get(reverse('index'))
         self.assertContains(response, 'sidebar-category')
-        self.assertContains(response, 'Body &amp; Metrics')
-        self.assertContains(response, 'Charts &amp; Visualizations')
-        self.assertContains(response, 'Health Tracking')
-        self.assertContains(response, 'Data Management')
+        self.assertContains(response, 'Tracking')
+        self.assertContains(response, 'Analytics')
+        self.assertContains(response, 'Intelligence')
+        self.assertContains(response, 'Settings')
 
     def test_sidebar_has_all_nav_links(self):
         response = self.client.get(reverse('index'))
@@ -1846,11 +1846,10 @@ class DynamicSidebarTests(TestCase):
     def test_sidebar_has_all_categories(self):
         response = self.client.get(reverse('index'))
         expected = [
-            'Core', 'Charts &amp; Visualizations', 'Body &amp; Metrics',
-            'Health Tracking', 'Wearables &amp; Devices',
-            'Sleep &amp; Circadian', 'Nutrition', 'Health Intelligence',
-            'Sharing &amp; Access', 'Administration', 'Integrations',
-            'Data Management', 'Account',
+            'Overview', 'Analytics', 'Tracking',
+            'Sleep &amp; Nutrition', 'Intelligence',
+            'Devices', 'Sharing',
+            'Settings', 'Administration',
         ]
         for cat in expected:
             self.assertContains(response, cat)
