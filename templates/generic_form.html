@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="container my-4" style="max-width: 640px;">
+<div class="container my-4 form-container">
   <h2 class="mb-4">{% if editing %}Edit{% else %}Add{% endif %} {{ page_title }}</h2>
   <form method="POST">
     {% csrf_token %}

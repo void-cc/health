@@ -24,7 +24,7 @@ body {
   padding: var(--space-4, 1rem) 0;
   width: 100%;
   margin-top: auto;
-  font-size: 0.8125rem;
+  font-size: var(--font-size-base, 0.8125rem);
   letter-spacing: 0.01em;
   border-top: 1px solid var(--border-color, #e5e7eb);
 }
@@ -230,7 +230,7 @@ main h5 {
 
 .sidebar-category {
   padding: var(--space-4, 1rem) var(--space-4, 1rem) var(--space-1, 0.25rem);
-  font-size: 0.6875rem;
+  font-size: var(--font-size-xs, 0.6875rem);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -249,7 +249,7 @@ main h5 {
   padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
   color: var(--text-secondary, #4b5563);
   text-decoration: none;
-  font-size: 0.8125rem;
+  font-size: var(--font-size-base, 0.8125rem);
   min-height: 36px;
   border-radius: 0;
   transition: background-color 0.1s ease, color 0.1s ease;
@@ -372,7 +372,7 @@ main h5 {
   justify-content: space-between;
   width: 100%;
   padding: var(--space-4, 1rem) var(--space-4, 1rem) var(--space-1, 0.25rem);
-  font-size: 0.6875rem;
+  font-size: var(--font-size-xs, 0.6875rem);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -475,6 +475,11 @@ main h5 {
   border-bottom-color: var(--border-color);
 }
 
+/* ---- Form container ---- */
+.form-container {
+  max-width: 640px;
+}
+
 /* ---- Form improvements ---- */
 .form-control,
 .form-select {
@@ -492,7 +497,7 @@ main h5 {
 
 .form-label {
   font-weight: 500;
-  font-size: 0.8125rem;
+  font-size: var(--font-size-base, 0.8125rem);
   color: var(--text-secondary, #4b5563);
   margin-bottom: var(--space-1, 0.25rem);
 }
@@ -529,7 +534,7 @@ main h5 {
   border: 1px solid var(--border-color, #e5e7eb);
   box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.08));
   padding: var(--space-1, 0.25rem);
-  font-size: 0.8125rem;
+  font-size: var(--font-size-base, 0.8125rem);
 }
 
 .dropdown-item {
