@@ -22,6 +22,13 @@ urlpatterns = [
     path('import/', views.import_data, name='import_data'),
     path('export/', views.export_data, name='export_data'),
 
+    # Measurement Review Workflow
+    path('measurements/review/', views.review_measurements, name='review_measurements'),
+    path('measurements/confirm/<int:pk>/', views.confirm_measurement, name='confirm_measurement'),
+    path('imports/<int:doc_id>/review/', views.review_import, name='review_import'),
+    path('measurements/staff-edit/<int:pk>/', views.staff_edit_measurement, name='staff_edit_measurement'),
+    path('measurements/staff-delete/<int:pk>/', views.staff_delete_measurement, name='staff_delete_measurement'),
+
     # Body Composition
     path('body-composition/', views.body_composition_list, name='body_composition_list'),
     path('body-composition/add/', views.body_composition_add, name='body_composition_add'),

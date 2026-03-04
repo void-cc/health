@@ -146,8 +146,8 @@ class SourceDocumentAdmin(admin.ModelAdmin):
 
 @admin.register(Measurement)
 class MeasurementAdmin(admin.ModelAdmin):
-    list_display = ('measurement_type', 'value', 'unit', 'observed_at', 'user', 'source_document')
-    list_filter = ('measurement_type', 'observed_at')
+    list_display = ('measurement_type', 'value', 'unit', 'observed_at', 'user', 'source_document', 'is_confirmed', 'review_status')
+    list_filter = ('measurement_type', 'observed_at', 'is_confirmed', 'review_status')
     search_fields = ('raw_name', 'raw_line')
     raw_id_fields = ('user', 'source_document')
 

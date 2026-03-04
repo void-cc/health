@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Review Measurements</h1>
+    <p class="page-header-subtitle">Confirm, correct, or reject imported measurements before they appear in analytics</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'index' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Dashboard</span>
+    </a>
+  </div>
+</div>
+
+{% if measurements %}
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Measurement</th>
+        <th>Value</th>
+        <th>Unit</th>
+        <th>Confidence</th>
+        <th>Source</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in measurements %}
+      <tr>
+        <td>{{ m.observed_at|date:"Y-m-d" }}</td>
+        <td>{{ m.measurement_type.name }}{% if m.raw_name and m.raw_name != m.measurement_type.name %} <small class="text-muted">({{ m.raw_name }})</small>{% endif %}</td>
+        <td>{{ m.value }}</td>
+        <td>{{ m.unit }}</td>
+        <td>
+          {% if m.confidence is not None %}
+            <span class="badge {% if m.confidence >= 0.85 %}bg-success{% elif m.confidence >= 0.5 %}bg-warning{% else %}bg-danger{% endif %}">
+              {{ m.confidence|floatformat:0 }}%
+            </span>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if m.source_document %}
+            <a href="{% url 'review_import' m.source_document.pk %}">{{ m.source_document.filename|truncatechars:20 }}</a>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td><span class="badge bg-secondary">{{ m.get_review_status_display }}</span></td>
+        <td>
+          <a href="{% url 'confirm_measurement' m.pk %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-check-circle" aria-hidden="true"></i> Review
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="form-card text-center py-5">
+  <i class="fas fa-check-circle fa-3x text-success mb-3" aria-hidden="true"></i>
+  <h3>All Clear</h3>
+  <p class="text-muted">No measurements pending review.</p>
+  <a href="{% url 'import_data' %}" class="btn btn-primary mt-2">
+    <i class="fas fa-upload me-1" aria-hidden="true"></i> Import Data
+  </a>
+</div>
+{% endif %}
+
+{% endblock %}

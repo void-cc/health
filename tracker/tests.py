@@ -6555,3 +6555,228 @@ class IngestionServiceTests(TestCase):
         self.client.login(username='staff_user2', password='testpass123')
         response = self.client.get(reverse('add_vitals'))
         self.assertEqual(response.status_code, 200)
+
+
+class MeasurementReviewWorkflowTests(TestCase):
+    """Phase 3: review & confirm workflow for imported Measurements."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='review_user', password='testpass123')
+        self.client.login(username='review_user', password='testpass123')
+        self.mtype = MeasurementType.objects.create(
+            name='Hemoglobin',
+            category='CBC',
+            default_unit='g/dL',
+            synonyms='HGB, Hgb',
+            normal_min=12.0,
+            normal_max=17.5,
+        )
+
+    def _create_pending_measurement(self, **kwargs):
+        defaults = dict(
+            user=self.user,
+            measurement_type=self.mtype,
+            observed_at=timezone.now(),
+            value=14.5,
+            unit='g/dL',
+            is_confirmed=False,
+            review_status='pending',
+        )
+        defaults.update(kwargs)
+        return Measurement.objects.create(**defaults)
+
+    # --- Model field defaults ---
+
+    def test_measurement_default_is_confirmed_true(self):
+        m = Measurement.objects.create(
+            user=self.user, measurement_type=self.mtype,
+            observed_at=timezone.now(), value=14.0,
+        )
+        self.assertTrue(m.is_confirmed)
+        self.assertEqual(m.review_status, 'confirmed')
+
+    def test_measurement_review_status_choices(self):
+        for status in ('pending', 'confirmed', 'rejected', 'deferred'):
+            m = Measurement.objects.create(
+                user=self.user, measurement_type=self.mtype,
+                observed_at=timezone.now(), value=14.0,
+                review_status=status,
+            )
+            self.assertEqual(m.review_status, status)
+
+    # --- Import creates pending measurements ---
+
+    def test_import_csv_creates_pending_measurements(self):
+        from io import BytesIO
+        csv_content = (
+            "Date,Name,Value,Unit,Normal Min,Normal Max\n"
+            "2026-01-15,Hemoglobin,14.5,g/dL,12.0,17.5\n"
+        )
+        csv_file = BytesIO(csv_content.encode('utf-8'))
+        csv_file.name = 'test_lab.csv'
+        self.client.post(reverse('import_data'), {'file': csv_file}, format='multipart')
+        m = Measurement.objects.get(user=self.user)
+        self.assertFalse(m.is_confirmed)
+        self.assertEqual(m.review_status, 'pending')
+
+    # --- Review list view ---
+
+    def test_review_measurements_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('review_measurements'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_review_measurements_shows_pending(self):
+        m = self._create_pending_measurement()
+        response = self.client.get(reverse('review_measurements'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hemoglobin')
+
+    def test_review_measurements_hides_confirmed(self):
+        m = self._create_pending_measurement(is_confirmed=True, review_status='confirmed')
+        response = self.client.get(reverse('review_measurements'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, '14.5')
+
+    # --- Confirm measurement view ---
+
+    def test_confirm_measurement_get(self):
+        m = self._create_pending_measurement()
+        response = self.client.get(reverse('confirm_measurement', args=[m.pk]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_confirm_measurement_post_confirm(self):
+        m = self._create_pending_measurement()
+        response = self.client.post(reverse('confirm_measurement', args=[m.pk]), {
+            'action': 'confirm',
+            'measurement_type': self.mtype.pk,
+            'value': '14.5',
+            'unit': 'g/dL',
+            'observed_at': '2026-01-15T00:00',
+            'confirmation_notes': 'Looks correct',
+        })
+        self.assertEqual(response.status_code, 302)
+        m.refresh_from_db()
+        self.assertTrue(m.is_confirmed)
+        self.assertEqual(m.review_status, 'confirmed')
+        self.assertEqual(m.confirmation_notes, 'Looks correct')
+
+    def test_confirm_measurement_post_reject(self):
+        m = self._create_pending_measurement()
+        response = self.client.post(reverse('confirm_measurement', args=[m.pk]), {
+            'action': 'reject',
+            'confirmation_notes': 'Bad data',
+        })
+        self.assertEqual(response.status_code, 302)
+        m.refresh_from_db()
+        self.assertFalse(m.is_confirmed)
+        self.assertEqual(m.review_status, 'rejected')
+
+    def test_confirm_measurement_post_defer(self):
+        m = self._create_pending_measurement()
+        response = self.client.post(reverse('confirm_measurement', args=[m.pk]), {
+            'action': 'defer',
+            'confirmation_notes': 'Need more info',
+        })
+        self.assertEqual(response.status_code, 302)
+        m.refresh_from_db()
+        self.assertEqual(m.review_status, 'deferred')
+
+    def test_confirm_measurement_other_user_forbidden(self):
+        other = User.objects.create_user(username='other_user', password='testpass123')
+        m = self._create_pending_measurement(user=other)
+        response = self.client.get(reverse('confirm_measurement', args=[m.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_confirm_measurement_staff_can_access_other_user(self):
+        other = User.objects.create_user(username='other_user2', password='testpass123')
+        m = self._create_pending_measurement(user=other)
+        staff = User.objects.create_user(username='staff_review', password='testpass123', is_staff=True)
+        self.client.login(username='staff_review', password='testpass123')
+        response = self.client.get(reverse('confirm_measurement', args=[m.pk]))
+        self.assertEqual(response.status_code, 200)
+
+    # --- Review import view ---
+
+    def test_review_import_get(self):
+        doc = SourceDocument.objects.create(
+            user=self.user, filename='lab.csv', content_type='csv', status='done',
+        )
+        m = self._create_pending_measurement(source_document=doc)
+        response = self.client.get(reverse('review_import', args=[doc.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'lab.csv')
+
+    def test_review_import_confirm_all(self):
+        doc = SourceDocument.objects.create(
+            user=self.user, filename='lab.csv', content_type='csv', status='done',
+        )
+        m1 = self._create_pending_measurement(source_document=doc)
+        m2 = self._create_pending_measurement(source_document=doc, value=13.0)
+        response = self.client.post(reverse('review_import', args=[doc.pk]), {
+            'action': 'confirm_all',
+        })
+        self.assertEqual(response.status_code, 302)
+        m1.refresh_from_db()
+        m2.refresh_from_db()
+        self.assertTrue(m1.is_confirmed)
+        self.assertTrue(m2.is_confirmed)
+        self.assertEqual(m1.review_status, 'confirmed')
+        self.assertEqual(m2.review_status, 'confirmed')
+
+    def test_review_import_reject_all(self):
+        doc = SourceDocument.objects.create(
+            user=self.user, filename='lab.csv', content_type='csv', status='done',
+        )
+        m1 = self._create_pending_measurement(source_document=doc)
+        response = self.client.post(reverse('review_import', args=[doc.pk]), {
+            'action': 'reject_all',
+        })
+        self.assertEqual(response.status_code, 302)
+        m1.refresh_from_db()
+        self.assertFalse(m1.is_confirmed)
+        self.assertEqual(m1.review_status, 'rejected')
+
+    def test_review_import_other_user_forbidden(self):
+        other = User.objects.create_user(username='other_user3', password='testpass123')
+        doc = SourceDocument.objects.create(
+            user=other, filename='lab.csv', content_type='csv', status='done',
+        )
+        response = self.client.get(reverse('review_import', args=[doc.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    # --- Staff-only edit/delete ---
+
+    def test_staff_edit_requires_staff(self):
+        m = self._create_pending_measurement()
+        response = self.client.get(reverse('staff_edit_measurement', args=[m.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_staff_delete_requires_staff(self):
+        m = self._create_pending_measurement()
+        response = self.client.get(reverse('staff_delete_measurement', args=[m.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_staff_can_edit_measurement(self):
+        m = self._create_pending_measurement()
+        staff = User.objects.create_user(username='staff_edit', password='testpass123', is_staff=True)
+        self.client.login(username='staff_edit', password='testpass123')
+        response = self.client.post(reverse('staff_edit_measurement', args=[m.pk]), {
+            'measurement_type': self.mtype.pk,
+            'value': '15.0',
+            'unit': 'g/dL',
+            'observed_at': '2026-01-15T00:00',
+            'confirmation_notes': 'Staff correction',
+        })
+        self.assertEqual(response.status_code, 302)
+        m.refresh_from_db()
+        self.assertEqual(m.value, 15.0)
+
+    def test_staff_can_delete_measurement(self):
+        m = self._create_pending_measurement()
+        staff = User.objects.create_user(username='staff_del', password='testpass123', is_staff=True)
+        self.client.login(username='staff_del', password='testpass123')
+        response = self.client.post(reverse('staff_delete_measurement', args=[m.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Measurement.objects.filter(pk=m.pk).count(), 0)

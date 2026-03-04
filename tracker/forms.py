@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import UserProfile, PrivacyPreference
+from .models import UserProfile, PrivacyPreference, Measurement, MeasurementType
 
 
 class RegistrationForm(UserCreationForm):
@@ -75,3 +75,22 @@ class AccountDeleteForm(forms.Form):
         if text != 'DELETE':
             raise forms.ValidationError('You must type "DELETE" to confirm.')
         return text
+
+
+class MeasurementReviewForm(forms.ModelForm):
+    """Form for reviewing and confirming an imported measurement."""
+    class Meta:
+        model = Measurement
+        fields = [
+            'measurement_type', 'value', 'unit', 'observed_at',
+            'ref_min', 'ref_max', 'confirmation_notes',
+        ]
+        widgets = {
+            'measurement_type': forms.Select(attrs={'class': 'form-control'}),
+            'value': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any'}),
+            'unit': forms.TextInput(attrs={'class': 'form-control'}),
+            'observed_at': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'ref_min': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any'}),
+            'ref_max': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any'}),
+            'confirmation_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
