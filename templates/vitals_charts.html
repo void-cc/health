@@ -1,104 +1,179 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Vital Signs Charts</h2>
+
+<div class="page-header">
   <div>
-    <button class="btn btn-outline-dark me-2" onclick="exportChartsPDF()">
-      <i class="fas fa-file-pdf"></i> Export PDF
+    <h1 class="page-header-title">Vital Signs Charts</h1>
+    <p class="page-header-subtitle">Trend analysis for your recorded vital measurements</p>
+  </div>
+  <div class="page-header-actions">
+    <button class="toolbar-btn" onclick="exportChartsPDF()">
+      <i class="fas fa-download" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Export PDF</span>
     </button>
-    <a href="{% url 'vitals' %}" class="btn btn-secondary">Back to Vitals</a>
+    <a href="{% url 'vitals' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Back</span>
+    </a>
   </div>
 </div>
 
-<!-- Date Range Selector -->
-<div class="card mb-4">
-  <div class="card-body">
-    <div class="row align-items-end">
-      <div class="col-md-3">
-        <label for="startDate" class="form-label"><strong>Start Date:</strong></label>
-        <input type="date" id="startDate" class="form-control">
+<!-- Filters toolbar -->
+<div class="chart-filters-bar">
+  <div class="d-flex flex-wrap align-items-end gap-3">
+    <div>
+      <label for="startDate" class="form-label">From</label>
+      <input type="date" id="startDate" class="form-control form-control-sm" style="width:160px;">
+    </div>
+    <div>
+      <label for="endDate" class="form-label">To</label>
+      <input type="date" id="endDate" class="form-control form-control-sm" style="width:160px;">
+    </div>
+    <div class="d-flex gap-2">
+      <button id="applyDateFilter" class="toolbar-btn toolbar-btn-primary">Apply</button>
+      <button id="resetDateFilter" class="toolbar-btn">Reset</button>
+    </div>
+    <div class="d-flex gap-3 ms-auto">
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox" id="toggleMovingAvg">
+        <label class="form-check-label small" for="toggleMovingAvg">Moving Avg</label>
       </div>
-      <div class="col-md-3">
-        <label for="endDate" class="form-label"><strong>End Date:</strong></label>
-        <input type="date" id="endDate" class="form-control">
-      </div>
-      <div class="col-md-2">
-        <button id="applyDateFilter" class="btn btn-primary w-100">Apply Filter</button>
-      </div>
-      <div class="col-md-2">
-        <button id="resetDateFilter" class="btn btn-outline-secondary w-100">Reset</button>
-      </div>
-      <div class="col-md-2">
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox" id="toggleMovingAvg">
-          <label class="form-check-label" for="toggleMovingAvg">Moving Average</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="toggleAnomaly" checked>
-          <label class="form-check-label" for="toggleAnomaly">Anomaly Detection</label>
-        </div>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox" id="toggleAnomaly" checked>
+        <label class="form-check-label small" for="toggleAnomaly">Anomaly Detection</label>
       </div>
     </div>
   </div>
 </div>
 
-<div class="row">
-  <div class="col-md-12 mb-5">
-    <h4>Weight (kg)</h4>
-    <canvas id="weightChart"></canvas>
+<div id="charts-container">
+  {% for label, canvas_id in vital_charts %}
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">{{ label }}</h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;">
+          <canvas id="{{ canvas_id }}"></canvas>
+        </div>
+      </div>
+    </div>
   </div>
-
-  <div class="col-md-12 mb-5">
-    <h4>Heart Rate (bpm)</h4>
-    <canvas id="hrChart"></canvas>
+  {% empty %}
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">Weight <span class="fw-normal text-muted" style="font-size:0.8125rem;">(kg)</span></h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="weightChart"></canvas></div>
+      </div>
+    </div>
   </div>
-
-  <div class="col-md-12 mb-5">
-    <h4>Blood Pressure (mmHg)</h4>
-    <canvas id="bpChart"></canvas>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">Heart Rate <span class="fw-normal text-muted" style="font-size:0.8125rem;">(bpm)</span></h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="hrChart"></canvas></div>
+      </div>
+    </div>
   </div>
-
-  <div class="col-md-12 mb-5">
-    <h4>Basal Body Temperature (°C)</h4>
-    <canvas id="bbtChart"></canvas>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">Blood Pressure <span class="fw-normal text-muted" style="font-size:0.8125rem;">(mmHg)</span></h2>
+          <p class="chart-card-subtitle">Systolic and diastolic trend</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="bpChart"></canvas></div>
+      </div>
+    </div>
   </div>
-
-  <div class="col-md-12 mb-5">
-    <h4>Blood Oxygen Saturation - SpO2 (%)</h4>
-    <canvas id="spo2Chart"></canvas>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">Basal Body Temperature <span class="fw-normal text-muted" style="font-size:0.8125rem;">(°C)</span></h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="bbtChart"></canvas></div>
+      </div>
+    </div>
   </div>
-
-  <div class="col-md-12 mb-5">
-    <h4>Respiratory Rate (breaths/min)</h4>
-    <canvas id="rrChart"></canvas>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">SpO2 — Blood Oxygen Saturation <span class="fw-normal text-muted" style="font-size:0.8125rem;">(%)</span></h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="spo2Chart"></canvas></div>
+      </div>
+    </div>
   </div>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">Respiratory Rate <span class="fw-normal text-muted" style="font-size:0.8125rem;">(breaths/min)</span></h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="rrChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
 </div>
 
-<!-- Moment.js is required for time axes in Chart.js 2.9.4 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-<!-- Chart.js time adapter -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script>
+  Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
+  Chart.defaults.global.defaultFontSize = 11;
+  Chart.defaults.global.defaultFontColor = '#6b7280';
+
+  var gridColor = 'rgba(0,0,0,0.05)';
   var chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: { padding: { top: 8, right: 8, bottom: 0, left: 0 } },
+    legend: { display: false },
     scales: {
-      xAxes: [{
-        type: 'time',
-        time: {
-          parser: 'YYYY-MM-DD',
-          tooltipFormat: 'll',
-          unit: 'day'
-        },
-        scaleLabel: {
-          display: true,
-          labelString: 'Date'
-        }
-      }],
-      yAxes: [{
-        ticks: {
-          beginAtZero: false
-        }
-      }]
+      xAxes: [{ type: 'time', time: { parser: 'YYYY-MM-DD', tooltipFormat: 'MMM D, YYYY', unit: 'day' }, scaleLabel: { display: false }, gridLines: { color: gridColor, drawBorder: false }, ticks: { padding: 8, autoSkipPadding: 16 } }],
+      yAxes: [{ ticks: { beginAtZero: false, padding: 12 }, gridLines: { color: gridColor, drawBorder: false } }]
+    },
+    tooltips: {
+      backgroundColor: 'rgba(17,24,39,0.92)',
+      titleFontSize: 11,
+      titleFontColor: '#9ca3af',
+      bodyFontSize: 13,
+      bodyFontStyle: '600',
+      bodyFontColor: '#f9fafb',
+      cornerRadius: 6,
+      xPadding: 12,
+      yPadding: 10,
+      displayColors: true,
+      mode: 'index',
+      intersect: false
     }
   };
 
@@ -106,6 +181,9 @@
   var rawHrData = {{ hr_data|tojson }};
   var rawSysBpData = {{ sys_bp_data|tojson }};
   var rawDiaBpData = {{ dia_bp_data|tojson }};
+  var rawBbtData = {{ bbt_data|tojson }};
+  var rawSpo2Data = {{ spo2_data|tojson }};
+  var rawRrData = {{ rr_data|tojson }};
 
   var chartInstances = {};
 
@@ -115,9 +193,7 @@
     for (var i = 0; i < data.length; i++) {
       var start = Math.max(0, i - window + 1);
       var sum = 0;
-      for (var j = start; j <= i; j++) {
-        sum += data[j].y;
-      }
+      for (var j = start; j <= i; j++) { sum += data[j].y; }
       result.push({ x: data[i].x, y: parseFloat((sum / (i - start + 1)).toFixed(2)) });
     }
     return result;
@@ -133,23 +209,18 @@
     for (var m = 0; m < data.length; m++) variance += Math.pow(data[m].y - mean, 2);
     var stddev = Math.sqrt(variance / data.length);
     for (var n = 0; n < data.length; n++) {
-      if (Math.abs(data[n].y - mean) > 2 * stddev) {
-        anomalyIndices.push(n);
-      }
+      if (Math.abs(data[n].y - mean) > 2 * stddev) anomalyIndices.push(n);
     }
     return anomalyIndices;
   }
 
   function buildPointStyles(data, anomalyIndices, showAnomaly, normalColor) {
-    var colors = [];
-    var radii = [];
+    var colors = [], radii = [];
     for (var i = 0; i < data.length; i++) {
       if (showAnomaly && anomalyIndices.indexOf(i) !== -1) {
-        colors.push('rgba(255, 0, 0, 1)');
-        radii.push(8);
+        colors.push('rgba(220, 38, 38, 1)'); radii.push(7);
       } else {
-        colors.push(normalColor);
-        radii.push(4);
+        colors.push(normalColor); radii.push(4);
       }
     }
     return { colors: colors, radii: radii };
@@ -163,6 +234,30 @@
     });
   }
 
+  function makeLineDataset(label, data, color, showAnomaly) {
+    var anomalies = detectAnomalies(data);
+    var styles = buildPointStyles(data, anomalies, showAnomaly, color);
+    return {
+      label: label,
+      data: data,
+      backgroundColor: color.replace('1)', '0.1)'),
+      borderColor: color,
+      borderWidth: 2,
+      fill: false,
+      pointRadius: styles.radii,
+      pointBackgroundColor: styles.colors,
+      pointBorderColor: styles.colors,
+      pointHoverRadius: 6
+    };
+  }
+
+  function renderChart(canvasId, key, datasets) {
+    if (chartInstances[key]) chartInstances[key].destroy();
+    var el = document.getElementById(canvasId);
+    if (!el) return;
+    chartInstances[key] = new Chart(el.getContext('2d'), { type: 'line', data: { datasets: datasets }, options: chartOptions });
+  }
+
   function renderAllCharts() {
     var startDate = document.getElementById('startDate').value;
     var endDate = document.getElementById('endDate').value;
@@ -170,133 +265,40 @@
     var showAnomaly = document.getElementById('toggleAnomaly').checked;
     var maWindow = 5;
 
-    // Weight Chart
     var wData = filterByDate(rawWeightData, startDate, endDate);
-    var wAnomalies = detectAnomalies(wData);
-    var wStyles = buildPointStyles(wData, wAnomalies, showAnomaly, 'rgba(75, 192, 192, 1)');
-    var wDatasets = [{
-      label: 'Weight (kg)',
-      data: wData,
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
-      borderColor: 'rgba(75, 192, 192, 1)',
-      borderWidth: 2,
-      fill: false,
-      pointRadius: wStyles.radii,
-      pointBackgroundColor: wStyles.colors,
-      pointBorderColor: wStyles.colors,
-      pointHoverRadius: 6
-    }];
-    if (showMA && wData.length >= 2) {
-      wDatasets.push({
-        label: 'Weight (Moving Avg)',
-        data: computeMovingAverage(wData, Math.min(maWindow, wData.length)),
-        borderColor: 'rgba(75, 192, 192, 0.5)',
-        borderWidth: 2,
-        borderDash: [5, 5],
-        fill: false,
-        pointRadius: 0,
-        pointHoverRadius: 0
-      });
-    }
-    if (chartInstances.weight) chartInstances.weight.destroy();
-    chartInstances.weight = new Chart(document.getElementById('weightChart').getContext('2d'), {
-      type: 'line', data: { datasets: wDatasets }, options: chartOptions
-    });
+    var wDs = [makeLineDataset('Weight (kg)', wData, 'rgba(13, 148, 136, 1)', showAnomaly)];
+    if (showMA && wData.length >= 2) wDs.push({ label: 'Moving Avg', data: computeMovingAverage(wData, Math.min(maWindow, wData.length)), borderColor: 'rgba(13,148,136,0.4)', borderWidth: 2, borderDash: [5,5], fill: false, pointRadius: 0, pointHoverRadius: 0 });
+    renderChart('weightChart', 'weight', wDs);
 
-    // Heart Rate Chart
     var hrData = filterByDate(rawHrData, startDate, endDate);
-    var hrAnomalies = detectAnomalies(hrData);
-    var hrStyles = buildPointStyles(hrData, hrAnomalies, showAnomaly, 'rgba(255, 99, 132, 1)');
-    var hrDatasets = [{
-      label: 'Heart Rate (bpm)',
-      data: hrData,
-      backgroundColor: 'rgba(255, 99, 132, 0.2)',
-      borderColor: 'rgba(255, 99, 132, 1)',
-      borderWidth: 2,
-      fill: false,
-      pointRadius: hrStyles.radii,
-      pointBackgroundColor: hrStyles.colors,
-      pointBorderColor: hrStyles.colors,
-      pointHoverRadius: 6
-    }];
-    if (showMA && hrData.length >= 2) {
-      hrDatasets.push({
-        label: 'Heart Rate (Moving Avg)',
-        data: computeMovingAverage(hrData, Math.min(maWindow, hrData.length)),
-        borderColor: 'rgba(255, 99, 132, 0.5)',
-        borderWidth: 2,
-        borderDash: [5, 5],
-        fill: false,
-        pointRadius: 0,
-        pointHoverRadius: 0
-      });
-    }
-    if (chartInstances.hr) chartInstances.hr.destroy();
-    chartInstances.hr = new Chart(document.getElementById('hrChart').getContext('2d'), {
-      type: 'line', data: { datasets: hrDatasets }, options: chartOptions
-    });
+    var hrDs = [makeLineDataset('Heart Rate (bpm)', hrData, 'rgba(220, 38, 38, 1)', showAnomaly)];
+    if (showMA && hrData.length >= 2) hrDs.push({ label: 'Moving Avg', data: computeMovingAverage(hrData, Math.min(maWindow, hrData.length)), borderColor: 'rgba(220,38,38,0.4)', borderWidth: 2, borderDash: [5,5], fill: false, pointRadius: 0, pointHoverRadius: 0 });
+    renderChart('hrChart', 'hr', hrDs);
 
-    // Blood Pressure Chart
     var sysData = filterByDate(rawSysBpData, startDate, endDate);
     var diaData = filterByDate(rawDiaBpData, startDate, endDate);
-    var sysAnomalies = detectAnomalies(sysData);
-    var diaAnomalies = detectAnomalies(diaData);
-    var sysStyles = buildPointStyles(sysData, sysAnomalies, showAnomaly, 'rgba(255, 159, 64, 1)');
-    var diaStyles = buildPointStyles(diaData, diaAnomalies, showAnomaly, 'rgba(54, 162, 235, 1)');
-    var bpDatasets = [
-      {
-        label: 'Systolic BP',
-        data: sysData,
-        backgroundColor: 'rgba(255, 159, 64, 0.2)',
-        borderColor: 'rgba(255, 159, 64, 1)',
-        borderWidth: 2,
-        fill: false,
-        pointRadius: sysStyles.radii,
-        pointBackgroundColor: sysStyles.colors,
-        pointBorderColor: sysStyles.colors,
-        pointHoverRadius: 6
-      },
-      {
-        label: 'Diastolic BP',
-        data: diaData,
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 2,
-        fill: false,
-        pointRadius: diaStyles.radii,
-        pointBackgroundColor: diaStyles.colors,
-        pointBorderColor: diaStyles.colors,
-        pointHoverRadius: 6
-      }
+    var bpDs = [
+      makeLineDataset('Systolic BP', sysData, 'rgba(217, 119, 6, 1)', showAnomaly),
+      makeLineDataset('Diastolic BP', diaData, 'rgba(37, 99, 235, 1)', showAnomaly)
     ];
-    if (showMA && sysData.length >= 2) {
-      bpDatasets.push({
-        label: 'Systolic BP (Moving Avg)',
-        data: computeMovingAverage(sysData, Math.min(maWindow, sysData.length)),
-        borderColor: 'rgba(255, 159, 64, 0.5)',
-        borderWidth: 2,
-        borderDash: [5, 5],
-        fill: false,
-        pointRadius: 0,
-        pointHoverRadius: 0
-      });
-    }
-    if (showMA && diaData.length >= 2) {
-      bpDatasets.push({
-        label: 'Diastolic BP (Moving Avg)',
-        data: computeMovingAverage(diaData, Math.min(maWindow, diaData.length)),
-        borderColor: 'rgba(54, 162, 235, 0.5)',
-        borderWidth: 2,
-        borderDash: [5, 5],
-        fill: false,
-        pointRadius: 0,
-        pointHoverRadius: 0
-      });
-    }
-    if (chartInstances.bp) chartInstances.bp.destroy();
-    chartInstances.bp = new Chart(document.getElementById('bpChart').getContext('2d'), {
-      type: 'line', data: { datasets: bpDatasets }, options: chartOptions
-    });
+    if (showMA && sysData.length >= 2) bpDs.push({ label: 'Systolic Avg', data: computeMovingAverage(sysData, Math.min(maWindow, sysData.length)), borderColor: 'rgba(217,119,6,0.4)', borderWidth: 2, borderDash: [5,5], fill: false, pointRadius: 0, pointHoverRadius: 0 });
+    if (showMA && diaData.length >= 2) bpDs.push({ label: 'Diastolic Avg', data: computeMovingAverage(diaData, Math.min(maWindow, diaData.length)), borderColor: 'rgba(37,99,235,0.4)', borderWidth: 2, borderDash: [5,5], fill: false, pointRadius: 0, pointHoverRadius: 0 });
+    renderChart('bpChart', 'bp', bpDs);
+
+    var bbtData = filterByDate(rawBbtData, startDate, endDate);
+    var bbtDs = [makeLineDataset('BBT (°C)', bbtData, 'rgba(124, 58, 237, 1)', showAnomaly)];
+    if (showMA && bbtData.length >= 2) bbtDs.push({ label: 'Moving Avg', data: computeMovingAverage(bbtData, Math.min(maWindow, bbtData.length)), borderColor: 'rgba(124,58,237,0.4)', borderWidth: 2, borderDash: [5,5], fill: false, pointRadius: 0, pointHoverRadius: 0 });
+    renderChart('bbtChart', 'bbt', bbtDs);
+
+    var spo2Data = filterByDate(rawSpo2Data, startDate, endDate);
+    var spo2Ds = [makeLineDataset('SpO2 (%)', spo2Data, 'rgba(37, 99, 235, 1)', showAnomaly)];
+    if (showMA && spo2Data.length >= 2) spo2Ds.push({ label: 'Moving Avg', data: computeMovingAverage(spo2Data, Math.min(maWindow, spo2Data.length)), borderColor: 'rgba(37,99,235,0.4)', borderWidth: 2, borderDash: [5,5], fill: false, pointRadius: 0, pointHoverRadius: 0 });
+    renderChart('spo2Chart', 'spo2', spo2Ds);
+
+    var rrData = filterByDate(rawRrData, startDate, endDate);
+    var rrDs = [makeLineDataset('Respiratory Rate (/min)', rrData, 'rgba(5, 150, 105, 1)', showAnomaly)];
+    if (showMA && rrData.length >= 2) rrDs.push({ label: 'Moving Avg', data: computeMovingAverage(rrData, Math.min(maWindow, rrData.length)), borderColor: 'rgba(5,150,105,0.4)', borderWidth: 2, borderDash: [5,5], fill: false, pointRadius: 0, pointHoverRadius: 0 });
+    renderChart('rrChart', 'rr', rrDs);
   }
 
   document.getElementById('applyDateFilter').addEventListener('click', renderAllCharts);
@@ -307,17 +309,14 @@
   });
   document.getElementById('toggleMovingAvg').addEventListener('change', renderAllCharts);
   document.getElementById('toggleAnomaly').addEventListener('change', renderAllCharts);
-
-  // Initial render
   renderAllCharts();
 </script>
 
-<!-- PDF Export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 function exportChartsPDF() {
-  var element = document.querySelector('.row');
+  var element = document.getElementById('charts-container');
   if (!element) return;
   html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
     var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
@@ -335,63 +334,6 @@ function exportChartsPDF() {
       heightLeft -= pageHeight;
     }
     pdf.save('vitals_charts.pdf');
-  });
-
-  // BBT Chart
-  var bbtCtx = document.getElementById('bbtChart').getContext('2d');
-  new Chart(bbtCtx, {
-    type: 'line',
-    data: {
-      datasets: [{
-        label: 'BBT (°C)',
-        data: {{ bbt_data|tojson }},
-        backgroundColor: 'rgba(255, 206, 86, 0.2)',
-        borderColor: 'rgba(255, 206, 86, 1)',
-        borderWidth: 2,
-        fill: false,
-        pointRadius: 4,
-        pointHoverRadius: 6
-      }]
-    },
-    options: chartOptions
-  });
-
-  // SpO2 Chart
-  var spo2Ctx = document.getElementById('spo2Chart').getContext('2d');
-  new Chart(spo2Ctx, {
-    type: 'line',
-    data: {
-      datasets: [{
-        label: 'SpO2 (%)',
-        data: {{ spo2_data|tojson }},
-        backgroundColor: 'rgba(153, 102, 255, 0.2)',
-        borderColor: 'rgba(153, 102, 255, 1)',
-        borderWidth: 2,
-        fill: false,
-        pointRadius: 4,
-        pointHoverRadius: 6
-      }]
-    },
-    options: chartOptions
-  });
-
-  // Respiratory Rate Chart
-  var rrCtx = document.getElementById('rrChart').getContext('2d');
-  new Chart(rrCtx, {
-    type: 'line',
-    data: {
-      datasets: [{
-        label: 'Respiratory Rate (/min)',
-        data: {{ rr_data|tojson }},
-        backgroundColor: 'rgba(0, 204, 150, 0.2)',
-        borderColor: 'rgba(0, 204, 150, 1)',
-        borderWidth: 2,
-        fill: false,
-        pointRadius: 4,
-        pointHoverRadius: 6
-      }]
-    },
-    options: chartOptions
   });
 }
 </script>

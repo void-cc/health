@@ -1667,6 +1667,7 @@ class IntegrationSubTask(models.Model):
     def __str__(self):
         return f"Area {self.phase} Sub-task {self.sub_task_number}: {self.title}"
 
+
 # ===== Phase 12: Continuous Monitoring & Alerts =====
 
 class MonitoringRule(models.Model):

@@ -10,6 +10,7 @@ from tracker.models import (
     HealthGoal, CriticalAlert, WearableDevice, WearableSyncLog,
     HealthReport, PredictiveBiomarker, BiologicalAgeCalculation,
     IntegrationConfig, BodyComposition,
+
     MonitoringRule, MonitoringEvent, AnomalyDetectionResult,
     DataPipelineConfig, PredictiveModel, SecureStorageVault,
     IntegrationSubTask,
@@ -1529,6 +1530,37 @@ class Phase4LoginTests(TestCase):
         response = self.client.get(reverse('login') + '?timeout=1')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'timed out')
+
+
+class SocialLoginURLTests(TestCase):
+    """Test that social login buttons link to proper OAuth URLs."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_login_page_has_google_oauth_url(self):
+        response = self.client.get(reverse('login'))
+        self.assertContains(response, '/accounts/social/google/login/')
+
+    def test_login_page_has_microsoft_oauth_url(self):
+        response = self.client.get(reverse('login'))
+        self.assertContains(response, '/accounts/social/microsoft/login/')
+
+    def test_login_page_has_apple_oauth_url(self):
+        response = self.client.get(reverse('login'))
+        self.assertContains(response, '/accounts/social/apple/login/')
+
+    def test_register_page_has_google_oauth_url(self):
+        response = self.client.get(reverse('register'))
+        self.assertContains(response, '/accounts/social/google/login/')
+
+    def test_register_page_has_microsoft_oauth_url(self):
+        response = self.client.get(reverse('register'))
+        self.assertContains(response, '/accounts/social/microsoft/login/')
+
+    def test_register_page_has_apple_oauth_url(self):
+        response = self.client.get(reverse('register'))
+        self.assertContains(response, '/accounts/social/apple/login/')
 
 
 class Phase4LogoutTests(TestCase):
@@ -4665,6 +4697,7 @@ class MacroListEnhancedTests(TestCase):
     def test_macro_list_renders_chart(self):
         response = self.client.get(reverse('macro_list'))
         self.assertContains(response, 'macroTrendChart')
+
 
 # ===== Phase 12: Continuous Monitoring & Alerts Tests =====
 

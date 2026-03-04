@@ -10,7 +10,7 @@ thefuzz
 python-Levenshtein
 
 # Authentication & Profiles
-django-allauth
+django-allauth[socialaccount]
 django-otp
 qrcode
 Pillow

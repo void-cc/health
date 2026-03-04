@@ -83,7 +83,7 @@ SIDEBAR_CONFIG = [
             {"label": "Integration Sub-tasks", "icon": "fa-tasks", "url_name": "integration_subtask_list", "match": ["integration_subtask"]},
         ],
     },
-    {
+        {
         "category": "Monitoring",
         "collapsible": True,
         "items": [

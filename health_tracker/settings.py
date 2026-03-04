@@ -160,6 +160,7 @@ ACCOUNT_EMAIL_VERIFICATION = "optional"
 ACCOUNT_LOGIN_ON_SIGNUP = True
 ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_SESSION_REMEMBER = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
 
 # OAuth2 SSO Provider Configuration
 # Configure these in Django admin > Social Applications

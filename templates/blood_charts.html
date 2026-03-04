@@ -1,121 +1,147 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Blood Test Charts</h2>
+
+<div class="page-header">
   <div>
-    <button class="btn btn-outline-dark me-2" onclick="exportChartsPDF()">
-      <i class="fas fa-file-pdf"></i> Export PDF
+    <h1 class="page-header-title">Blood Test Charts</h1>
+    <p class="page-header-subtitle">Trend analysis for your blood markers</p>
+  </div>
+  <div class="page-header-actions">
+    <button class="toolbar-btn" onclick="exportChartsPDF()">
+      <i class="fas fa-download" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Export PDF</span>
     </button>
-    <a href="{% url 'index' %}" class="btn btn-secondary">Back to Dashboard</a>
+    <a href="{% url 'index' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Dashboard</span>
+    </a>
   </div>
 </div>
 
 {% if charts_data %}
-  <!-- Date Range Selector -->
-  <div class="card mb-4">
-    <div class="card-body">
-      <div class="row align-items-end">
-        <div class="col-md-3">
-          <label for="startDate" class="form-label"><strong>Start Date:</strong></label>
-          <input type="date" id="startDate" class="form-control">
+  <!-- Filters toolbar -->
+  <div class="chart-filters-bar">
+    <div class="d-flex flex-wrap align-items-end gap-3">
+      <div>
+        <label for="startDate" class="form-label">From</label>
+        <input type="date" id="startDate" class="form-control form-control-sm" style="width:160px;">
+      </div>
+      <div>
+        <label for="endDate" class="form-label">To</label>
+        <input type="date" id="endDate" class="form-control form-control-sm" style="width:160px;">
+      </div>
+      <div class="d-flex gap-2">
+        <button id="applyDateFilter" class="toolbar-btn toolbar-btn-primary">Apply</button>
+        <button id="resetDateFilter" class="toolbar-btn">Reset</button>
+      </div>
+      <div class="d-flex gap-3 ms-auto">
+        <div class="form-check form-check-inline mb-0">
+          <input class="form-check-input" type="checkbox" id="toggleMovingAvg">
+          <label class="form-check-label small" for="toggleMovingAvg">Moving Avg</label>
         </div>
-        <div class="col-md-3">
-          <label for="endDate" class="form-label"><strong>End Date:</strong></label>
-          <input type="date" id="endDate" class="form-control">
-        </div>
-        <div class="col-md-2">
-          <button id="applyDateFilter" class="btn btn-primary w-100">Apply Filter</button>
-        </div>
-        <div class="col-md-2">
-          <button id="resetDateFilter" class="btn btn-outline-secondary w-100">Reset</button>
-        </div>
-        <div class="col-md-2">
-          <div class="form-check mt-2">
-            <input class="form-check-input" type="checkbox" id="toggleMovingAvg">
-            <label class="form-check-label" for="toggleMovingAvg">Moving Average</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="toggleAnomaly" checked>
-            <label class="form-check-label" for="toggleAnomaly">Anomaly Detection</label>
-          </div>
+        <div class="form-check form-check-inline mb-0">
+          <input class="form-check-input" type="checkbox" id="toggleAnomaly" checked>
+          <label class="form-check-label small" for="toggleAnomaly">Anomaly Detection</label>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="row">
+  <div id="charts-container">
     {% for test_name, test_info in charts_data.items %}
-    <div class="col-md-12 mb-5">
-      <h4>{{ test_name }} <small class="text-muted">({{ test_info.unit }})</small></h4>
-      {% if test_info.normal_min is not None and test_info.normal_max is not None %}
-        <p class="text-muted mb-1">Normal Range: {{ test_info.normal_min }} - {{ test_info.normal_max }} {{ test_info.unit }}</p>
-      {% endif %}
-      <div style="position: relative; height:40vh; width:100%">
-        <canvas id="chart-{{ forloop.counter }}"></canvas>
+    <div class="chart-section">
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div class="chart-card-header-text">
+            <h2 class="chart-card-title">{{ test_name }} <span class="fw-normal text-muted" style="font-size:0.8125rem;">({{ test_info.unit }})</span></h2>
+            {% if test_info.normal_min is not None and test_info.normal_max is not None %}
+              <p class="chart-card-subtitle">Normal range: {{ test_info.normal_min }}–{{ test_info.normal_max }} {{ test_info.unit }}</p>
+            {% else %}
+              <p class="chart-card-subtitle">Trend over time</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="chart-card-body">
+          <div class="chart-canvas-wrapper" style="height:280px;">
+            <canvas id="chart-{{ forloop.counter }}"></canvas>
+          </div>
+        </div>
       </div>
     </div>
     {% endfor %}
   </div>
 {% else %}
-  <div class="alert alert-info">No blood tests recorded yet.</div>
+  <div class="empty-state">
+    <div class="empty-state-icon"><i class="fas fa-chart-line"></i></div>
+    <div class="empty-state-title">No data to chart</div>
+    <div class="empty-state-description">Add blood test results to see trend charts here.</div>
+    <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
+      <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Blood Test
+    </a>
+  </div>
 {% endif %}
 
-<!-- Moment.js is required for time axes in Chart.js 2.9.4 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-<!-- Chart.js time adapter -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script>
   var allChartsData = {};
   var chartInstances = {};
 
+  Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
+  Chart.defaults.global.defaultFontSize = 11;
+  Chart.defaults.global.defaultFontColor = '#6b7280';
+
+  var gridColor = 'rgba(0,0,0,0.05)';
   var chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: { padding: { top: 8, right: 8, bottom: 0, left: 0 } },
+    legend: { display: false },
     scales: {
       xAxes: [{
         type: 'time',
-        time: {
-          parser: 'YYYY-MM-DD',
-          tooltipFormat: 'll',
-          unit: 'day'
-        },
-        scaleLabel: {
-          display: true,
-          labelString: 'Date'
-        }
+        time: { parser: 'YYYY-MM-DD', tooltipFormat: 'MMM D, YYYY', unit: 'day' },
+        scaleLabel: { display: false },
+        gridLines: { color: gridColor, drawBorder: false, zeroLineColor: gridColor },
+        ticks: { padding: 8, autoSkipPadding: 16 }
       }],
       yAxes: [{
-        ticks: {
-          beginAtZero: false
-        }
+        ticks: { beginAtZero: false, padding: 12 },
+        gridLines: { color: gridColor, drawBorder: false, zeroLineColor: 'rgba(0,0,0,0.08)' }
       }]
+    },
+    tooltips: {
+      backgroundColor: 'rgba(17,24,39,0.92)',
+      titleFontSize: 11,
+      titleFontColor: '#9ca3af',
+      bodyFontSize: 13,
+      bodyFontStyle: '600',
+      bodyFontColor: '#f9fafb',
+      cornerRadius: 6,
+      xPadding: 12,
+      yPadding: 10,
+      displayColors: true,
+      mode: 'index',
+      intersect: false
     }
   };
 
-  // Compute moving average for an array of {x, y} sorted by x
   function computeMovingAverage(data, window) {
     if (data.length < window) window = data.length;
     var result = [];
     for (var i = 0; i < data.length; i++) {
       var start = Math.max(0, i - window + 1);
       var sum = 0;
-      for (var j = start; j <= i; j++) {
-        sum += data[j].y;
-      }
+      for (var j = start; j <= i; j++) { sum += data[j].y; }
       result.push({ x: data[i].x, y: parseFloat((sum / (i - start + 1)).toFixed(2)) });
     }
     return result;
   }
 
-  // Detect anomalies: points outside normal range, or outside mean +/- 2*stddev
   function detectAnomalies(data, normalMin, normalMax) {
     var anomalyIndices = [];
     if (normalMin !== null && normalMax !== null) {
       for (var i = 0; i < data.length; i++) {
-        if (data[i].y < normalMin || data[i].y > normalMax) {
-          anomalyIndices.push(i);
-        }
+        if (data[i].y < normalMin || data[i].y > normalMax) anomalyIndices.push(i);
       }
     } else if (data.length >= 3) {
       var mean = 0;
@@ -125,24 +151,19 @@
       for (var m = 0; m < data.length; m++) variance += Math.pow(data[m].y - mean, 2);
       var stddev = Math.sqrt(variance / data.length);
       for (var n = 0; n < data.length; n++) {
-        if (Math.abs(data[n].y - mean) > 2 * stddev) {
-          anomalyIndices.push(n);
-        }
+        if (Math.abs(data[n].y - mean) > 2 * stddev) anomalyIndices.push(n);
       }
     }
     return anomalyIndices;
   }
 
   function buildPointStyles(data, anomalyIndices, showAnomaly) {
-    var colors = [];
-    var radii = [];
+    var colors = [], radii = [];
     for (var i = 0; i < data.length; i++) {
       if (showAnomaly && anomalyIndices.indexOf(i) !== -1) {
-        colors.push('rgba(255, 0, 0, 1)');
-        radii.push(8);
+        colors.push('rgba(220, 38, 38, 1)'); radii.push(7);
       } else {
-        colors.push('rgba(54, 162, 235, 1)');
-        radii.push(4);
+        colors.push('rgba(37, 99, 235, 1)'); radii.push(4);
       }
     }
     return { colors: colors, radii: radii };
@@ -173,8 +194,8 @@
       var datasets = [{
         label: keys[idx],
         data: filtered,
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        borderColor: 'rgba(54, 162, 235, 1)',
+        backgroundColor: 'rgba(37, 99, 235, 0.08)',
+        borderColor: 'rgba(37, 99, 235, 1)',
         borderWidth: 2,
         fill: false,
         pointRadius: styles.radii,
@@ -188,7 +209,7 @@
         datasets.push({
           label: keys[idx] + ' (Moving Avg)',
           data: maData,
-          borderColor: 'rgba(255, 159, 64, 1)',
+          borderColor: 'rgba(13, 148, 136, 1)',
           borderWidth: 2,
           borderDash: [5, 5],
           fill: false,
@@ -197,20 +218,12 @@
         });
       }
 
-      if (chartInstances[chartId]) {
-        chartInstances[chartId].destroy();
-      }
-
+      if (chartInstances[chartId]) { chartInstances[chartId].destroy(); }
       var ctx = document.getElementById('chart-' + chartId).getContext('2d');
-      chartInstances[chartId] = new Chart(ctx, {
-        type: 'line',
-        data: { datasets: datasets },
-        options: chartOptions
-      });
+      chartInstances[chartId] = new Chart(ctx, { type: 'line', data: { datasets: datasets }, options: chartOptions });
     }
   }
 
-  // Store chart data
   {% for test_name, test_info in charts_data.items %}
   allChartsData['{{ test_name }}'] = {
     data: {{ test_info.data|tojson }},
@@ -227,17 +240,14 @@
   });
   document.getElementById('toggleMovingAvg').addEventListener('change', renderAllCharts);
   document.getElementById('toggleAnomaly').addEventListener('change', renderAllCharts);
-
-  // Initial render
   renderAllCharts();
 </script>
 
-<!-- PDF Export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 function exportChartsPDF() {
-  var element = document.querySelector('.row');
+  var element = document.getElementById('charts-container');
   if (!element) return;
   html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
     var pdf = new jspdf.jsPDF('p', 'mm', 'a4');

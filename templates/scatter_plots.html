@@ -1,47 +1,70 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Correlative Scatter Plots</h2>
-  <a href="{% url 'index' %}" class="btn btn-secondary">Back to Dashboard</a>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Correlative Scatter Plots</h1>
+    <p class="page-header-subtitle">Explore correlations between health metrics</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'index' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Dashboard</span>
+    </a>
+  </div>
 </div>
 
 {% if metric_names|length >= 2 %}
-<div class="card mb-4">
-  <div class="card-body">
-    <div class="row">
-      <div class="col-md-5">
-        <label for="xMetric" class="form-label"><strong>X-Axis Metric:</strong></label>
-        <select id="xMetric" class="form-select">
-          {% for name in metric_names %}
-            <option value="{{ name }}" {% if forloop.first %}selected{% endif %}>{{ name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-5">
-        <label for="yMetric" class="form-label"><strong>Y-Axis Metric:</strong></label>
-        <select id="yMetric" class="form-select">
-          {% for name in metric_names %}
-            <option value="{{ name }}" {% if forloop.counter == 2 %}selected{% endif %}>{{ name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2 d-flex align-items-end">
-        <button id="plotBtn" class="btn btn-primary w-100">Plot</button>
-      </div>
+<div class="chart-filters-bar">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-5">
+      <label for="xMetric" class="form-label">X-Axis Metric</label>
+      <select id="xMetric" class="form-select">
+        {% for name in metric_names %}
+          <option value="{{ name }}" {% if forloop.first %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-5">
+      <label for="yMetric" class="form-label">Y-Axis Metric</label>
+      <select id="yMetric" class="form-select">
+        {% for name in metric_names %}
+          <option value="{{ name }}" {% if forloop.counter == 2 %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button id="plotBtn" class="toolbar-btn toolbar-btn-primary w-100">Plot</button>
     </div>
   </div>
 </div>
 
-<div style="position: relative; height:50vh; width:100%">
-  <canvas id="scatterChart"></canvas>
+<div class="chart-card">
+  <div class="chart-card-header">
+    <div class="chart-card-header-text">
+      <h2 class="chart-card-title" id="scatterTitle">Scatter Plot</h2>
+      <p class="chart-card-subtitle">Correlation between selected metrics</p>
+    </div>
+  </div>
+  <div class="chart-card-body">
+    <div class="chart-canvas-wrapper" style="height:420px;">
+      <canvas id="scatterChart"></canvas>
+    </div>
+  </div>
 </div>
 {% else %}
-<div class="alert alert-info">At least two different metrics are needed for scatter plots. Add more blood tests or vital signs.</div>
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-project-diagram"></i></div>
+  <div class="empty-state-title">Not enough data</div>
+  <div class="empty-state-description">At least two different metrics are needed for scatter plots. Add more blood tests or vital signs.</div>
+  <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
+    <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Blood Test
+  </a>
+</div>
 {% endif %}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script>
   var allMetrics = {{ metrics|tojson }};
   var scatterChart = null;
@@ -49,14 +72,10 @@
   function buildScatterData(xName, yName) {
     var xData = allMetrics[xName] || [];
     var yData = allMetrics[yName] || [];
-
-    // Build date-keyed lookup for Y metric
     var yByDate = {};
     for (var i = 0; i < yData.length; i++) {
       yByDate[yData[i].date] = yData[i].value;
     }
-
-    // Match by date
     var points = [];
     for (var j = 0; j < xData.length; j++) {
       var d = xData[j].date;
@@ -70,37 +89,45 @@
   function renderScatter() {
     var xName = document.getElementById('xMetric').value;
     var yName = document.getElementById('yMetric').value;
+    var titleEl = document.getElementById('scatterTitle');
+    if (titleEl) titleEl.textContent = xName + ' vs ' + yName;
     var points = buildScatterData(xName, yName);
-
-    if (scatterChart) {
-      scatterChart.destroy();
-    }
-
+    if (scatterChart) { scatterChart.destroy(); }
     var ctx = document.getElementById('scatterChart').getContext('2d');
+    var axisFont = { fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, fontColor: '#6b7280' };
+    var gridCfg = { color: 'rgba(0,0,0,0.05)', drawBorder: false };
     scatterChart = new Chart(ctx, {
       type: 'scatter',
       data: {
         datasets: [{
           label: xName + ' vs ' + yName,
           data: points,
-          backgroundColor: 'rgba(54, 162, 235, 0.6)',
-          borderColor: 'rgba(54, 162, 235, 1)',
+          backgroundColor: 'rgba(37, 99, 235, 0.45)',
+          borderColor: 'rgba(37, 99, 235, 0.85)',
           pointRadius: 6,
-          pointHoverRadius: 8
+          pointHoverRadius: 8,
+          pointBorderWidth: 1.5
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 8, right: 8 } },
+        legend: { display: false },
         scales: {
-          xAxes: [{
-            scaleLabel: { display: true, labelString: xName }
-          }],
-          yAxes: [{
-            scaleLabel: { display: true, labelString: yName }
-          }]
+          xAxes: [{ scaleLabel: Object.assign({ display: true, labelString: xName }, axisFont), gridLines: gridCfg, ticks: Object.assign({ padding: 8 }, axisFont) }],
+          yAxes: [{ scaleLabel: Object.assign({ display: true, labelString: yName }, axisFont), gridLines: gridCfg, ticks: Object.assign({ padding: 12 }, axisFont) }]
         },
         tooltips: {
+          backgroundColor: 'rgba(17,24,39,0.92)',
+          titleFontSize: 11,
+          titleFontColor: '#9ca3af',
+          bodyFontSize: 13,
+          bodyFontStyle: '600',
+          bodyFontColor: '#f9fafb',
+          cornerRadius: 6,
+          xPadding: 12,
+          yPadding: 10,
           callbacks: {
             label: function(item) {
               return xName + ': ' + item.xLabel + ', ' + yName + ': ' + item.yLabel;
@@ -112,7 +139,6 @@
   }
 
   document.getElementById('plotBtn').addEventListener('click', renderScatter);
-  // Initial render
   renderScatter();
 </script>
 {% endblock %}

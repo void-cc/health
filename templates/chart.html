@@ -1,59 +1,79 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2 class="mb-0">Blood Test Trends: {{ test_name }}</h2>
+
+<div class="page-header">
   <div>
-    <button class="btn btn-outline-dark me-2" onclick="exportChartPDF()">
-      <i class="fas fa-file-pdf"></i> Export PDF
+    <h1 class="page-header-title">{{ test_name }}</h1>
+    <p class="page-header-subtitle">Blood test trend chart</p>
+  </div>
+  <div class="page-header-actions">
+    <button class="toolbar-btn" onclick="exportChartPDF()">
+      <i class="fas fa-download" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Export PDF</span>
     </button>
-    <a href="{% url 'blood_tests_charts' %}" class="btn btn-secondary">All Charts</a>
+    <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">All Charts</span>
+    </a>
   </div>
 </div>
 
-<div id="chart-container">
-  <canvas id="bloodChart"></canvas>
+<div id="chart-container" class="chart-card mb-5">
+  <div class="chart-card-header">
+    <div class="chart-card-header-text">
+      <h2 class="chart-card-title">{{ test_name }} Trend</h2>
+      <p class="chart-card-subtitle">Blood test values over time</p>
+    </div>
+  </div>
+  <div class="chart-card-body">
+    <div class="chart-canvas-wrapper" style="height:320px;">
+      <canvas id="bloodChart"></canvas>
+    </div>
+  </div>
 </div>
 
 <!-- Data Point Annotations -->
 {% if tests %}
-<h4 class="mt-4 mb-3">Data Point Annotations</h4>
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h2 class="results-section-title">Annotations</h2>
+</div>
 <div class="table-responsive">
-  <table class="table table-sm table-striped">
+  <table class="table table-hover align-middle">
     <thead>
       <tr>
         <th>Date</th>
         <th>Value</th>
         <th>Notes</th>
-        <th>Actions</th>
+        <th style="width:280px;">Add Note</th>
       </tr>
     </thead>
     <tbody>
       {% for test in tests %}
       <tr>
-        <td>{{ test.date|date:"Y-m-d" }}</td>
-        <td>{{ test.value }} {{ test.unit }}</td>
+        <td class="fw-medium">{{ test.date|date:"M j, Y" }}</td>
+        <td>{{ test.value }} <span class="text-muted small">{{ test.unit }}</span></td>
         <td>
           {% for annotation in test.annotations.all %}
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <span><i class="fas fa-sticky-note text-warning"></i> {{ annotation.note }}</span>
-              <form action="{% url 'delete_annotation' annotation_id=annotation.id %}" method="post" class="d-inline ms-2">
+            <div class="d-flex justify-content-between align-items-center mb-1 gap-2">
+              <span class="small"><i class="fas fa-comment-alt text-muted me-1" aria-hidden="true"></i>{{ annotation.note }}</span>
+              <form action="{% url 'delete_annotation' annotation_id=annotation.id %}" method="post" class="d-inline">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'chart' test_name=test_name %}">
-                <button type="submit" class="btn btn-sm btn-link text-danger p-0" aria-label="Delete note" title="Delete note"><i class="fas fa-times"></i></button>
+                <button type="submit" class="btn btn-sm btn-link text-danger p-0" aria-label="Delete note"><i class="fas fa-times"></i></button>
               </form>
             </div>
           {% empty %}
-            <span class="text-muted">No notes</span>
+            <span class="text-muted small">—</span>
           {% endfor %}
         </td>
         <td>
           <form action="{% url 'add_annotation' model_type='blood_test' object_id=test.id %}" method="post">
             {% csrf_token %}
             <input type="hidden" name="next" value="{% url 'chart' test_name=test_name %}">
-            <div class="input-group input-group-sm" style="width: 250px;">
-              <input type="text" name="note" class="form-control" placeholder="Add note...">
-              <button type="submit" class="btn btn-outline-secondary" aria-label="Add note" title="Add note"><i class="fas fa-plus"></i></button>
+            <div class="input-group input-group-sm">
+              <input type="text" name="note" class="form-control" placeholder="Add note…">
+              <button type="submit" class="btn btn-outline-secondary" aria-label="Add note"><i class="fas fa-plus"></i></button>
             </div>
           </form>
         </td>
@@ -64,42 +84,57 @@
 </div>
 {% endif %}
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 <script>
   var annotationsMap = {{ annotations_map|tojson }};
+
+  Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
+  Chart.defaults.global.defaultFontSize = 11;
+  Chart.defaults.global.defaultFontColor = '#6b7280';
 
   var ctx = document.getElementById('bloodChart').getContext('2d');
   var bloodChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: {{ dates|tojson }},
-      datasets: [
-        {
-          label: '{{ test_name }} Levels',
-          data: {{ values|tojson }},
-          backgroundColor: 'rgba(54, 162, 235, 0.2)',
-          borderColor: 'rgba(54, 162, 235, 1)',
-          borderWidth: 1,
-          fill: false,
-        },
-      ],
+      datasets: [{
+        label: '{{ test_name }}',
+        data: {{ values|tojson }},
+        backgroundColor: 'rgba(37, 99, 235, 0.07)',
+        borderColor: 'rgba(37, 99, 235, 1)',
+        borderWidth: 2,
+        fill: true,
+        pointRadius: 4,
+        pointBackgroundColor: 'rgba(37, 99, 235, 1)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1.5,
+        pointHoverRadius: 6
+      }],
     },
     options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 8, right: 8 } },
+      legend: { display: false },
       scales: {
-        xAxes: [{ type: 'time', time: { unit: 'month' } }],
-        yAxes: [{ ticks: { beginAtZero: false } }],
+        xAxes: [{ type: 'time', time: { unit: 'month', tooltipFormat: 'MMM D, YYYY' }, gridLines: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { padding: 8 } }],
+        yAxes: [{ ticks: { beginAtZero: false, padding: 12 }, gridLines: { color: 'rgba(0,0,0,0.05)', drawBorder: false } }],
       },
       tooltips: {
+        backgroundColor: 'rgba(17,24,39,0.92)',
+        titleFontSize: 11,
+        titleFontColor: '#9ca3af',
+        bodyFontSize: 13,
+        bodyFontStyle: '600',
+        bodyFontColor: '#f9fafb',
+        cornerRadius: 6,
+        xPadding: 12,
+        yPadding: 10,
         callbacks: {
           afterLabel: function(tooltipItem) {
             var date = tooltipItem.xLabel || tooltipItem.label;
-            if (typeof date === 'object' && date.format) {
-              date = date.format('YYYY-MM-DD');
-            }
+            if (typeof date === 'object' && date.format) { date = date.format('YYYY-MM-DD'); }
             var notes = annotationsMap[date];
-            if (notes && notes.length > 0) {
-              return notes.map(function(n) { return '📝 ' + n.note; });
-            }
+            if (notes && notes.length > 0) { return notes.map(function(n) { return '• ' + n.note; }); }
             return '';
           }
         }
@@ -108,7 +143,6 @@
   });
 </script>
 
-<!-- PDF Export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
