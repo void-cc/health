@@ -1808,3 +1808,260 @@
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
 }
+
+/* ==========================================================================
+   Tracking Section — Professional SaaS Components
+   ========================================================================== */
+
+/* ── Insight Banner ─────────────────────────────────────────────────────── */
+
+.insight-banner {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.insight-banner-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+}
+
+.insight-banner.insight-warning {
+  border-left: 3px solid var(--color-warning);
+}
+.insight-banner.insight-warning .insight-banner-icon {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.insight-banner.insight-error {
+  border-left: 3px solid var(--color-error);
+}
+.insight-banner.insight-error .insight-banner-icon {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.insight-banner.insight-success {
+  border-left: 3px solid var(--color-success);
+}
+.insight-banner.insight-success .insight-banner-icon {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.insight-banner.insight-info {
+  border-left: 3px solid var(--color-primary);
+}
+.insight-banner.insight-info .insight-banner-icon {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.insight-banner-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.insight-banner-text {
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ── Tracking KPI Grid (4-col stats row) ────────────────────────────────── */
+
+.tracking-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .tracking-stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.tracking-stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  text-align: center;
+}
+
+.tracking-stat-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.tracking-stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* ── Trend Indicator ────────────────────────────────────────────────────── */
+
+.trend-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.trend-indicator.trend-up { color: var(--color-error); }
+.trend-indicator.trend-down { color: var(--color-success); }
+.trend-indicator.trend-stable { color: var(--text-muted); }
+.trend-indicator.trend-up-good { color: var(--color-success); }
+.trend-indicator.trend-down-bad { color: var(--color-error); }
+
+/* ── Sparkline in KPI ───────────────────────────────────────────────────── */
+
+.tracking-sparkline {
+  width: 64px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.tracking-sparkline svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Chart Card ─────────────────────────────────────────────────────────── */
+
+.tracking-chart-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.tracking-chart-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Filter Bar ─────────────────────────────────────────────────────────── */
+
+.tracking-filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.tracking-filter-bar .form-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+/* ── Table Improvements ─────────────────────────────────────────────────── */
+
+.tracking-table {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.tracking-table .table {
+  margin-bottom: 0;
+}
+
+.tracking-table .table th {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: var(--space-2) var(--space-3);
+}
+
+.tracking-table .table td {
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.8125rem;
+  vertical-align: middle;
+}
+
+/* ── Empty State ────────────────────────────────────────────────────────── */
+
+.tracking-empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.tracking-empty-icon {
+  font-size: 2rem;
+  color: var(--gray-300);
+  margin-bottom: var(--space-3);
+}
+
+.tracking-empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.tracking-empty-text {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+}
+
+/* ── Mini Progress Bar ──────────────────────────────────────────────────── */
+
+.mini-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--gray-100);
+  overflow: hidden;
+  min-width: 60px;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.mini-progress-fill.fill-success { background: var(--color-success); }
+.mini-progress-fill.fill-warning { background: var(--color-warning); }
+.mini-progress-fill.fill-error { background: var(--color-error); }
+.mini-progress-fill.fill-primary { background: var(--color-primary); }

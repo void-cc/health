@@ -1,140 +1,166 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2><i class="fas fa-tint"></i> Hydration Log</h2>
-  <a href="{% url 'hydration_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Entry</a>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Hydration</h1>
+    <p class="page-header-subtitle">Track daily fluid intake and goal achievement</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'hydration_add' %}" class="toolbar-btn toolbar-btn-primary">
+      <i data-lucide="plus" aria-hidden="true"></i> <span>Add Entry</span>
+    </a>
+  </div>
 </div>
 
-<!-- Summary Statistics -->
+{% include 'includes/tracking_insights.html' %}
+
 {% if stats.total_entries %}
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-primary">
-      <div class="card-body py-2">
-        <div class="text-muted small">Total Entries</div>
-        <div class="h4 mb-0">{{ stats.total_entries }}</div>
+<!-- Primary KPI Cards -->
+<div class="kpi-grid kpi-grid-2 mb-4">
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Daily Intake</span>
+      <div class="kpi-card-icon icon-primary"><i data-lucide="droplets"></i></div>
+    </div>
+    <div class="kpi-card-value-row">
+      <div>
+        <span class="kpi-card-value">{% if insights.avg_daily_intake %}{{ insights.avg_daily_intake }}{% elif stats.avg_intake is not None %}{{ stats.avg_intake|floatformat:0 }}{% else %}&mdash;{% endif %}</span>
+        <span class="kpi-card-value-unit">ml</span>
       </div>
+      {% if insights.intake_sparkline %}
+      <div class="tracking-sparkline">
+        <svg viewBox="0 0 64 24" preserveAspectRatio="none">
+          <polyline points="{{ insights.intake_sparkline }}" fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      {% endif %}
+    </div>
+    <div class="kpi-card-trend">
+      {% if insights.intake_trend %}
+      <span class="trend-indicator trend-{% if insights.intake_trend == 'up' %}up-good{% elif insights.intake_trend == 'down' %}down-bad{% else %}stable{% endif %}">
+        <i data-lucide="{% if insights.intake_trend == 'up' %}trending-up{% elif insights.intake_trend == 'down' %}trending-down{% else %}minus{% endif %}" style="width:12px;height:12px;"></i>
+      </span>
+      {% endif %}
+      <span class="kpi-card-trend-text">7-day average</span>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-info">
-      <div class="card-body py-2">
-        <div class="text-muted small">Avg Daily Intake</div>
-        <div class="h4 mb-0">{% if stats.avg_intake is not None %}{{ stats.avg_intake|floatformat:0 }} ml{% else %}-{% endif %}</div>
+
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Goal Achievement</span>
+      <div class="kpi-card-icon icon-success"><i data-lucide="target"></i></div>
+    </div>
+    <div class="kpi-card-value-row">
+      <div>
+        <span class="kpi-card-value">{% if insights.goal_rate_7d is not None %}{{ insights.goal_rate_7d }}{% elif stats.avg_goal_pct is not None %}{{ stats.avg_goal_pct|floatformat:0 }}{% else %}&mdash;{% endif %}</span>
+        <span class="kpi-card-value-unit">%</span>
       </div>
+    </div>
+    <div class="kpi-card-trend">
+      {% if insights.goal_streak %}
+      <span class="kpi-status-dot kpi-status-dot-success"></span>
+      <span class="kpi-card-trend-text">{{ insights.goal_streak }} day{% if insights.goal_streak != 1 %}s{% endif %} streak this week</span>
+      {% else %}
+      <span class="kpi-card-trend-text">last 7 days</span>
+      {% endif %}
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-success">
-      <div class="card-body py-2">
-        <div class="text-muted small">Avg Goal Achievement</div>
-        <div class="h4 mb-0">{% if stats.avg_goal_pct is not None %}{{ stats.avg_goal_pct }}%{% else %}-{% endif %}</div>
-      </div>
-    </div>
+</div>
+
+<!-- Secondary Stats -->
+<div class="tracking-stats-grid">
+  <div class="tracking-stat-card">
+    <div class="tracking-stat-label">Total Entries</div>
+    <div class="tracking-stat-value">{{ stats.total_entries }}</div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-warning">
-      <div class="card-body py-2">
-        <div class="text-muted small">Days Goal Met</div>
-        <div class="h4 mb-0">{{ stats.days_goal_met }}</div>
-      </div>
-    </div>
+  <div class="tracking-stat-card">
+    <div class="tracking-stat-label">Avg Intake</div>
+    <div class="tracking-stat-value">{% if stats.avg_intake is not None %}{{ stats.avg_intake|floatformat:0 }} ml{% else %}&mdash;{% endif %}</div>
+  </div>
+  <div class="tracking-stat-card">
+    <div class="tracking-stat-label">30d Goal Rate</div>
+    <div class="tracking-stat-value">{% if insights.goal_rate_30d is not None %}{{ insights.goal_rate_30d }}%{% else %}&mdash;{% endif %}</div>
+  </div>
+  <div class="tracking-stat-card">
+    <div class="tracking-stat-label">Days Goal Met</div>
+    <div class="tracking-stat-value">{{ stats.days_goal_met }}</div>
   </div>
 </div>
 {% endif %}
 
 <!-- Date Filter -->
-<form method="get" class="row g-2 mb-4 align-items-end">
-  <div class="col-auto">
-    <label for="startDate" class="form-label small mb-0">From</label>
+<form method="get" class="tracking-filter-bar">
+  <div>
+    <label for="startDate" class="form-label">From</label>
     <input type="date" class="form-control form-control-sm" id="startDate" name="start_date" value="{{ start_date }}">
   </div>
-  <div class="col-auto">
-    <label for="endDate" class="form-label small mb-0">To</label>
+  <div>
+    <label for="endDate" class="form-label">To</label>
     <input type="date" class="form-control form-control-sm" id="endDate" name="end_date" value="{{ end_date }}">
   </div>
-  <div class="col-auto">
-    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-filter"></i> Filter</button>
-    <a href="{% url 'hydration_list' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i> Clear</a>
+  <div class="d-flex gap-2" style="padding-bottom:1px;">
+    <button type="submit" class="btn btn-sm btn-outline-primary"><i data-lucide="filter" style="width:14px;height:14px;"></i> Filter</button>
+    <a href="{% url 'hydration_list' %}" class="btn btn-sm btn-outline-secondary"><i data-lucide="x" style="width:14px;height:14px;"></i> Clear</a>
   </div>
 </form>
 
 <!-- Trend Chart -->
 {% if stats.total_entries and stats.total_entries > 1 %}
-<div class="card mb-4">
-  <div class="card-body">
-    <h6 class="card-title"><i class="fas fa-chart-bar"></i> Hydration Trends</h6>
-    <canvas id="hydrationTrendChart" height="80"></canvas>
-  </div>
+<div class="tracking-chart-card">
+  <div class="tracking-chart-title"><i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i> Hydration Trends</div>
+  <canvas id="hydrationTrendChart" height="80"></canvas>
 </div>
 {% endif %}
 
 {% if entries %}
-<div class="table-responsive">
-  <table class="table table-striped table-hover align-middle">
+<div class="tracking-table">
+  <table class="table table-hover align-middle">
     <thead>
       <tr>
-        <th scope="col">Date</th>
-        <th scope="col">Fluid Intake (ml)</th>
-        <th scope="col">Goal (ml)</th>
-        <th scope="col">Progress</th>
-        <th scope="col">Notes</th>
-        <th scope="col">Actions</th>
+        <th>Date</th>
+        <th>Intake (ml)</th>
+        <th>Goal (ml)</th>
+        <th>Progress</th>
+        <th>Notes</th>
+        <th style="width:56px;"><span class="visually-hidden">Actions</span></th>
       </tr>
     </thead>
     <tbody>
       {% for entry in entries %}
       <tr>
-        <td>{{ entry.date|date:"Y-m-d" }}</td>
-        <td>{% if entry.fluid_intake_ml is not None %}{{ entry.fluid_intake_ml }}{% else %}-{% endif %}</td>
-        <td>{% if entry.goal_ml is not None %}{{ entry.goal_ml }}{% else %}-{% endif %}</td>
+        <td>{{ entry.date|date:"M j, Y" }}</td>
+        <td>{% if entry.fluid_intake_ml is not None %}{{ entry.fluid_intake_ml|floatformat:0 }}{% else %}<span class="text-muted">&mdash;</span>{% endif %}</td>
+        <td>{% if entry.goal_ml is not None %}{{ entry.goal_ml|floatformat:0 }}{% else %}<span class="text-muted">&mdash;</span>{% endif %}</td>
         <td>
           {% if entry.goal_percentage is not None %}
-          <div class="progress" style="min-width: 100px;">
-            <div class="progress-bar {% if entry.goal_percentage >= 100 %}bg-success{% elif entry.goal_percentage >= 50 %}bg-info{% else %}bg-warning{% endif %}"
-                 role="progressbar"
-                 style="width: {% if entry.goal_percentage > 100 %}100{% else %}{{ entry.goal_percentage }}{% endif %}%"
-                 aria-valuenow="{{ entry.goal_percentage }}"
-                 aria-valuemin="0"
-                 aria-valuemax="100">
-              {{ entry.goal_percentage }}%
+          <div class="d-flex align-items-center gap-2">
+            <div class="mini-progress" style="width:80px;">
+              <div class="mini-progress-fill {% if entry.goal_percentage >= 100 %}fill-success{% elif entry.goal_percentage >= 50 %}fill-primary{% else %}fill-warning{% endif %}" style="width:{% if entry.goal_percentage > 100 %}100{% else %}{{ entry.goal_percentage }}{% endif %}%;"></div>
             </div>
+            <span style="font-size:0.75rem;color:var(--text-muted);">{{ entry.goal_percentage }}%</span>
           </div>
-          {% else %}-{% endif %}
+          {% else %}<span class="text-muted">&mdash;</span>{% endif %}
         </td>
-        <td>{% if entry.notes %}{{ entry.notes|truncatewords:8 }}{% else %}-{% endif %}</td>
+        <td>{% if entry.notes %}{{ entry.notes|truncatewords:6 }}{% else %}<span class="text-muted">&mdash;</span>{% endif %}</td>
         <td>
-          <div class="dropdown d-inline-block">
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
-              <i class="fas fa-ellipsis-v"></i>
+          <div class="dropdown">
+            <button class="toolbar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+              <i data-lucide="more-vertical" style="width:16px;height:16px;"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li>
-                <a href="{% url 'hydration_edit' pk=entry.id %}" class="dropdown-item"><i class="fas fa-edit me-2"></i>Edit</a>
-              </li>
-              <li>
-                <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}"><i class="fas fa-trash-alt me-2"></i>Delete</button>
-              </li>
+              <li><a href="{% url 'hydration_edit' pk=entry.id %}" class="dropdown-item"><i data-lucide="pencil" style="width:14px;height:14px;" class="me-2"></i>Edit</a></li>
+              <li><button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}"><i data-lucide="trash-2" style="width:14px;height:14px;" class="me-2"></i>Delete</button></li>
             </ul>
           </div>
-
           <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered">
               <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title">Delete Confirmation</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                  Are you sure you want to delete this hydration entry?
-                </div>
+                <div class="modal-header"><h5 class="modal-title">Delete Entry</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body"><p>Delete this hydration entry? This cannot be undone.</p></div>
                 <div class="modal-footer">
-                  <form action="{% url 'hydration_delete' pk=entry.id %}" method="post">
-                    {% csrf_token %}
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                  </form>
+                  <form action="{% url 'hydration_delete' pk=entry.id %}" method="post">{% csrf_token %}<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button> <button type="submit" class="btn btn-danger">Delete</button></form>
                 </div>
               </div>
             </div>
@@ -145,13 +171,13 @@
     </tbody>
   </table>
 </div>
-
 {% include 'includes/pagination.html' %}
-
 {% else %}
-<div class="alert alert-info">
-  <p>No hydration entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'hydration_add' %}">Log Your First Hydration Entry</a>
+<div class="tracking-empty">
+  <div class="tracking-empty-icon"><i data-lucide="droplets" style="width:32px;height:32px;"></i></div>
+  <div class="tracking-empty-title">No entries yet</div>
+  <div class="tracking-empty-text">Start tracking your hydration to see trends and insights.</div>
+  <a href="{% url 'hydration_add' %}" class="toolbar-btn toolbar-btn-primary"><i data-lucide="plus" style="width:14px;height:14px;"></i> Add First Entry</a>
 </div>
 {% endif %}
 
@@ -159,6 +185,7 @@
 <script>
 (function() {
   var ctx = document.getElementById('hydrationTrendChart').getContext('2d');
+  var primary = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#2563eb';
   new Chart(ctx, {
     type: 'bar',
     data: {
@@ -166,22 +193,25 @@
       datasets: [{
         label: 'Fluid Intake (ml)',
         data: {{ chart_intake|safe }},
-        backgroundColor: 'rgba(0, 123, 255, 0.6)',
-        borderColor: 'rgba(0, 123, 255, 1)',
-        borderWidth: 1
+        backgroundColor: primary + '99',
+        borderColor: primary,
+        borderWidth: 1,
+        borderRadius: 3
       }, {
         label: 'Goal (ml)',
         data: {{ chart_goal|safe }},
         type: 'line',
-        borderColor: 'rgba(255, 193, 7, 0.8)',
+        borderColor: 'var(--color-warning)',
         backgroundColor: 'transparent',
         borderDash: [5, 5],
-        pointRadius: 0
+        pointRadius: 0,
+        borderWidth: 2
       }]
     },
     options: {
       responsive: true,
-      scales: { yAxes: [{ ticks: { beginAtZero: true } }] }
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+      scales: { y: { beginAtZero: true } }
     }
   });
 })();
