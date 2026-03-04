@@ -3591,6 +3591,8 @@ class Phase9SecureViewingLinkTests(TestCase):
         self.client = Client()
         self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
         self.client.login(username='testuser', password='testpass123')
+
+    def test_auto_token_generation(self):
         """Tokens should be auto-generated when creating a link."""
         from django.utils import timezone
         from datetime import timedelta
