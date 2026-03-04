@@ -1,0 +1,17 @@
+[flake8]
+max-line-length = 200
+exclude =
+    .git,
+    __pycache__,
+    */migrations/*,
+    manage.py,
+    seed.py
+# Ignore formatting/whitespace-only style issues in the existing codebase.
+# F811 (redefinition) is intentional in views.py where generic CRUD views
+# override manually-defined views of the same name.
+extend-ignore =
+    E128,E261,E301,E302,E303,E305,E306,E402,E501,E741,
+    F811,
+    W503,W504
+per-file-ignores =
+    tracker/tests.py:F401,F811,F841

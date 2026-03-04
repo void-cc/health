@@ -29,11 +29,14 @@ from .models import (
     # Integration Sub-tasks
     IntegrationConfig, IntegrationSubTask,
     INTEGRATION_CATEGORIES, INTEGRATION_FEATURE_TYPES,
+    # Notification System
+    NotificationPreference, NotificationTemplate, NotificationTrigger,
+    NotificationLog, NOTIFICATION_CHANNELS, NOTIFICATION_EVENT_TYPES,
+    HabitLog, Reminder,
 )
 from .generic_crud import make_crud_views
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.conf import settings
 from datetime import datetime
@@ -44,7 +47,7 @@ import io
 import json
 import re
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Q as models_Q, Avg, Sum, Count
+from django.db.models import Q as models_Q, Avg, Count
 from django.core.paginator import Paginator
 import functools
 
@@ -413,7 +416,7 @@ def add_test_info(request):
             with open(csv_path, mode='a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow([test_name, unit, normal_min, normal_max, category])
-        except Exception as e:
+        except Exception:
             pass # Non-critical if CSV update fails, DB is truth
 
         BloodTestInfo.objects.create(
@@ -451,7 +454,7 @@ def edit_test(request, test_id):
             test.save()
             messages.success(request, 'Blood test updated successfully!')
             return redirect('index')
-        except Exception as e:
+        except Exception:
             messages.error(request, 'Error updating blood test. Please try again.')
             return redirect('edit_test', test_id=test.id)
 
@@ -488,7 +491,7 @@ def add_vitals(request):
             )
             messages.success(request, 'Vital signs added successfully!')
             return redirect('vitals')
-        except Exception as e:
+        except Exception:
             messages.error(request, 'Error adding vital signs. Please try again.')
             return redirect('add_vitals')
 
@@ -521,7 +524,7 @@ def edit_vitals(request, vital_id):
 
             messages.success(request, 'Vital signs updated successfully!')
             return redirect('vitals')
-        except Exception as e:
+        except Exception:
             messages.error(request, 'Error updating vital signs. Please try again.')
             return redirect('edit_vitals', vital_id=vital.id)
 
@@ -1750,7 +1753,7 @@ def wearable_oauth_callback(request, platform):
     device = get_object_or_404(WearableDevice, id=device_id)
     client = get_client(platform)
     if not client:
-        messages.error(request, f'No integration client for this platform.')
+        messages.error(request, 'No integration client available for this platform.')
         return redirect('wearable_device_list')
 
     try:
@@ -2440,6 +2443,7 @@ def user_profile_add(request):
             UserProfile.objects.create(
                 user=user,
                 role=request.POST.get('role', 'user'),
+                language=request.POST.get('language', 'en'),
             )
             messages.success(request, 'User profile added!')
             return redirect('user_profile_list')
@@ -2457,6 +2461,7 @@ def user_profile_edit(request, pk):
             entry.user.is_active = request.POST.get('is_active') == 'on'
             entry.user.save()
             entry.role = request.POST.get('role', '')
+            entry.language = request.POST.get('language', 'en')
             entry.save()
             messages.success(request, 'User profile updated!')
             return redirect('user_profile_list')
@@ -4551,3 +4556,152 @@ integration_subtask_list = _integration_subtask['list']
 integration_subtask_add = _integration_subtask['add']
 integration_subtask_edit = _integration_subtask['edit']
 integration_subtask_delete = _integration_subtask['delete']
+
+
+# ===== Notification System =====
+
+
+@login_required
+def notification_preference_view(request):
+    """Display and update the current user's notification preferences."""
+    pref, _ = NotificationPreference.objects.get_or_create(user=request.user)
+    if request.method == 'POST':
+        pref.email_enabled = request.POST.get('email_enabled') == 'on'
+        pref.sms_enabled = request.POST.get('sms_enabled') == 'on'
+        pref.push_enabled = request.POST.get('push_enabled') == 'on'
+        disabled = request.POST.getlist('disabled_events')
+        pref.disabled_events = disabled
+        quiet_start = request.POST.get('quiet_hours_start', '').strip() or None
+        quiet_end = request.POST.get('quiet_hours_end', '').strip() or None
+        pref.quiet_hours_start = quiet_start
+        pref.quiet_hours_end = quiet_end
+        pref.save()
+        messages.success(request, 'Notification preferences saved.')
+        return redirect('notification_preference')
+    return render(request, 'notification_preference.html', {
+        'pref': pref,
+        'event_types': NOTIFICATION_EVENT_TYPES,
+    })
+
+
+_notification_template_crud = make_crud_views(
+    model_class=NotificationTemplate,
+    display_name='Notification Template',
+    fields=[
+        {'name': 'event_type', 'type': 'str', 'choices': NOTIFICATION_EVENT_TYPES, 'label': 'Event Type'},
+        {'name': 'channel', 'type': 'str', 'choices': NOTIFICATION_CHANNELS, 'label': 'Channel'},
+        {'name': 'subject', 'type': 'str', 'label': 'Subject'},
+        {'name': 'body', 'type': 'str', 'widget': 'textarea', 'label': 'Body'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+    ],
+    list_url_name='notification_template_list',
+    add_url_name='notification_template_add',
+    edit_url_name='notification_template_edit',
+    order_by='-created_at',
+    list_template='notification_template_list.html',
+    form_template='notification_template_form.html',
+)
+notification_template_list = _notification_template_crud['list']
+notification_template_add = _notification_template_crud['add']
+notification_template_edit = _notification_template_crud['edit']
+notification_template_delete = _notification_template_crud['delete']
+
+
+_notification_trigger_crud = make_crud_views(
+    model_class=NotificationTrigger,
+    display_name='Notification Trigger',
+    fields=[
+        {'name': 'name', 'type': 'str', 'label': 'Name'},
+        {'name': 'event_type', 'type': 'str', 'choices': NOTIFICATION_EVENT_TYPES, 'label': 'Event Type'},
+        {'name': 'schedule', 'type': 'str', 'choices': NotificationTrigger.SCHEDULE_CHOICES, 'label': 'Schedule'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+        {'name': 'threshold', 'type': 'float', 'label': 'Threshold'},
+        {'name': 'max_retries', 'type': 'int', 'default': 3, 'label': 'Max Retries'},
+    ],
+    list_url_name='notification_trigger_list',
+    add_url_name='notification_trigger_add',
+    edit_url_name='notification_trigger_edit',
+    order_by='-created_at',
+    list_template='notification_trigger_list.html',
+    form_template='notification_trigger_form.html',
+)
+notification_trigger_list = _notification_trigger_crud['list']
+notification_trigger_add = _notification_trigger_crud['add']
+notification_trigger_edit = _notification_trigger_crud['edit']
+notification_trigger_delete = _notification_trigger_crud['delete']
+
+
+@login_required
+def notification_trigger_set_channels(request, pk):
+    """Update the channels list for a trigger (channels are multi-value)."""
+    trigger = get_object_or_404(NotificationTrigger, id=pk)
+    if request.method == 'POST':
+        channels = request.POST.getlist('channels')
+        valid = [c for c in channels if c in dict(NOTIFICATION_CHANNELS)]
+        trigger.channels = valid
+        trigger.save(update_fields=['channels'])
+        messages.success(request, 'Trigger channels updated.')
+    return redirect('notification_trigger_list')
+
+
+@login_required
+def notification_log_list(request):
+    """Display the notification delivery log (read-only)."""
+    logs = NotificationLog.objects.select_related('user', 'trigger').order_by('-created_at')
+    # Optional filters
+    status_filter = request.GET.get('status', '')
+    channel_filter = request.GET.get('channel', '')
+    if status_filter:
+        logs = logs.filter(status=status_filter)
+    if channel_filter:
+        logs = logs.filter(channel=channel_filter)
+    paginator = Paginator(logs, 25)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(request, 'notification_log_list.html', {
+        'page_obj': page_obj,
+        'channels': NOTIFICATION_CHANNELS,
+        'status_filter': status_filter,
+        'channel_filter': channel_filter,
+    })
+  
+# ===== Habit Log =====
+_habit_log = make_crud_views(
+    model_class=HabitLog,
+    display_name='Habit Log',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'habit_name', 'type': 'str', 'required': True, 'label': 'Habit Name'},
+        {'name': 'category', 'type': 'str', 'choices': HabitLog.CATEGORY_CHOICES, 'default': 'other', 'label': 'Category'},
+        {'name': 'completed', 'type': 'bool', 'label': 'Completed'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea', 'label': 'Notes'},
+    ],
+    list_url_name='habit_log_list',
+    add_url_name='habit_log_add',
+    edit_url_name='habit_log_edit',
+    order_by='-date',
+)
+habit_log_list = _habit_log['list']
+habit_log_add = _habit_log['add']
+habit_log_edit = _habit_log['edit']
+habit_log_delete = _habit_log['delete']
+
+# ===== Reminders =====
+_reminder = make_crud_views(
+    model_class=Reminder,
+    display_name='Reminder',
+    fields=[
+        {'name': 'title', 'type': 'str', 'required': True, 'label': 'Title'},
+        {'name': 'message', 'type': 'str', 'widget': 'textarea', 'label': 'Message'},
+        {'name': 'due_datetime', 'type': 'datetime', 'required': True, 'label': 'Due Date & Time'},
+        {'name': 'frequency', 'type': 'str', 'choices': Reminder.FREQUENCY_CHOICES, 'default': 'once', 'label': 'Frequency'},
+        {'name': 'active', 'type': 'bool', 'label': 'Active'},
+    ],
+    list_url_name='reminder_list',
+    add_url_name='reminder_add',
+    edit_url_name='reminder_edit',
+    order_by='due_datetime',
+)
+reminder_list = _reminder['list']
+reminder_add = _reminder['add']
+reminder_edit = _reminder['edit']
+reminder_delete = _reminder['delete']
