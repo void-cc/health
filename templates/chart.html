@@ -19,9 +19,17 @@
   </div>
 </div>
 
-<div id="chart-container" class="card mb-5" style="padding: var(--space-4);">
-  <div style="position: relative; height: 320px; width: 100%;">
-    <canvas id="bloodChart"></canvas>
+<div id="chart-container" class="chart-card mb-5">
+  <div class="chart-card-header">
+    <div class="chart-card-header-text">
+      <h2 class="chart-card-title">{{ test_name }} Trend</h2>
+      <p class="chart-card-subtitle">Blood test values over time</p>
+    </div>
+  </div>
+  <div class="chart-card-body">
+    <div class="chart-canvas-wrapper" style="height:320px;">
+      <canvas id="bloodChart"></canvas>
+    </div>
   </div>
 </div>
 
@@ -79,6 +87,10 @@
 <script>
   var annotationsMap = {{ annotations_map|tojson }};
 
+  Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
+  Chart.defaults.global.defaultFontSize = 11;
+  Chart.defaults.global.defaultFontColor = '#6b7280';
+
   var ctx = document.getElementById('bloodChart').getContext('2d');
   var bloodChart = new Chart(ctx, {
     type: 'line',
@@ -87,22 +99,36 @@
       datasets: [{
         label: '{{ test_name }}',
         data: {{ values|tojson }},
-        backgroundColor: 'rgba(37, 99, 235, 0.08)',
+        backgroundColor: 'rgba(37, 99, 235, 0.07)',
         borderColor: 'rgba(37, 99, 235, 1)',
         borderWidth: 2,
-        fill: false,
+        fill: true,
         pointRadius: 4,
+        pointBackgroundColor: 'rgba(37, 99, 235, 1)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1.5,
         pointHoverRadius: 6
       }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { top: 8, right: 8 } },
+      legend: { display: false },
       scales: {
-        xAxes: [{ type: 'time', time: { unit: 'month' } }],
-        yAxes: [{ ticks: { beginAtZero: false } }],
+        xAxes: [{ type: 'time', time: { unit: 'month', tooltipFormat: 'MMM D, YYYY' }, gridLines: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { padding: 8 } }],
+        yAxes: [{ ticks: { beginAtZero: false, padding: 12 }, gridLines: { color: 'rgba(0,0,0,0.05)', drawBorder: false } }],
       },
       tooltips: {
+        backgroundColor: 'rgba(17,24,39,0.92)',
+        titleFontSize: 11,
+        titleFontColor: '#9ca3af',
+        bodyFontSize: 13,
+        bodyFontStyle: '600',
+        bodyFontColor: '#f9fafb',
+        cornerRadius: 6,
+        xPadding: 12,
+        yPadding: 10,
         callbacks: {
           afterLabel: function(tooltipItem) {
             var date = tooltipItem.xLabel || tooltipItem.label;

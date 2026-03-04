@@ -1,5 +1,5 @@
 /**
- * Phase 3 UI/UX Features for Health Tracker
+ * UI/UX Features for Health Tracker
  * Vanilla JS — no external dependencies
  */
 (function () {

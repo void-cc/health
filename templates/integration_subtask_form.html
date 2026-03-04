@@ -5,11 +5,11 @@
   <form method="POST">
     {% csrf_token %}
     <div class="mb-3">
-      <label for="phase" class="form-label">Phase:</label>
+      <label for="phase" class="form-label">Area:</label>
       <select class="form-select" name="phase" id="phase">
-        <option value="10" {% if editing and entry.phase == 10 %}selected{% endif %}>Phase 10</option>
-        <option value="11" {% if editing and entry.phase == 11 %}selected{% endif %}>Phase 11</option>
-        <option value="12" {% if editing and entry.phase == 12 %}selected{% endif %}>Phase 12</option>
+        <option value="10" {% if editing and entry.phase == 10 %}selected{% endif %}>Genomics & Personalized Medicine</option>
+        <option value="11" {% if editing and entry.phase == 11 %}selected{% endif %}>Interoperability</option>
+        <option value="12" {% if editing and entry.phase == 12 %}selected{% endif %}>Continuous Monitoring & Alerts</option>
       </select>
     </div>
     <div class="mb-3">

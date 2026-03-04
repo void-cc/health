@@ -20,7 +20,7 @@
 </div>
 
 <!-- Filters toolbar -->
-<div class="chart-filters-bar mb-5">
+<div class="chart-filters-bar">
   <div class="d-flex flex-wrap align-items-end gap-3">
     <div>
       <label for="startDate" class="form-label">From</label>
@@ -49,59 +49,131 @@
 
 <div id="charts-container">
   {% for label, canvas_id in vital_charts %}
-  <div class="chart-section mb-6">
-    <h2 class="results-section-title mb-3">{{ label }}</h2>
-    <div class="card" style="padding: var(--space-4);">
-      <div style="position: relative; height: 280px; width: 100%;">
-        <canvas id="{{ canvas_id }}"></canvas>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">{{ label }}</h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;">
+          <canvas id="{{ canvas_id }}"></canvas>
+        </div>
       </div>
     </div>
   </div>
   {% empty %}
-  <div class="chart-section mb-6">
-    <h2 class="results-section-title mb-3">Weight <span class="text-muted fw-normal" style="font-size:0.875rem;">(kg)</span></h2>
-    <div class="card" style="padding: var(--space-4);">
-      <div style="position: relative; height: 280px; width: 100%;"><canvas id="weightChart"></canvas></div>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">Weight <span class="fw-normal text-muted" style="font-size:0.8125rem;">(kg)</span></h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="weightChart"></canvas></div>
+      </div>
     </div>
   </div>
-  <div class="chart-section mb-6">
-    <h2 class="results-section-title mb-3">Heart Rate <span class="text-muted fw-normal" style="font-size:0.875rem;">(bpm)</span></h2>
-    <div class="card" style="padding: var(--space-4);">
-      <div style="position: relative; height: 280px; width: 100%;"><canvas id="hrChart"></canvas></div>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">Heart Rate <span class="fw-normal text-muted" style="font-size:0.8125rem;">(bpm)</span></h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="hrChart"></canvas></div>
+      </div>
     </div>
   </div>
-  <div class="chart-section mb-6">
-    <h2 class="results-section-title mb-3">Blood Pressure <span class="text-muted fw-normal" style="font-size:0.875rem;">(mmHg)</span></h2>
-    <div class="card" style="padding: var(--space-4);">
-      <div style="position: relative; height: 280px; width: 100%;"><canvas id="bpChart"></canvas></div>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">Blood Pressure <span class="fw-normal text-muted" style="font-size:0.8125rem;">(mmHg)</span></h2>
+          <p class="chart-card-subtitle">Systolic and diastolic trend</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="bpChart"></canvas></div>
+      </div>
     </div>
   </div>
-  <div class="chart-section mb-6">
-    <h2 class="results-section-title mb-3">Basal Body Temperature <span class="text-muted fw-normal" style="font-size:0.875rem;">(°C)</span></h2>
-    <div class="card" style="padding: var(--space-4);">
-      <div style="position: relative; height: 280px; width: 100%;"><canvas id="bbtChart"></canvas></div>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">Basal Body Temperature <span class="fw-normal text-muted" style="font-size:0.8125rem;">(°C)</span></h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="bbtChart"></canvas></div>
+      </div>
     </div>
   </div>
-  <div class="chart-section mb-6">
-    <h2 class="results-section-title mb-3">SpO2 — Blood Oxygen Saturation <span class="text-muted fw-normal" style="font-size:0.875rem;">(%)</span></h2>
-    <div class="card" style="padding: var(--space-4);">
-      <div style="position: relative; height: 280px; width: 100%;"><canvas id="spo2Chart"></canvas></div>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">SpO2 — Blood Oxygen Saturation <span class="fw-normal text-muted" style="font-size:0.8125rem;">(%)</span></h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="spo2Chart"></canvas></div>
+      </div>
     </div>
   </div>
-  <div class="chart-section mb-6">
-    <h2 class="results-section-title mb-3">Respiratory Rate <span class="text-muted fw-normal" style="font-size:0.875rem;">(breaths/min)</span></h2>
-    <div class="card" style="padding: var(--space-4);">
-      <div style="position: relative; height: 280px; width: 100%;"><canvas id="rrChart"></canvas></div>
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h2 class="chart-card-title">Respiratory Rate <span class="fw-normal text-muted" style="font-size:0.8125rem;">(breaths/min)</span></h2>
+          <p class="chart-card-subtitle">Trend over time</p>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:280px;"><canvas id="rrChart"></canvas></div>
+      </div>
     </div>
   </div>
   {% endfor %}
 </div>
 
 <script>
+  Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
+  Chart.defaults.global.defaultFontSize = 11;
+  Chart.defaults.global.defaultFontColor = '#6b7280';
+
+  var gridColor = 'rgba(0,0,0,0.05)';
   var chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: { padding: { top: 8, right: 8, bottom: 0, left: 0 } },
+    legend: { display: false },
     scales: {
-      xAxes: [{ type: 'time', time: { parser: 'YYYY-MM-DD', tooltipFormat: 'll', unit: 'day' }, scaleLabel: { display: true, labelString: 'Date' } }],
-      yAxes: [{ ticks: { beginAtZero: false } }]
+      xAxes: [{ type: 'time', time: { parser: 'YYYY-MM-DD', tooltipFormat: 'MMM D, YYYY', unit: 'day' }, scaleLabel: { display: false }, gridLines: { color: gridColor, drawBorder: false }, ticks: { padding: 8, autoSkipPadding: 16 } }],
+      yAxes: [{ ticks: { beginAtZero: false, padding: 12 }, gridLines: { color: gridColor, drawBorder: false } }]
+    },
+    tooltips: {
+      backgroundColor: 'rgba(17,24,39,0.92)',
+      titleFontSize: 11,
+      titleFontColor: '#9ca3af',
+      bodyFontSize: 13,
+      bodyFontStyle: '600',
+      bodyFontColor: '#f9fafb',
+      cornerRadius: 6,
+      xPadding: 12,
+      yPadding: 10,
+      displayColors: true,
+      mode: 'index',
+      intersect: false
     }
   };
 

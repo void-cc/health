@@ -16,7 +16,7 @@
 </div>
 
 {% if metric_names|length >= 2 %}
-<div class="chart-filters-bar mb-5">
+<div class="chart-filters-bar">
   <div class="row g-3 align-items-end">
     <div class="col-md-5">
       <label for="xMetric" class="form-label">X-Axis Metric</label>
@@ -40,9 +40,17 @@
   </div>
 </div>
 
-<div class="card" style="padding: var(--space-4);">
-  <div style="position: relative; height: 420px; width: 100%;">
-    <canvas id="scatterChart"></canvas>
+<div class="chart-card">
+  <div class="chart-card-header">
+    <div class="chart-card-header-text">
+      <h2 class="chart-card-title" id="scatterTitle">Scatter Plot</h2>
+      <p class="chart-card-subtitle">Correlation between selected metrics</p>
+    </div>
+  </div>
+  <div class="chart-card-body">
+    <div class="chart-canvas-wrapper" style="height:420px;">
+      <canvas id="scatterChart"></canvas>
+    </div>
   </div>
 </div>
 {% else %}
@@ -81,29 +89,45 @@
   function renderScatter() {
     var xName = document.getElementById('xMetric').value;
     var yName = document.getElementById('yMetric').value;
+    var titleEl = document.getElementById('scatterTitle');
+    if (titleEl) titleEl.textContent = xName + ' vs ' + yName;
     var points = buildScatterData(xName, yName);
     if (scatterChart) { scatterChart.destroy(); }
     var ctx = document.getElementById('scatterChart').getContext('2d');
+    var axisFont = { fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, fontColor: '#6b7280' };
+    var gridCfg = { color: 'rgba(0,0,0,0.05)', drawBorder: false };
     scatterChart = new Chart(ctx, {
       type: 'scatter',
       data: {
         datasets: [{
           label: xName + ' vs ' + yName,
           data: points,
-          backgroundColor: 'rgba(37, 99, 235, 0.5)',
-          borderColor: 'rgba(37, 99, 235, 1)',
+          backgroundColor: 'rgba(37, 99, 235, 0.45)',
+          borderColor: 'rgba(37, 99, 235, 0.85)',
           pointRadius: 6,
-          pointHoverRadius: 8
+          pointHoverRadius: 8,
+          pointBorderWidth: 1.5
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 8, right: 8 } },
+        legend: { display: false },
         scales: {
-          xAxes: [{ scaleLabel: { display: true, labelString: xName } }],
-          yAxes: [{ scaleLabel: { display: true, labelString: yName } }]
+          xAxes: [{ scaleLabel: Object.assign({ display: true, labelString: xName }, axisFont), gridLines: gridCfg, ticks: Object.assign({ padding: 8 }, axisFont) }],
+          yAxes: [{ scaleLabel: Object.assign({ display: true, labelString: yName }, axisFont), gridLines: gridCfg, ticks: Object.assign({ padding: 12 }, axisFont) }]
         },
         tooltips: {
+          backgroundColor: 'rgba(17,24,39,0.92)',
+          titleFontSize: 11,
+          titleFontColor: '#9ca3af',
+          bodyFontSize: 13,
+          bodyFontStyle: '600',
+          bodyFontColor: '#f9fafb',
+          cornerRadius: 6,
+          xPadding: 12,
+          yPadding: 10,
           callbacks: {
             label: function(item) {
               return xName + ': ' + item.xLabel + ', ' + yName + ': ' + item.yLabel;
