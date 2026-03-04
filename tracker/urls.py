@@ -119,6 +119,7 @@ urlpatterns = [
     path('wearables/add/', views.wearable_device_add, name='wearable_device_add'),
     path('wearables/edit/<int:pk>/', views.wearable_device_edit, name='wearable_device_edit'),
     path('wearables/delete/<int:pk>/', views.wearable_device_delete, name='wearable_device_delete'),
+    path('wearables/device-sync/<int:pk>/', views.wearable_device_sync, name='wearable_device_sync'),
     path('wearables/connect/<int:pk>/', views.wearable_connect, name='wearable_connect'),
     path('wearables/callback/<str:platform>/', views.wearable_oauth_callback, name='wearable_oauth_callback'),
     path('wearables/disconnect/<int:pk>/', views.wearable_disconnect, name='wearable_disconnect'),
