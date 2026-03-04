@@ -2561,7 +2561,7 @@ class Phase5To12StatusCodeTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com', is_staff=True)
         self.client.login(username='testuser', password='testpass123')
 
     # ---
@@ -2777,7 +2777,7 @@ class Phase5To12CRUDTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='crudtestuser', password='testpass123', email='crud@example.com')
+        self.user = User.objects.create_user(username='crudtestuser', password='testpass123', email='crud@example.com', is_staff=True)
         self.client.login(username='crudtestuser', password='testpass123')
 
     # ----- WearableDevice -----
@@ -4768,3 +4768,71 @@ class MacroListEnhancedTests(TestCase):
     def test_macro_list_renders_chart(self):
         response = self.client.get(reverse('macro_list'))
         self.assertContains(response, 'macroTrendChart')
+
+
+class AdminAccessControlTests(TestCase):
+    """Ensure admin management pages are only accessible by staff users."""
+
+    def setUp(self):
+        self.client = Client()
+        self.regular_user = User.objects.create_user(
+            username='regularuser', password='testpass123'
+        )
+        self.staff_user = User.objects.create_user(
+            username='staffuser', password='testpass123', is_staff=True
+        )
+        self.admin_urls = [
+            'user_profile_list',
+            'user_profile_add',
+            'family_account_list',
+            'family_account_add',
+            'consent_log_list',
+            'consent_log_add',
+            'tenant_config_list',
+            'tenant_config_add',
+            'admin_telemetry_list',
+            'admin_telemetry_add',
+            'api_rate_limit_list',
+            'api_rate_limit_add',
+            'encryption_key_list',
+            'encryption_key_add',
+            'audit_log_list',
+            'audit_log_add',
+            'anonymized_data_list',
+            'anonymized_data_add',
+            'database_scaling_list',
+            'database_scaling_add',
+            'backup_config_list',
+            'backup_config_add',
+        ]
+
+    def test_anonymous_user_redirected_from_admin_pages(self):
+        """Anonymous users should be redirected to login for admin pages."""
+        for url_name in self.admin_urls:
+            response = self.client.get(reverse(url_name))
+            self.assertEqual(
+                response.status_code, 302,
+                msg=f'{url_name} should redirect anonymous users'
+            )
+            self.assertIn('/accounts/login/', response.url,
+                          msg=f'{url_name} should redirect to login')
+
+    def test_regular_user_forbidden_from_admin_pages(self):
+        """Authenticated non-staff users should get 403 for admin pages."""
+        self.client.login(username='regularuser', password='testpass123')
+        for url_name in self.admin_urls:
+            response = self.client.get(reverse(url_name))
+            self.assertEqual(
+                response.status_code, 403,
+                msg=f'{url_name} should return 403 for non-staff users'
+            )
+
+    def test_staff_user_can_access_admin_pages(self):
+        """Staff users should be able to access admin management pages."""
+        self.client.login(username='staffuser', password='testpass123')
+        for url_name in self.admin_urls:
+            response = self.client.get(reverse(url_name))
+            self.assertEqual(
+                response.status_code, 200,
+                msg=f'{url_name} should be accessible by staff users'
+            )

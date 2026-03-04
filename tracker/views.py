@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 from .models import (
     BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
@@ -45,6 +46,19 @@ import re
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q as models_Q, Avg, Sum, Count
 from django.core.paginator import Paginator
+import functools
+
+
+def admin_required(view_func):
+    """Decorator that requires the user to be logged in and have staff privileges."""
+    @login_required
+    @functools.wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_staff:
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return wrapped
+
 
 @login_required
 def index(request):
@@ -2352,10 +2366,12 @@ def caffeine_alcohol_delete(request, pk):
 
 # ===== User Profile =====
 
+@admin_required
 def user_profile_list(request):
     entries = UserProfile.objects.select_related('user').all().order_by('-created_at')
     return render(request, 'user_profile_list.html', {'entries': entries})
 
+@admin_required
 def user_profile_add(request):
     if request.method == 'POST':
         try:
@@ -2374,6 +2390,7 @@ def user_profile_add(request):
             return redirect('user_profile_add')
     return render(request, 'user_profile_form.html', {'editing': False})
 
+@admin_required
 def user_profile_edit(request, pk):
     entry = get_object_or_404(UserProfile, id=pk)
     if request.method == 'POST':
@@ -2390,6 +2407,7 @@ def user_profile_edit(request, pk):
             return redirect('user_profile_edit', pk=pk)
     return render(request, 'user_profile_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def user_profile_delete(request, pk):
     if request.method == 'POST':
         profile = get_object_or_404(UserProfile, id=pk)
@@ -2400,10 +2418,12 @@ def user_profile_delete(request, pk):
 
 # ===== Family Account =====
 
+@admin_required
 def family_account_list(request):
     entries = FamilyAccount.objects.all().order_by('-created_at')
     return render(request, 'family_account_list.html', {'entries': entries})
 
+@admin_required
 def family_account_add(request):
     if request.method == 'POST':
         try:
@@ -2420,6 +2440,7 @@ def family_account_add(request):
             return redirect('family_account_add')
     return render(request, 'family_account_form.html', {'editing': False})
 
+@admin_required
 def family_account_edit(request, pk):
     entry = get_object_or_404(FamilyAccount, id=pk)
     if request.method == 'POST':
@@ -2436,6 +2457,7 @@ def family_account_edit(request, pk):
             return redirect('family_account_edit', pk=pk)
     return render(request, 'family_account_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def family_account_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(FamilyAccount, id=pk).delete()
@@ -2445,10 +2467,12 @@ def family_account_delete(request, pk):
 
 # ===== Consent Log =====
 
+@admin_required
 def consent_log_list(request):
     entries = ConsentLog.objects.all().order_by('-accepted_at')
     return render(request, 'consent_log_list.html', {'entries': entries})
 
+@admin_required
 def consent_log_add(request):
     if request.method == 'POST':
         try:
@@ -2465,6 +2489,7 @@ def consent_log_add(request):
             return redirect('consent_log_add')
     return render(request, 'consent_log_form.html', {'editing': False})
 
+@admin_required
 def consent_log_edit(request, pk):
     entry = get_object_or_404(ConsentLog, id=pk)
     if request.method == 'POST':
@@ -2481,6 +2506,7 @@ def consent_log_edit(request, pk):
             return redirect('consent_log_edit', pk=pk)
     return render(request, 'consent_log_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def consent_log_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(ConsentLog, id=pk).delete()
@@ -2490,10 +2516,12 @@ def consent_log_delete(request, pk):
 
 # ===== Tenant Config =====
 
+@admin_required
 def tenant_config_list(request):
     entries = TenantConfig.objects.all().order_by('-created_at')
     return render(request, 'tenant_config_list.html', {'entries': entries})
 
+@admin_required
 def tenant_config_add(request):
     if request.method == 'POST':
         try:
@@ -2509,6 +2537,7 @@ def tenant_config_add(request):
             return redirect('tenant_config_add')
     return render(request, 'tenant_config_form.html', {'editing': False})
 
+@admin_required
 def tenant_config_edit(request, pk):
     entry = get_object_or_404(TenantConfig, id=pk)
     if request.method == 'POST':
@@ -2524,6 +2553,7 @@ def tenant_config_edit(request, pk):
             return redirect('tenant_config_edit', pk=pk)
     return render(request, 'tenant_config_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def tenant_config_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(TenantConfig, id=pk).delete()
@@ -2533,10 +2563,12 @@ def tenant_config_delete(request, pk):
 
 # ===== Admin Telemetry =====
 
+@admin_required
 def admin_telemetry_list(request):
     entries = AdminTelemetry.objects.all().order_by('-recorded_at')
     return render(request, 'admin_telemetry_list.html', {'entries': entries})
 
+@admin_required
 def admin_telemetry_add(request):
     if request.method == 'POST':
         try:
@@ -2552,6 +2584,7 @@ def admin_telemetry_add(request):
             return redirect('admin_telemetry_add')
     return render(request, 'admin_telemetry_form.html', {'editing': False})
 
+@admin_required
 def admin_telemetry_edit(request, pk):
     entry = get_object_or_404(AdminTelemetry, id=pk)
     if request.method == 'POST':
@@ -2567,6 +2600,7 @@ def admin_telemetry_edit(request, pk):
             return redirect('admin_telemetry_edit', pk=pk)
     return render(request, 'admin_telemetry_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def admin_telemetry_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(AdminTelemetry, id=pk).delete()
@@ -2576,10 +2610,12 @@ def admin_telemetry_delete(request, pk):
 
 # ===== API Rate Limit Config =====
 
+@admin_required
 def api_rate_limit_list(request):
     entries = APIRateLimitConfig.objects.all().order_by('endpoint')
     return render(request, 'api_rate_limit_list.html', {'entries': entries})
 
+@admin_required
 def api_rate_limit_add(request):
     if request.method == 'POST':
         try:
@@ -2598,6 +2634,7 @@ def api_rate_limit_add(request):
             return redirect('api_rate_limit_add')
     return render(request, 'api_rate_limit_form.html', {'editing': False})
 
+@admin_required
 def api_rate_limit_edit(request, pk):
     entry = get_object_or_404(APIRateLimitConfig, id=pk)
     if request.method == 'POST':
@@ -2616,6 +2653,7 @@ def api_rate_limit_edit(request, pk):
             return redirect('api_rate_limit_edit', pk=pk)
     return render(request, 'api_rate_limit_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def api_rate_limit_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(APIRateLimitConfig, id=pk).delete()
@@ -2625,10 +2663,12 @@ def api_rate_limit_delete(request, pk):
 
 # ===== Encryption Keys =====
 
+@admin_required
 def encryption_key_list(request):
     entries = EncryptionKey.objects.all().order_by('-created_at')
     return render(request, 'encryption_key_list.html', {'entries': entries})
 
+@admin_required
 def encryption_key_add(request):
     if request.method == 'POST':
         try:
@@ -2644,6 +2684,7 @@ def encryption_key_add(request):
             return redirect('encryption_key_add')
     return render(request, 'encryption_key_form.html', {'editing': False})
 
+@admin_required
 def encryption_key_edit(request, pk):
     entry = get_object_or_404(EncryptionKey, id=pk)
     if request.method == 'POST':
@@ -2659,6 +2700,7 @@ def encryption_key_edit(request, pk):
             return redirect('encryption_key_edit', pk=pk)
     return render(request, 'encryption_key_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def encryption_key_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(EncryptionKey, id=pk).delete()
@@ -2668,10 +2710,12 @@ def encryption_key_delete(request, pk):
 
 # ===== Audit Logs =====
 
+@admin_required
 def audit_log_list(request):
     entries = AuditLog.objects.all().order_by('-created_at')
     return render(request, 'audit_log_list.html', {'entries': entries})
 
+@admin_required
 def audit_log_add(request):
     if request.method == 'POST':
         try:
@@ -2687,6 +2731,7 @@ def audit_log_add(request):
             return redirect('audit_log_add')
     return render(request, 'audit_log_form.html', {'editing': False})
 
+@admin_required
 def audit_log_edit(request, pk):
     entry = get_object_or_404(AuditLog, id=pk)
     if request.method == 'POST':
@@ -2702,6 +2747,7 @@ def audit_log_edit(request, pk):
             return redirect('audit_log_edit', pk=pk)
     return render(request, 'audit_log_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def audit_log_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(AuditLog, id=pk).delete()
@@ -2711,10 +2757,12 @@ def audit_log_delete(request, pk):
 
 # ===== Anonymized Data Reports =====
 
+@admin_required
 def anonymized_data_list(request):
     entries = AnonymizedDataReport.objects.all().order_by('-generated_at')
     return render(request, 'anonymized_data_list.html', {'entries': entries})
 
+@admin_required
 def anonymized_data_add(request):
     if request.method == 'POST':
         try:
@@ -2733,6 +2781,7 @@ def anonymized_data_add(request):
             return redirect('anonymized_data_add')
     return render(request, 'anonymized_data_form.html', {'editing': False})
 
+@admin_required
 def anonymized_data_edit(request, pk):
     entry = get_object_or_404(AnonymizedDataReport, id=pk)
     if request.method == 'POST':
@@ -2751,6 +2800,7 @@ def anonymized_data_edit(request, pk):
             return redirect('anonymized_data_edit', pk=pk)
     return render(request, 'anonymized_data_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def anonymized_data_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(AnonymizedDataReport, id=pk).delete()
@@ -2760,10 +2810,12 @@ def anonymized_data_delete(request, pk):
 
 # ===== Database Scaling Config =====
 
+@admin_required
 def database_scaling_list(request):
     entries = DatabaseScalingConfig.objects.all().order_by('-created_at')
     return render(request, 'database_scaling_list.html', {'entries': entries})
 
+@admin_required
 def database_scaling_add(request):
     if request.method == 'POST':
         try:
@@ -2782,6 +2834,7 @@ def database_scaling_add(request):
             return redirect('database_scaling_add')
     return render(request, 'database_scaling_form.html', {'editing': False})
 
+@admin_required
 def database_scaling_edit(request, pk):
     entry = get_object_or_404(DatabaseScalingConfig, id=pk)
     if request.method == 'POST':
@@ -2800,6 +2853,7 @@ def database_scaling_edit(request, pk):
             return redirect('database_scaling_edit', pk=pk)
     return render(request, 'database_scaling_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def database_scaling_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(DatabaseScalingConfig, id=pk).delete()
@@ -2809,10 +2863,12 @@ def database_scaling_delete(request, pk):
 
 # ===== Backup Configuration =====
 
+@admin_required
 def backup_config_list(request):
     entries = BackupConfiguration.objects.all().order_by('-created_at')
     return render(request, 'backup_config_list.html', {'entries': entries})
 
+@admin_required
 def backup_config_add(request):
     if request.method == 'POST':
         try:
@@ -2831,6 +2887,7 @@ def backup_config_add(request):
             return redirect('backup_config_add')
     return render(request, 'backup_config_form.html', {'editing': False})
 
+@admin_required
 def backup_config_edit(request, pk):
     entry = get_object_or_404(BackupConfiguration, id=pk)
     if request.method == 'POST':
@@ -2849,6 +2906,7 @@ def backup_config_edit(request, pk):
             return redirect('backup_config_edit', pk=pk)
     return render(request, 'backup_config_form.html', {'entry': entry, 'editing': True})
 
+@admin_required
 def backup_config_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(BackupConfiguration, id=pk).delete()
@@ -4150,7 +4208,7 @@ _user_profile = make_crud_views(
     edit_url_name='user_profile_edit',
     order_by='-created_at',
 )
-user_profile_list = _user_profile['list']
+user_profile_list = admin_required(_user_profile['list'])
 
 # ===== Family Accounts =====
 _family_account = make_crud_views(
@@ -4166,10 +4224,10 @@ _family_account = make_crud_views(
     edit_url_name='family_account_edit',
     order_by='-created_at',
 )
-family_account_list = _family_account['list']
-family_account_add = _family_account['add']
-family_account_edit = _family_account['edit']
-family_account_delete = _family_account['delete']
+family_account_list = admin_required(_family_account['list'])
+family_account_add = admin_required(_family_account['add'])
+family_account_edit = admin_required(_family_account['edit'])
+family_account_delete = admin_required(_family_account['delete'])
 
 # ===== Consent Logs =====
 _consent_log = make_crud_views(
@@ -4186,10 +4244,10 @@ _consent_log = make_crud_views(
     edit_url_name='consent_log_edit',
     order_by='-accepted_at',
 )
-consent_log_list = _consent_log['list']
-consent_log_add = _consent_log['add']
-consent_log_edit = _consent_log['edit']
-consent_log_delete = _consent_log['delete']
+consent_log_list = admin_required(_consent_log['list'])
+consent_log_add = admin_required(_consent_log['add'])
+consent_log_edit = admin_required(_consent_log['edit'])
+consent_log_delete = admin_required(_consent_log['delete'])
 
 # ===== Tenant Config =====
 _tenant_config = make_crud_views(
@@ -4205,10 +4263,10 @@ _tenant_config = make_crud_views(
     edit_url_name='tenant_config_edit',
     order_by='-created_at',
 )
-tenant_config_list = _tenant_config['list']
-tenant_config_add = _tenant_config['add']
-tenant_config_edit = _tenant_config['edit']
-tenant_config_delete = _tenant_config['delete']
+tenant_config_list = admin_required(_tenant_config['list'])
+tenant_config_add = admin_required(_tenant_config['add'])
+tenant_config_edit = admin_required(_tenant_config['edit'])
+tenant_config_delete = admin_required(_tenant_config['delete'])
 
 # ===== Admin Telemetry =====
 _admin_telemetry = make_crud_views(
@@ -4223,10 +4281,10 @@ _admin_telemetry = make_crud_views(
     edit_url_name='admin_telemetry_edit',
     order_by='-recorded_at',
 )
-admin_telemetry_list = _admin_telemetry['list']
-admin_telemetry_add = _admin_telemetry['add']
-admin_telemetry_edit = _admin_telemetry['edit']
-admin_telemetry_delete = _admin_telemetry['delete']
+admin_telemetry_list = admin_required(_admin_telemetry['list'])
+admin_telemetry_add = admin_required(_admin_telemetry['add'])
+admin_telemetry_edit = admin_required(_admin_telemetry['edit'])
+admin_telemetry_delete = admin_required(_admin_telemetry['delete'])
 
 # ===== API Rate Limits =====
 _api_rate_limit = make_crud_views(
@@ -4243,10 +4301,10 @@ _api_rate_limit = make_crud_views(
     edit_url_name='api_rate_limit_edit',
     order_by='endpoint',
 )
-api_rate_limit_list = _api_rate_limit['list']
-api_rate_limit_add = _api_rate_limit['add']
-api_rate_limit_edit = _api_rate_limit['edit']
-api_rate_limit_delete = _api_rate_limit['delete']
+api_rate_limit_list = admin_required(_api_rate_limit['list'])
+api_rate_limit_add = admin_required(_api_rate_limit['add'])
+api_rate_limit_edit = admin_required(_api_rate_limit['edit'])
+api_rate_limit_delete = admin_required(_api_rate_limit['delete'])
 
 # ===== Encryption Keys =====
 _encryption_key = make_crud_views(
@@ -4262,10 +4320,10 @@ _encryption_key = make_crud_views(
     edit_url_name='encryption_key_edit',
     order_by='-created_at',
 )
-encryption_key_list = _encryption_key['list']
-encryption_key_add = _encryption_key['add']
-encryption_key_edit = _encryption_key['edit']
-encryption_key_delete = _encryption_key['delete']
+encryption_key_list = admin_required(_encryption_key['list'])
+encryption_key_add = admin_required(_encryption_key['add'])
+encryption_key_edit = admin_required(_encryption_key['edit'])
+encryption_key_delete = admin_required(_encryption_key['delete'])
 
 # ===== Audit Logs =====
 _audit_log = make_crud_views(
@@ -4281,10 +4339,10 @@ _audit_log = make_crud_views(
     edit_url_name='audit_log_edit',
     order_by='-created_at',
 )
-audit_log_list = _audit_log['list']
-audit_log_add = _audit_log['add']
-audit_log_edit = _audit_log['edit']
-audit_log_delete = _audit_log['delete']
+audit_log_list = admin_required(_audit_log['list'])
+audit_log_add = admin_required(_audit_log['add'])
+audit_log_edit = admin_required(_audit_log['edit'])
+audit_log_delete = admin_required(_audit_log['delete'])
 
 # ===== Anonymized Data =====
 _anonymized_data = make_crud_views(
@@ -4302,10 +4360,10 @@ _anonymized_data = make_crud_views(
     edit_url_name='anonymized_data_edit',
     order_by='-generated_at',
 )
-anonymized_data_list = _anonymized_data['list']
-anonymized_data_add = _anonymized_data['add']
-anonymized_data_edit = _anonymized_data['edit']
-anonymized_data_delete = _anonymized_data['delete']
+anonymized_data_list = admin_required(_anonymized_data['list'])
+anonymized_data_add = admin_required(_anonymized_data['add'])
+anonymized_data_edit = admin_required(_anonymized_data['edit'])
+anonymized_data_delete = admin_required(_anonymized_data['delete'])
 
 # ===== Database Scaling =====
 _database_scaling = make_crud_views(
@@ -4323,10 +4381,10 @@ _database_scaling = make_crud_views(
     edit_url_name='database_scaling_edit',
     order_by='-created_at',
 )
-database_scaling_list = _database_scaling['list']
-database_scaling_add = _database_scaling['add']
-database_scaling_edit = _database_scaling['edit']
-database_scaling_delete = _database_scaling['delete']
+database_scaling_list = admin_required(_database_scaling['list'])
+database_scaling_add = admin_required(_database_scaling['add'])
+database_scaling_edit = admin_required(_database_scaling['edit'])
+database_scaling_delete = admin_required(_database_scaling['delete'])
 
 # ===== Backup Config =====
 _backup_config = make_crud_views(
@@ -4344,10 +4402,10 @@ _backup_config = make_crud_views(
     edit_url_name='backup_config_edit',
     order_by='-created_at',
 )
-backup_config_list = _backup_config['list']
-backup_config_add = _backup_config['add']
-backup_config_edit = _backup_config['edit']
-backup_config_delete = _backup_config['delete']
+backup_config_list = admin_required(_backup_config['list'])
+backup_config_add = admin_required(_backup_config['add'])
+backup_config_edit = admin_required(_backup_config['edit'])
+backup_config_delete = admin_required(_backup_config['delete'])
 
 # ===== Integration Config =====
 _integration_config = make_crud_views(
