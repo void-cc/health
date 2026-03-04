@@ -1,18 +1,27 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Bulk Data Editing</h2>
-  <a href="{% url 'index' %}" class="btn btn-secondary">Back to Dashboard</a>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Bulk Edit</h1>
+    <p class="page-header-subtitle">Edit or delete multiple blood test records at once</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'index' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Dashboard</span>
+    </a>
+  </div>
 </div>
 
 {% if tests %}
 <form method="post" action="{% url 'bulk_edit' %}">
   {% csrf_token %}
-  <div class="table-responsive">
-    <table class="table table-striped table-hover align-middle" id="bulk-edit-table">
+  <div class="table-responsive mb-4">
+    <table class="table table-hover align-middle" id="bulk-edit-table">
       <thead>
         <tr>
-          <th><input type="checkbox" id="select-all"></th>
+          <th style="width:40px;"><input type="checkbox" id="select-all" aria-label="Select all"></th>
           <th>Test Name</th>
           <th>Value</th>
           <th>Unit</th>
@@ -25,23 +34,23 @@
         {% for test in tests %}
         <tr>
           <td>
-            <input type="checkbox" name="delete_ids" value="{{ test.id }}" class="delete-checkbox">
+            <input type="checkbox" name="delete_ids" value="{{ test.id }}" class="delete-checkbox" aria-label="Select {{ test.test_name }}">
             <input type="hidden" name="test_ids" value="{{ test.id }}">
           </td>
-          <td>{{ test.test_name }}</td>
+          <td class="fw-medium">{{ test.test_name }}</td>
           <td>
-            <input type="number" step="any" name="value_{{ test.id }}" value="{{ test.value }}" class="form-control form-control-sm" style="width: 120px;" required>
+            <input type="number" step="any" name="value_{{ test.id }}" value="{{ test.value }}" class="form-control form-control-sm" style="width: 120px;" required />
           </td>
-          <td>{{ test.unit }}</td>
+          <td class="text-muted small">{{ test.unit }}</td>
           <td>
-            <input type="date" name="date_{{ test.id }}" value="{{ test.date|date:'Y-m-d' }}" class="form-control form-control-sm" style="width: 160px;" required>
+            <input type="date" name="date_{{ test.id }}" value="{{ test.date|date:'Y-m-d' }}" class="form-control form-control-sm" style="width: 160px;" required />
           </td>
-          <td>{{ test.category|default:"-" }}</td>
-          <td>
+          <td class="text-muted small">{{ test.category|default:"—" }}</td>
+          <td class="text-muted small">
             {% if test.normal_min is not None and test.normal_max is not None %}
-              {{ test.normal_min }} - {{ test.normal_max }}
+              {{ test.normal_min }}–{{ test.normal_max }}
             {% else %}
-              -
+              —
             {% endif %}
           </td>
         </tr>
@@ -51,10 +60,10 @@
   </div>
   <div class="d-flex gap-2">
     <button type="submit" class="btn btn-primary">
-      <i class="fas fa-save"></i> Save All Changes
+      <i class="fas fa-save me-1" aria-hidden="true"></i> Save Changes
     </button>
     <button type="button" class="btn btn-danger" id="delete-selected" onclick="document.getElementById('bulk-edit-form-action').value='delete'; this.closest('form').submit();">
-      <i class="fas fa-trash-alt"></i> Delete Selected
+      <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Delete Selected
     </button>
   </div>
 </form>
@@ -66,9 +75,14 @@
   });
 </script>
 {% else %}
-<div class="alert alert-info">
-  <p>No blood test records to edit.</p>
-  <a class="btn btn-primary" href="{% url 'add_test' %}">Add a new test</a>
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-vial"></i></div>
+  <div class="empty-state-title">No records to edit</div>
+  <div class="empty-state-description">Add blood test records to edit them here.</div>
+  <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
+    <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Blood Test
+  </a>
 </div>
 {% endif %}
+
 {% endblock %}

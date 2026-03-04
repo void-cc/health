@@ -1,38 +1,52 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-8">
-    <div class="card shadow-sm">
-      <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Import Data</h4>
-      </div>
-      <div class="card-body">
-        <p class="lead">Upload a CSV, JSON, PDF, or HL7 file containing your health data.</p>
 
-        <div class="alert alert-info">
-          <h5><i class="fas fa-info-circle"></i> Expected Format</h5>
-          <p class="mb-2">The CSV file must contain a header row. JSON files should contain a list of objects with the corresponding keys, or be a valid FHIR Bundle. HL7 files (.hl7) are automatically parsed for OBR and OBX segments.</p>
-          <p class="mb-2"><strong>Tip:</strong> The easiest way to get the correct format is to use the <a href="{% url 'export_data' %}">Export Data</a> feature, modify the resulting file, and import it back.</p>
-
-           <ul class="mb-0 small">
-               <li><code>Date</code> (YYYY-MM-DD)</li>
-               <li><code>Type</code> ('Blood Test' or 'Vitals')</li>
-               <li><code>Name</code> (Test name or 'Vital Signs')</li>
-               <li><code>Value</code> (Numeric for tests, or a comma-separated string for vitals e.g. "70.0 kg, 65 bpm, 120/80")</li>
-           </ul>
-        </div>
-
-        <form method="POST" enctype="multipart/form-data">
-          {% csrf_token %}
-          <div class="mb-3">
-            <label for="file" class="form-label">Select File (.csv, .json, .pdf, .hl7)</label>
-            <input class="form-control" type="file" id="file" name="file" accept=".csv,.json,.pdf,.hl7" required>
-          </div>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Import Data</button>
-        </form>
-      </div>
-    </div>
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Import Data</h1>
+    <p class="page-header-subtitle">Upload a file to import your health records</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'index' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Dashboard</span>
+    </a>
   </div>
 </div>
+
+<div class="form-card">
+  <div class="mb-5">
+    <p class="section-heading">Supported Formats</p>
+    <p class="text-muted small mb-3">Upload a CSV, JSON, PDF, or HL7 file containing your health data. The CSV file must contain a header row. JSON files should be a list of objects or a valid FHIR Bundle. HL7 files (.hl7) are parsed for OBR and OBX segments.</p>
+    <p class="text-muted small mb-3">
+      <i class="fas fa-lightbulb me-1 text-warning" aria-hidden="true"></i>
+      <strong>Tip:</strong> Use <a href="{% url 'export_data' %}">Export Data</a> to get a correctly formatted file, modify it, and import it back.
+    </p>
+    <ul class="list-unstyled small text-muted">
+      <li class="mb-1"><code>Date</code> — YYYY-MM-DD format</li>
+      <li class="mb-1"><code>Type</code> — 'Blood Test' or 'Vitals'</li>
+      <li class="mb-1"><code>Name</code> — Test name or 'Vital Signs'</li>
+      <li class="mb-1"><code>Value</code> — Numeric, or comma-separated string for vitals (e.g. "70.0 kg, 65 bpm, 120/80")</li>
+    </ul>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" class="validated-form">
+    {% csrf_token %}
+    <div class="form-group-row">
+      <label for="file" class="form-label">
+        File <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> required</span>
+      </label>
+      <input class="form-control" type="file" id="file" name="file" accept=".csv,.json,.pdf,.hl7" required />
+      <div class="form-text">Accepted formats: .csv, .json, .pdf, .hl7</div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-upload me-1" aria-hidden="true"></i> Import Data
+      </button>
+      <a href="{% url 'index' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
 {% endblock %}

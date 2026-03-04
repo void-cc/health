@@ -1,171 +1,174 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container my-4">
-  <h2 class="mb-4">Phase 11: Interoperability Dashboard (IHE_XDM, HL7, FHIR)</h2>
 
-  <!-- Summary Cards -->
-  <div class="row mb-4 g-3">
-    <div class="col-md-3 col-sm-6">
-      <div class="card h-100">
-        <div class="card-body text-center">
-          <div class="text-muted small text-uppercase mb-1">Total</div>
-          <p class="h3 mb-0">{{ total }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-      <div class="card h-100">
-        <div class="card-body text-center">
-          <div class="text-muted small text-uppercase mb-1"><i class="fas fa-check-circle text-success me-1"></i>Completed</div>
-          <p class="h3 mb-0">{{ completed }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-      <div class="card h-100">
-        <div class="card-body text-center">
-          <div class="text-muted small text-uppercase mb-1"><i class="fas fa-spinner text-warning me-1"></i>In Progress</div>
-          <p class="h3 mb-0">{{ in_progress }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-      <div class="card h-100">
-        <div class="card-body text-center">
-          <div class="text-muted small text-uppercase mb-1"><i class="fas fa-clock text-secondary me-1"></i>Pending</div>
-          <p class="h3 mb-0">{{ pending }}</p>
-        </div>
-      </div>
-    </div>
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Interoperability Dashboard</h1>
+    <p class="page-header-subtitle">IHE_XDM, HL7, and FHIR integration sub-tasks</p>
   </div>
+</div>
 
-  <!-- Category Summary -->
-  {% if category_summary %}
-  <div class="card mb-4">
-    <div class="card-header"><h5 class="mb-0">Progress by Category</h5></div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-sm table-hover align-middle">
-          <thead class="table-light">
-            <tr>
-              <th>Category</th>
-              <th>Total</th>
-              <th>Completed</th>
-              <th>In Progress</th>
-              <th>Pending</th>
-              <th>Progress</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for cat_label, stats in category_summary.items %}
-            <tr>
-              <td>{{ cat_label }}</td>
-              <td>{{ stats.total }}</td>
-              <td><span class="badge bg-success">{{ stats.completed }}</span></td>
-              <td><span class="badge bg-warning text-dark">{{ stats.in_progress }}</span></td>
-              <td><span class="badge bg-secondary">{{ stats.pending }}</span></td>
-              <td>
-                <div class="progress" style="min-width: 100px;">
-                  {% widthratio stats.completed stats.total 100 as pct %}
-                  <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio stats.completed stats.total 100 %}%">
-                    {% widthratio stats.completed stats.total 100 %}%
-                  </div>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+<!-- KPI Row -->
+<div class="kpi-grid mb-6">
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Total Tasks</span>
+      <span class="kpi-card-icon icon-primary"><i class="fas fa-tasks"></i></span>
     </div>
+    <div class="kpi-card-value">{{ total }}</div>
   </div>
-  {% endif %}
-
-  <!-- Filters -->
-  <div class="card mb-4">
-    <div class="card-header"><h5 class="mb-0">Filter Sub-tasks</h5></div>
-    <div class="card-body">
-      <form method="GET" class="row g-3">
-        <div class="col-md-4">
-          <label for="category" class="form-label">Category</label>
-          <select class="form-select" name="category" id="category">
-            <option value="">All Categories</option>
-            {% for value, label in categories %}
-            <option value="{{ value }}" {% if category_filter == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label for="feature_type" class="form-label">Feature Type</label>
-          <select class="form-select" name="feature_type" id="feature_type">
-            <option value="">All Feature Types</option>
-            {% for value, label in feature_types %}
-            <option value="{{ value }}" {% if feature_type_filter == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="status" class="form-label">Status</label>
-          <select class="form-select" name="status" id="status">
-            <option value="">All Statuses</option>
-            {% for value, label in status_choices %}
-            <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-1 d-flex align-items-end">
-          <button type="submit" class="btn btn-primary w-100">Filter</button>
-        </div>
-      </form>
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Completed</span>
+      <span class="kpi-card-icon icon-success"><i class="fas fa-check-circle"></i></span>
     </div>
+    <div class="kpi-card-value">{{ completed }}</div>
   </div>
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">In Progress</span>
+      <span class="kpi-card-icon icon-warning"><i class="fas fa-spinner"></i></span>
+    </div>
+    <div class="kpi-card-value">{{ in_progress }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Pending</span>
+      <span class="kpi-card-icon icon-primary"><i class="fas fa-clock"></i></span>
+    </div>
+    <div class="kpi-card-value">{{ pending }}</div>
+  </div>
+</div>
 
-  <!-- Sub-tasks Table -->
-  {% if subtasks %}
+<!-- Category Summary -->
+{% if category_summary %}
+<div class="card mb-5">
+  <div style="padding: var(--space-4); border-bottom: 1px solid var(--border-color);">
+    <h2 class="results-section-title">Progress by Category</h2>
+  </div>
   <div class="table-responsive">
-    <table class="table table-striped table-hover align-middle">
+    <table class="table table-hover align-middle mb-0">
       <thead>
         <tr>
-          <th>Sub-task #</th>
-          <th>Title</th>
           <th>Category</th>
-          <th>Feature Type</th>
-          <th>Status</th>
-          <th>Actions</th>
+          <th>Total</th>
+          <th>Completed</th>
+          <th>In Progress</th>
+          <th>Pending</th>
+          <th>Progress</th>
         </tr>
       </thead>
       <tbody>
-        {% for entry in subtasks %}
+        {% for cat_label, stats in category_summary.items %}
         <tr>
-          <td>{{ entry.sub_task_number }}</td>
-          <td>{{ entry.title }}</td>
-          <td>{{ entry.get_category_display }}</td>
-          <td>{{ entry.get_feature_type_display }}</td>
+          <td class="fw-medium">{{ cat_label }}</td>
+          <td>{{ stats.total }}</td>
+          <td><span class="status-badge badge-success">{{ stats.completed }}</span></td>
+          <td><span class="status-badge badge-warning">{{ stats.in_progress }}</span></td>
+          <td><span class="status-badge badge-neutral">{{ stats.pending }}</span></td>
           <td>
-            {% if entry.status == 'completed' %}
-            <span class="badge bg-success">Completed</span>
-            {% elif entry.status == 'in_progress' %}
-            <span class="badge bg-warning text-dark">In Progress</span>
-            {% elif entry.status == 'failed' %}
-            <span class="badge bg-danger">Failed</span>
-            {% else %}
-            <span class="badge bg-secondary">Pending</span>
-            {% endif %}
-          </td>
-          <td>
-            <a href="{% url 'integration_subtask_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
-              <i class="fas fa-edit"></i> Edit
-            </a>
+            <div class="progress" style="min-width: 120px; height: 6px; border-radius: 3px;">
+              <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio stats.completed stats.total 100 %}%"></div>
+            </div>
+            <small class="text-muted">{% widthratio stats.completed stats.total 100 %}%</small>
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  {% else %}
-  <div class="alert alert-info">
-    <p>No Phase 11 interoperability sub-tasks found{% if category_filter or feature_type_filter or status_filter %} matching the selected filters{% endif %}.</p>
-  </div>
-  {% endif %}
 </div>
+{% endif %}
+
+<!-- Filters -->
+<div class="card mb-5">
+  <div style="padding: var(--space-4); border-bottom: 1px solid var(--border-color);">
+    <h2 class="results-section-title">Filter Sub-tasks</h2>
+  </div>
+  <div style="padding: var(--space-4);">
+    <form method="GET" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label for="category" class="form-label">Category</label>
+        <select class="form-select" name="category" id="category">
+          <option value="">All Categories</option>
+          {% for value, label in categories %}
+          <option value="{{ value }}" {% if category_filter == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="feature_type" class="form-label">Feature Type</label>
+        <select class="form-select" name="feature_type" id="feature_type">
+          <option value="">All Feature Types</option>
+          {% for value, label in feature_types %}
+          <option value="{{ value }}" {% if feature_type_filter == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="status" class="form-label">Status</label>
+        <select class="form-select" name="status" id="status">
+          <option value="">All Statuses</option>
+          {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-1">
+        <button type="submit" class="toolbar-btn toolbar-btn-primary w-100">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Sub-tasks Table -->
+{% if subtasks %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Title</th>
+        <th>Category</th>
+        <th>Feature Type</th>
+        <th>Status</th>
+        <th style="width:56px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in subtasks %}
+      <tr>
+        <td class="text-muted small">{{ entry.sub_task_number }}</td>
+        <td class="fw-medium">{{ entry.title }}</td>
+        <td>{{ entry.get_category_display }}</td>
+        <td>{{ entry.get_feature_type_display }}</td>
+        <td>
+          {% if entry.status == 'completed' %}
+            <span class="status-badge badge-success">Completed</span>
+          {% elif entry.status == 'in_progress' %}
+            <span class="status-badge badge-warning">In Progress</span>
+          {% elif entry.status == 'failed' %}
+            <span class="status-badge badge-danger">Failed</span>
+          {% else %}
+            <span class="status-badge badge-neutral">Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'integration_subtask_edit' pk=entry.id %}" class="toolbar-btn" title="Edit">
+            <i class="fas fa-edit"></i>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-plug"></i></div>
+  <div class="empty-state-title">No sub-tasks found</div>
+  <div class="empty-state-description">No Phase 11 interoperability sub-tasks found{% if category_filter or feature_type_filter or status_filter %} matching the selected filters{% endif %}.</div>
+</div>
+{% endif %}
+
 {% endblock %}

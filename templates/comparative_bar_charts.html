@@ -1,91 +1,97 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Comparative Bar Charts</h2>
+
+<div class="page-header">
   <div>
-    <button class="btn btn-outline-dark me-2" onclick="exportChartsPDF()">
-      <i class="fas fa-file-pdf"></i> Export PDF
+    <h1 class="page-header-title">Compare to Normal Range</h1>
+    <p class="page-header-subtitle">Latest value vs. reference range for each marker</p>
+  </div>
+  <div class="page-header-actions">
+    <button class="toolbar-btn" onclick="exportChartsPDF()">
+      <i class="fas fa-download" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Export PDF</span>
     </button>
-    <a href="{% url 'index' %}" class="btn btn-secondary">Back to Dashboard</a>
+    <a href="{% url 'index' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Dashboard</span>
+    </a>
   </div>
 </div>
 
 {% if latest_tests %}
-  <div class="row">
+  <div id="charts-container" class="row g-4">
     {% for test_name, test in latest_tests.items %}
-    <div class="col-md-6 mb-5">
-      <h4>{{ test_name }} <small class="text-muted">({{ test.unit }})</small></h4>
-      <p class="text-muted mb-1">Normal Range: {{ test.normal_min }} - {{ test.normal_max }} {{ test.unit }}</p>
-      <p class="mb-1">Latest Value ({{ test.date|date:"Y-m-d" }}):
-        <strong class="{% if test.normal_min <= test.value and test.value <= test.normal_max %}text-success{% else %}text-danger{% endif %}">
-          {{ test.value }} {{ test.unit }}
-        </strong>
-      </p>
-      <div style="position: relative; height:30vh; width:100%">
-        <canvas id="chart-{{ forloop.counter }}"></canvas>
+    <div class="col-md-6">
+      <div class="card" style="padding: var(--space-4);">
+        <div class="mb-3">
+          <h2 class="results-section-title">
+            {{ test_name }}
+            <span class="text-muted fw-normal" style="font-size:0.875rem;">({{ test.unit }})</span>
+          </h2>
+          <div class="d-flex align-items-center gap-3 mt-1">
+            <span class="text-muted small">Range: {{ test.normal_min }}–{{ test.normal_max }} {{ test.unit }}</span>
+            <span class="text-muted small">{{ test.date|date:"M j, Y" }}</span>
+            {% if test.normal_min <= test.value and test.value <= test.normal_max %}
+              <span class="status-badge badge-success">Normal</span>
+            {% else %}
+              <span class="status-badge badge-danger">Out of Range</span>
+            {% endif %}
+          </div>
+        </div>
+        <div style="position: relative; height: 200px; width: 100%;">
+          <canvas id="chart-{{ forloop.counter }}"></canvas>
+        </div>
       </div>
     </div>
     {% endfor %}
   </div>
 {% else %}
-  <div class="alert alert-info">No valid blood tests recorded yet to compare.</div>
+  <div class="empty-state">
+    <div class="empty-state-icon"><i class="fas fa-chart-bar"></i></div>
+    <div class="empty-state-title">No data to compare</div>
+    <div class="empty-state-description">Add blood test results with reference ranges to compare them here.</div>
+    <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
+      <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Blood Test
+    </a>
+  </div>
 {% endif %}
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script>
   {% for test_name, test in latest_tests.items %}
-  var ctx_{{ forloop.counter }} = document.getElementById('chart-{{ forloop.counter }}').getContext('2d');
-
-  var isNormal = {{ test.value }} >= {{ test.normal_min }} && {{ test.value }} <= {{ test.normal_max }};
-  var valueColor = isNormal ? 'rgba(40, 167, 69, 0.8)' : 'rgba(220, 53, 69, 0.8)';
-  var valueBorderColor = isNormal ? 'rgba(40, 167, 69, 1)' : 'rgba(220, 53, 69, 1)';
-
-  new Chart(ctx_{{ forloop.counter }}, {
-    type: 'bar',
-    data: {
-      labels: ['Min Normal', 'Latest Value', 'Max Normal'],
-      datasets: [{
-        label: {{ test_name|tojson|safe }},
-        data: [{{ test.normal_min }}, {{ test.value }}, {{ test.normal_max }}],
-        backgroundColor: [
-          'rgba(108, 117, 125, 0.6)', // Min Normal
-          valueColor,                // Latest Value
-          'rgba(108, 117, 125, 0.6)'  // Max Normal
-        ],
-        borderColor: [
-          'rgba(108, 117, 125, 1)',
-          valueBorderColor,
-          'rgba(108, 117, 125, 1)'
-        ],
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        yAxes: [{
-          ticks: {
-            beginAtZero: true
-          }
+  (function() {
+    var ctx = document.getElementById('chart-{{ forloop.counter }}').getContext('2d');
+    var isNormal = {{ test.value }} >= {{ test.normal_min }} && {{ test.value }} <= {{ test.normal_max }};
+    var valueColor = isNormal ? 'rgba(22, 163, 74, 0.8)' : 'rgba(220, 38, 38, 0.8)';
+    var valueBorderColor = isNormal ? 'rgba(22, 163, 74, 1)' : 'rgba(220, 38, 38, 1)';
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Min Normal', 'Your Value', 'Max Normal'],
+        datasets: [{
+          label: {{ test_name|tojson|safe }},
+          data: [{{ test.normal_min }}, {{ test.value }}, {{ test.normal_max }}],
+          backgroundColor: ['rgba(156,163,175,0.5)', valueColor, 'rgba(156,163,175,0.5)'],
+          borderColor: ['rgba(156,163,175,1)', valueBorderColor, 'rgba(156,163,175,1)'],
+          borderWidth: 1
         }]
       },
-      legend: {
-        display: false
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { yAxes: [{ ticks: { beginAtZero: true } }] },
+        legend: { display: false }
       }
-    }
-  });
+    });
+  })();
   {% endfor %}
 </script>
 
-<!-- PDF Export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 function exportChartsPDF() {
-  var element = document.querySelector('.row');
+  var element = document.getElementById('charts-container');
   if (!element) return;
   html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
     var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
