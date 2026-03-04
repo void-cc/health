@@ -762,3 +762,54 @@
   text-align: center;
   margin-top: auto;
 }
+
+/* Section title heading inside dashboard */
+.results-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* KPI card value — smaller variant */
+.kpi-card-value-sm {
+  font-size: 1.25rem;
+}
+
+/* Danger text inline */
+.text-requires-attention {
+  color: var(--color-error);
+  font-size: 0.75rem;
+}
+
+/* Category count badge */
+.category-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Notes / annotations collapse panel */
+.notes-panel {
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+/* Result item value wrapper */
+.result-item-value-wrapper {
+  text-align: right;
+}
+
+/* Mini range bar inline width */
+.mini-range-bar-inline {
+  width: 160px;
+}
+
+/* Full-width centered link button */
+.toolbar-btn-full {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}

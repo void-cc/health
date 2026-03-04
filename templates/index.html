@@ -51,7 +51,7 @@
     <div class="kpi-card-value {% if out_of_range > 0 %}value-danger{% endif %}">{{ out_of_range }}</div>
     <div class="kpi-card-footer">
       {% if out_of_range > 0 %}
-        <span style="color:var(--color-error);">Requires attention</span>
+        <span class="text-requires-attention">Requires attention</span>
       {% else %}
         All values in range
       {% endif %}
@@ -64,7 +64,7 @@
       <span class="kpi-card-icon icon-primary"><i class="fas fa-heartbeat"></i></span>
     </div>
     {% if latest_vitals %}
-      <div class="kpi-card-value" style="font-size:1.25rem;">
+      <div class="kpi-card-value kpi-card-value-sm">
         {% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }} bpm{% else %}—{% endif %}
       </div>
       <div class="kpi-card-footer">
@@ -72,7 +72,7 @@
         <a href="{% url 'vitals' %}">View all vitals</a>
       </div>
     {% else %}
-      <div class="kpi-card-value" style="font-size:1.25rem;">—</div>
+      <div class="kpi-card-value kpi-card-value-sm">—</div>
       <div class="kpi-card-footer"><a href="{% url 'add_vitals' %}">Record vitals</a></div>
     {% endif %}
   </div>
@@ -85,7 +85,7 @@
   <!-- Left column: blood test results -->
   <div>
     <div class="d-flex align-items-center justify-content-between mb-4">
-      <h2 style="font-size:1rem; font-weight:700; color:var(--text-primary); margin:0;">Recent Blood Results</h2>
+      <h2 class="results-section-title">Recent Blood Results</h2>
       <div class="d-flex gap-2">
         <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn">
           <i class="fas fa-chart-bar"></i>
@@ -103,7 +103,7 @@
       <div class="category-section">
         <div class="category-section-header">
           <span class="category-section-title">{{ category }}</span>
-          <span class="text-muted" style="font-size:0.75rem;">{{ cat_tests|length }} result{{ cat_tests|length|pluralize }}</span>
+          <span class="category-count">{{ cat_tests|length }} result{{ cat_tests|length|pluralize }}</span>
         </div>
 
         <div class="result-list">
@@ -121,7 +121,7 @@
               <!-- Mini range bar -->
               {% with test_bar=bars|lookup:test.id %}
               {% if test_bar %}
-              <div class="mini-range-bar" style="margin-top:6px; width:160px;">
+              <div class="mini-range-bar mini-range-bar-inline mt-2">
                 <div class="mini-range-bar-fill zone-low" style="left:0; width:{{ test_bar.low_width }}%;"></div>
                 <div class="mini-range-bar-fill zone-normal" style="left:{{ test_bar.low_width }}%; width:{{ test_bar.normal_width }}%;"></div>
                 <div class="mini-range-bar-fill zone-high" style="left:calc({{ test_bar.low_width }}% + {{ test_bar.normal_width }}%); width:{{ test_bar.high_width }}%;"></div>
@@ -131,7 +131,7 @@
               {% endwith %}
             </div>
 
-            <div style="text-align:right;">
+            <div class="result-item-value-wrapper">
               <div class="result-item-value">
                 {{ test.value }}<span class="result-item-unit">{{ test.unit }}</span>
               </div>
@@ -175,7 +175,7 @@
 
           <!-- Notes / Annotations collapse -->
           <div class="collapse" id="notes{{ test.id }}">
-            <div style="padding: var(--space-3) var(--space-4); background:var(--bg-tertiary); border: 1px solid var(--border-color); border-top:none; border-radius: 0 0 var(--radius-md) var(--radius-md);">
+            <div class="notes-panel">
               {% for annotation in test.annotations.all %}
                 <div class="d-flex align-items-center justify-content-between py-1">
                   <small class="text-muted"><i class="fas fa-sticky-note me-1"></i>{{ annotation.note }}</small>
@@ -265,7 +265,7 @@
         <span class="vital-row-value">{% if latest_vitals.bbt %}{{ latest_vitals.bbt }}°C{% else %}—{% endif %}</span>
       </div>
       <div class="mt-3">
-        <a href="{% url 'vitals' %}" class="toolbar-btn w-100 justify-content-center" style="display:flex;">
+        <a href="{% url 'vitals' %}" class="toolbar-btn toolbar-btn-full">
           <i class="fas fa-list me-1"></i> View all vitals
         </a>
       </div>

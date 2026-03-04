@@ -36,7 +36,7 @@
     <tbody>
       {% for vital in vitals %}
       <tr>
-        <td><span style="font-weight:500;">{{ vital.date|date:"M j, Y" }}</span></td>
+        <td><span class="fw-medium">{{ vital.date|date:"M j, Y" }}</span></td>
         <td>{% if vital.weight is not None %}<span class="fw-medium">{{ vital.weight }}</span> <span class="text-muted">kg</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
         <td>{% if vital.heart_rate is not None %}<span class="fw-medium">{{ vital.heart_rate }}</span> <span class="text-muted">bpm</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
         <td>
