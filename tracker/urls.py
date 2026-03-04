@@ -344,4 +344,17 @@ urlpatterns = [
 
     # Interoperability Dashboard
     path('phase11/', views.phase11_dashboard, name='phase11_dashboard'),
+
+    # Notification System
+    path('notifications/preferences/', views.notification_preference_view, name='notification_preference'),
+    path('notifications/templates/', views.notification_template_list, name='notification_template_list'),
+    path('notifications/templates/add/', views.notification_template_add, name='notification_template_add'),
+    path('notifications/templates/edit/<int:pk>/', views.notification_template_edit, name='notification_template_edit'),
+    path('notifications/templates/delete/<int:pk>/', views.notification_template_delete, name='notification_template_delete'),
+    path('notifications/triggers/', views.notification_trigger_list, name='notification_trigger_list'),
+    path('notifications/triggers/add/', views.notification_trigger_add, name='notification_trigger_add'),
+    path('notifications/triggers/edit/<int:pk>/', views.notification_trigger_edit, name='notification_trigger_edit'),
+    path('notifications/triggers/delete/<int:pk>/', views.notification_trigger_delete, name='notification_trigger_delete'),
+    path('notifications/triggers/<int:pk>/channels/', views.notification_trigger_set_channels, name='notification_trigger_set_channels'),
+    path('notifications/logs/', views.notification_log_list, name='notification_log_list'),
 ]

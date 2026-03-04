@@ -5124,3 +5124,337 @@ class DashboardWidgetTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'No blood tests yet')
         self.assertContains(response, 'No vitals recorded')
+
+
+class NotificationSystemTests(TestCase):
+    """Tests for the notification system models, service, and views."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='notif_user', password='testpass123', email='notif@example.com'
+        )
+        self.client.login(username='notif_user', password='testpass123')
+
+    # ---- Model tests ----
+
+    def test_notification_preference_created_on_demand(self):
+        from tracker.models import NotificationPreference
+        pref, created = NotificationPreference.objects.get_or_create(user=self.user)
+        self.assertTrue(created)
+        self.assertTrue(pref.email_enabled)
+        self.assertFalse(pref.sms_enabled)
+        self.assertFalse(pref.push_enabled)
+
+    def test_notification_preference_str(self):
+        from tracker.models import NotificationPreference
+        pref = NotificationPreference.objects.create(user=self.user)
+        self.assertIn('notif_user', str(pref))
+
+    def test_is_channel_enabled(self):
+        from tracker.models import NotificationPreference
+        pref = NotificationPreference.objects.create(
+            user=self.user, email_enabled=True, sms_enabled=False, push_enabled=False
+        )
+        self.assertTrue(pref.is_channel_enabled('email'))
+        self.assertFalse(pref.is_channel_enabled('sms'))
+        self.assertFalse(pref.is_channel_enabled('push'))
+
+    def test_is_event_enabled_and_disabled(self):
+        from tracker.models import NotificationPreference
+        pref = NotificationPreference.objects.create(
+            user=self.user, disabled_events=['weekly_summary']
+        )
+        self.assertFalse(pref.is_event_enabled('weekly_summary'))
+        self.assertTrue(pref.is_event_enabled('critical_alert'))
+
+    def test_notification_template_render(self):
+        from tracker.models import NotificationTemplate
+        tmpl = NotificationTemplate.objects.create(
+            event_type='critical_alert',
+            channel='email',
+            subject='Alert: {{metric_name}}',
+            body='Value {{metric_value}} exceeded threshold.',
+        )
+        subject, body = tmpl.render({'metric_name': 'Glucose', 'metric_value': '200'})
+        self.assertEqual(subject, 'Alert: Glucose')
+        self.assertIn('200', body)
+
+    def test_notification_template_str(self):
+        from tracker.models import NotificationTemplate
+        tmpl = NotificationTemplate.objects.create(
+            event_type='critical_alert', channel='email', body='test'
+        )
+        self.assertIn('Critical Alert', str(tmpl))
+        self.assertIn('Email', str(tmpl))
+
+    def test_notification_template_unique_together(self):
+        from tracker.models import NotificationTemplate
+        from django.db import IntegrityError
+        NotificationTemplate.objects.create(
+            event_type='medication_due', channel='email', body='first'
+        )
+        with self.assertRaises(IntegrityError):
+            NotificationTemplate.objects.create(
+                event_type='medication_due', channel='email', body='second'
+            )
+
+    def test_notification_trigger_get_active_channels(self):
+        from tracker.models import NotificationTrigger
+        trigger = NotificationTrigger.objects.create(
+            name='Test Trigger',
+            event_type='critical_alert',
+            channels=['email', 'sms', 'invalid'],
+        )
+        active = trigger.get_active_channels()
+        self.assertIn('email', active)
+        self.assertIn('sms', active)
+        self.assertNotIn('invalid', active)
+
+    def test_notification_trigger_str(self):
+        from tracker.models import NotificationTrigger
+        trigger = NotificationTrigger.objects.create(
+            name='Daily Check', event_type='weekly_summary', channels=['email']
+        )
+        self.assertIn('Daily Check', str(trigger))
+
+    def test_notification_log_str(self):
+        from tracker.models import NotificationLog
+        log = NotificationLog.objects.create(
+            event_type='critical_alert', channel='email',
+            recipient='a@b.com', status='sent'
+        )
+        self.assertIn('email', str(log))
+        self.assertIn('sent', str(log))
+
+    # ---- Service tests ----
+
+    def test_send_notification_email_success(self):
+        from tracker.notifications import send_notification
+        from tracker.models import NotificationLog
+        from django.test import override_settings
+
+        with override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend'):
+            logs = send_notification(
+                event_type='critical_alert',
+                context={'subject': 'Test Alert', 'body': 'Body text'},
+                user=self.user,
+                channels=['email'],
+            )
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(logs[0].status, 'sent')
+        self.assertEqual(logs[0].channel, 'email')
+
+    def test_send_notification_respects_opt_out_channel(self):
+        from tracker.models import NotificationPreference
+        from tracker.notifications import send_notification
+
+        NotificationPreference.objects.create(
+            user=self.user, email_enabled=False
+        )
+        logs = send_notification(
+            event_type='critical_alert',
+            context={'body': 'test'},
+            user=self.user,
+            channels=['email'],
+        )
+        self.assertEqual(logs, [])
+
+    def test_send_notification_respects_opt_out_event(self):
+        from tracker.models import NotificationPreference
+        from tracker.notifications import send_notification
+
+        NotificationPreference.objects.create(
+            user=self.user, email_enabled=True,
+            disabled_events=['critical_alert']
+        )
+        logs = send_notification(
+            event_type='critical_alert',
+            context={'body': 'test'},
+            user=self.user,
+            channels=['email'],
+        )
+        self.assertEqual(logs, [])
+
+    def test_send_notification_uses_template(self):
+        from tracker.models import NotificationTemplate, NotificationLog
+        from tracker.notifications import send_notification
+        from django.test import override_settings
+
+        NotificationTemplate.objects.create(
+            event_type='critical_alert',
+            channel='email',
+            subject='Alert: {{metric_name}}',
+            body='Value exceeded.',
+        )
+        with override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend'):
+            logs = send_notification(
+                event_type='critical_alert',
+                context={'metric_name': 'BP'},
+                user=self.user,
+                channels=['email'],
+            )
+        self.assertEqual(logs[0].subject, 'Alert: BP')
+
+    def test_send_notification_failure_records_error(self):
+        from tracker.notifications import send_notification
+        from django.test import override_settings
+
+        with override_settings(EMAIL_BACKEND='django.core.mail.backends.dummy.EmailBackend'):
+            # Patch to force failure
+            import tracker.notifications as ns
+            original = ns._deliver_email
+            def _failing_email(log):
+                raise Exception("SMTP failure")
+            ns._deliver_email = _failing_email
+            ns._CHANNEL_BACKENDS['email'] = _failing_email
+            try:
+                logs = send_notification(
+                    event_type='critical_alert',
+                    context={'body': 'test'},
+                    user=self.user,
+                    channels=['email'],
+                )
+            finally:
+                ns._deliver_email = original
+                ns._CHANNEL_BACKENDS['email'] = original
+
+        self.assertEqual(logs[0].status, 'failed')
+        self.assertIn('SMTP failure', logs[0].error_message)
+
+    def test_send_notification_no_backend_for_channel(self):
+        from tracker.models import NotificationPreference
+        from tracker.notifications import send_notification, _CHANNEL_BACKENDS
+
+        # Enable push so preference check doesn't filter it out
+        NotificationPreference.objects.create(user=self.user, push_enabled=True)
+
+        # Use a channel that has no backend
+        original = _CHANNEL_BACKENDS.pop('push', None)
+        try:
+            logs = send_notification(
+                event_type='critical_alert',
+                context={'body': 'test'},
+                user=self.user,
+                channels=['push'],
+            )
+        finally:
+            if original is not None:
+                _CHANNEL_BACKENDS['push'] = original
+
+        self.assertEqual(logs[0].status, 'failed')
+        self.assertIn("No backend", logs[0].error_message)
+
+    # ---- View tests ----
+
+    def test_notification_preference_page_loads(self):
+        url = reverse('notification_preference')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Notification Preferences')
+
+    def test_notification_preference_save(self):
+        from tracker.models import NotificationPreference
+        url = reverse('notification_preference')
+        response = self.client.post(url, {
+            'email_enabled': 'on',
+            'disabled_events': ['weekly_summary'],
+        })
+        self.assertRedirects(response, url)
+        pref = NotificationPreference.objects.get(user=self.user)
+        self.assertTrue(pref.email_enabled)
+        self.assertFalse(pref.sms_enabled)
+        self.assertIn('weekly_summary', pref.disabled_events)
+
+    def test_notification_template_list_page(self):
+        response = self.client.get(reverse('notification_template_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Notification Templates')
+
+    def test_notification_template_add(self):
+        from tracker.models import NotificationTemplate
+        url = reverse('notification_template_add')
+        response = self.client.post(url, {
+            'event_type': 'critical_alert',
+            'channel': 'email',
+            'subject': 'Test Subject',
+            'body': 'Test body {{metric_name}}',
+            'is_active': 'on',
+        })
+        self.assertRedirects(response, reverse('notification_template_list'))
+        self.assertTrue(NotificationTemplate.objects.filter(event_type='critical_alert', channel='email').exists())
+
+    def test_notification_template_delete(self):
+        from tracker.models import NotificationTemplate
+        tmpl = NotificationTemplate.objects.create(
+            event_type='medication_due', channel='email', body='hello'
+        )
+        url = reverse('notification_template_delete', kwargs={'pk': tmpl.id})
+        response = self.client.post(url)
+        self.assertRedirects(response, reverse('notification_template_list'))
+        self.assertFalse(NotificationTemplate.objects.filter(id=tmpl.id).exists())
+
+    def test_notification_trigger_list_page(self):
+        response = self.client.get(reverse('notification_trigger_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Notification Triggers')
+
+    def test_notification_trigger_add(self):
+        from tracker.models import NotificationTrigger
+        url = reverse('notification_trigger_add')
+        response = self.client.post(url, {
+            'name': 'My Trigger',
+            'event_type': 'critical_alert',
+            'schedule': 'immediate',
+            'is_active': 'on',
+            'max_retries': '3',
+        })
+        self.assertRedirects(response, reverse('notification_trigger_list'))
+        self.assertTrue(NotificationTrigger.objects.filter(name='My Trigger').exists())
+
+    def test_notification_trigger_set_channels(self):
+        from tracker.models import NotificationTrigger
+        trigger = NotificationTrigger.objects.create(
+            name='Trigger', event_type='critical_alert', channels=[]
+        )
+        url = reverse('notification_trigger_set_channels', kwargs={'pk': trigger.id})
+        response = self.client.post(url, {'channels': ['email', 'sms']})
+        self.assertRedirects(response, reverse('notification_trigger_list'))
+        trigger.refresh_from_db()
+        self.assertIn('email', trigger.channels)
+        self.assertIn('sms', trigger.channels)
+
+    def test_notification_log_list_page(self):
+        response = self.client.get(reverse('notification_log_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Notification Log')
+
+    def test_notification_log_filter_by_status(self):
+        from tracker.models import NotificationLog
+        NotificationLog.objects.create(
+            event_type='critical_alert', channel='email',
+            recipient='a@b.com', status='sent'
+        )
+        NotificationLog.objects.create(
+            event_type='critical_alert', channel='email',
+            recipient='b@b.com', status='failed'
+        )
+        url = reverse('notification_log_list') + '?status=sent'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'a@b.com')
+        self.assertNotContains(response, 'b@b.com')
+
+    def test_notification_pages_require_login(self):
+        self.client.logout()
+        for url_name in [
+            'notification_preference',
+            'notification_template_list',
+            'notification_trigger_list',
+            'notification_log_list',
+        ]:
+            response = self.client.get(reverse(url_name))
+            self.assertEqual(response.status_code, 302,
+                             msg=f'{url_name} should redirect anonymous users')
+            self.assertIn('/accounts/login/', response.url,
+                          msg=f'{url_name} should redirect to login')

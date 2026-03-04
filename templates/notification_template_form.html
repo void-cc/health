@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Notification Template</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="event_type" class="form-label">Event Type</label>
+      <select class="form-select" name="event_type" id="event_type">
+        {% for value, label in fields.0.choices %}
+        <option value="{{ value }}" {% if editing and entry.event_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="channel" class="form-label">Channel</label>
+      <select class="form-select" name="channel" id="channel">
+        {% for value, label in fields.1.choices %}
+        <option value="{{ value }}" {% if editing and entry.channel == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="subject" class="form-label">Subject</label>
+      <input type="text" class="form-control" name="subject" id="subject"
+             value="{% if editing and entry.subject %}{{ entry.subject }}{% endif %}">
+      <div class="form-text">Use <code>{{variable}}</code> placeholders, e.g. <code>{{metric_name}}</code>.</div>
+    </div>
+    <div class="mb-3">
+      <label for="body" class="form-label">Body</label>
+      <textarea class="form-control" name="body" id="body" rows="6">{% if editing and entry.body %}{{ entry.body }}{% endif %}</textarea>
+      <div class="form-text">Supports the same <code>{{variable}}</code> placeholders in the body text.</div>
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" name="is_active" id="is_active"
+             {% if editing and entry.is_active %}checked{% elif not editing %}checked{% endif %}>
+      <label class="form-check-label" for="is_active">Active</label>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'notification_template_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

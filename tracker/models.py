@@ -1671,3 +1671,156 @@ class IntegrationSubTask(models.Model):
 
     def __str__(self):
         return f"Area {self.phase} Sub-task {self.sub_task_number}: {self.title}"
+
+
+# ===== Notification System =====
+
+NOTIFICATION_CHANNELS = [
+    ('email', 'Email'),
+    ('sms', 'SMS'),
+    ('push', 'Push Notification'),
+]
+
+NOTIFICATION_EVENT_TYPES = [
+    ('critical_alert', 'Critical Alert'),
+    ('blood_test_out_of_range', 'Blood Test Out of Range'),
+    ('medication_due', 'Medication Due'),
+    ('health_goal_achieved', 'Health Goal Achieved'),
+    ('weekly_summary', 'Weekly Summary'),
+    ('monthly_report', 'Monthly Report'),
+    ('data_export_ready', 'Data Export Ready'),
+    ('wearable_sync_failed', 'Wearable Sync Failed'),
+    ('custom', 'Custom'),
+]
+
+NOTIFICATION_STATUS_CHOICES = [
+    ('pending', 'Pending'),
+    ('sent', 'Sent'),
+    ('failed', 'Failed'),
+    ('retrying', 'Retrying'),
+]
+
+
+class NotificationPreference(models.Model):
+    """Per-user opt-in/out settings for each notification channel."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notification_preference',
+    )
+    email_enabled = models.BooleanField(default=True)
+    sms_enabled = models.BooleanField(default=False)
+    push_enabled = models.BooleanField(default=False)
+    # Granular event-level opt-outs stored as JSON list of disabled event types
+    disabled_events = models.JSONField(default=list, blank=True)
+    # Quiet-hours: no notifications between these times (UTC, HH:MM format)
+    quiet_hours_start = models.TimeField(null=True, blank=True)
+    quiet_hours_end = models.TimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def is_channel_enabled(self, channel):
+        """Return True if the given channel is opted in."""
+        if channel == 'email':
+            return self.email_enabled
+        if channel == 'sms':
+            return self.sms_enabled
+        if channel == 'push':
+            return self.push_enabled
+        return False
+
+    def is_event_enabled(self, event_type):
+        """Return True if the given event type has not been opted out."""
+        return event_type not in (self.disabled_events or [])
+
+    def __str__(self):
+        return f"Notification preferences for {self.user}"
+
+
+class NotificationTemplate(models.Model):
+    """Configurable message templates per event type and channel."""
+
+    event_type = models.CharField(max_length=50, choices=NOTIFICATION_EVENT_TYPES)
+    channel = models.CharField(max_length=20, choices=NOTIFICATION_CHANNELS)
+    subject = models.CharField(max_length=200, blank=True, default='')
+    body = models.TextField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['event_type', 'channel']
+
+    def render(self, context):
+        """Render subject and body by substituting context dict values."""
+        subject = self.subject
+        body = self.body
+        for key, value in context.items():
+            placeholder = f'{{{{{key}}}}}'
+            subject = subject.replace(placeholder, str(value))
+            body = body.replace(placeholder, str(value))
+        return subject, body
+
+    def __str__(self):
+        return f"{self.get_event_type_display()} via {self.get_channel_display()}"
+
+
+class NotificationTrigger(models.Model):
+    """Configurable triggers that map app events to notification dispatch."""
+
+    SCHEDULE_CHOICES = [
+        ('immediate', 'Immediate'),
+        ('daily_digest', 'Daily Digest'),
+        ('weekly_digest', 'Weekly Digest'),
+    ]
+
+    name = models.CharField(max_length=200)
+    event_type = models.CharField(max_length=50, choices=NOTIFICATION_EVENT_TYPES)
+    channels = models.JSONField(default=list, blank=True,
+                                help_text='List of enabled channels, e.g. ["email", "sms"]')
+    schedule = models.CharField(max_length=20, choices=SCHEDULE_CHOICES, default='immediate')
+    is_active = models.BooleanField(default=True)
+    # Optional threshold for numeric triggers (e.g. alert level)
+    threshold = models.FloatField(null=True, blank=True)
+    max_retries = models.IntegerField(default=3)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def get_active_channels(self):
+        """Return the list of channels configured for this trigger."""
+        return [c for c in (self.channels or []) if c in dict(NOTIFICATION_CHANNELS)]
+
+    def __str__(self):
+        return f"{self.name} ({self.get_event_type_display()})"
+
+
+class NotificationLog(models.Model):
+    """Audit log of every notification sent (or attempted)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='notification_logs',
+    )
+    trigger = models.ForeignKey(
+        NotificationTrigger,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='logs',
+    )
+    event_type = models.CharField(max_length=50, choices=NOTIFICATION_EVENT_TYPES)
+    channel = models.CharField(max_length=20, choices=NOTIFICATION_CHANNELS)
+    recipient = models.CharField(max_length=254, blank=True, default='')
+    subject = models.CharField(max_length=200, blank=True, default='')
+    body = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=20, choices=NOTIFICATION_STATUS_CHOICES, default='pending')
+    attempt_count = models.IntegerField(default=0)
+    error_message = models.TextField(blank=True, default='')
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_event_type_display()} → {self.channel} ({self.status})"
