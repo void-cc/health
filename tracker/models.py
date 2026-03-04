@@ -32,7 +32,7 @@ class VitalSign(models.Model):
     heart_rate = models.IntegerField(null=True, blank=True) # bpm
     systolic_bp = models.IntegerField(null=True, blank=True) # mmHg
     diastolic_bp = models.IntegerField(null=True, blank=True) # mmHg
-    # Phase 2 additions
+    # Additional fields
     bbt = models.FloatField(null=True, blank=True)  # Basal Body Temperature in °C
     spo2 = models.FloatField(null=True, blank=True)  # Blood Oxygen Saturation in %
     respiratory_rate = models.IntegerField(null=True, blank=True)  # breaths per minute
@@ -413,7 +413,7 @@ class PrivacyPreference(models.Model):
 
     def __str__(self):
         return f"Privacy preferences for {self.user.username}"
-# ===== Phase 5: Wearable Integrations =====
+# ===== Wearable Integrations =====
 
 WEARABLE_PLATFORMS = [
     ('apple_health', 'Apple Health'),
@@ -518,7 +518,7 @@ class WearableSyncLog(models.Model):
         return f"Sync {self.device.get_platform_display()} - {self.status} ({self.started_at})"
 
 
-# ===== Phase 6: Sleep and Nutrition Tracking =====
+# ===== Sleep and Nutrition Tracking =====
 
 class SleepLog(models.Model):
     IDEAL_DEEP_SLEEP_RATIO = 0.20  # Ideal deep sleep as fraction of total sleep
@@ -823,7 +823,7 @@ class CaffeineAlcoholLog(models.Model):
         return f"{self.get_substance_display()} on {self.date}"
 
 
-# ===== Phase 7: Multi-User Release Preparations =====
+# ===== Multi-User Release Preparations =====
 
 class FamilyAccount(models.Model):
     primary_user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='family_members')
@@ -949,7 +949,7 @@ class BackupConfiguration(models.Model):
         return f"Backup: {self.backup_name} ({self.get_frequency_display()})"
 
 
-# ===== Phase 8: Advanced Health Analytics and AI =====
+# ===== Advanced Health Analytics and AI =====
 
 class PredictiveBiomarker(models.Model):
     biomarker_name = models.CharField(max_length=100)
@@ -1460,7 +1460,7 @@ class CriticalAlert(models.Model):
         return f"Alert: {self.metric_name} ({self.alert_level})"
 
 
-# ===== Phase 9: Export, Sharing, and Practitioner Access =====
+# ===== Export, Sharing, and Practitioner Access =====
 
 class SecureViewingLink(models.Model):
     token = models.CharField(max_length=255, unique=True)
@@ -1556,7 +1556,7 @@ class StakeholderEmail(models.Model):
         return f"Email to {self.recipient_name} ({self.frequency})"
 
 
-# ===== Phases 10-12: Integration Sub-tasks =====
+# ===== Integration Sub-tasks =====
 
 INTEGRATION_CATEGORIES = [
     ('genomics', 'Genomics'),
@@ -1646,9 +1646,9 @@ class IntegrationSubTask(models.Model):
         ('failed', 'Failed'),
     ]
     PHASE_CHOICES = [
-        (10, 'Phase 10: Genomics & Personalized Medicine'),
-        (11, 'Phase 11: Interoperability'),
-        (12, 'Phase 12: Continuous Monitoring & Alerts'),
+        (10, 'Genomics & Personalized Medicine'),
+        (11, 'Interoperability'),
+        (12, 'Continuous Monitoring & Alerts'),
     ]
     phase = models.IntegerField(choices=PHASE_CHOICES)
     sub_task_number = models.IntegerField()
@@ -1665,8 +1665,7 @@ class IntegrationSubTask(models.Model):
         ordering = ['phase', 'sub_task_number']
 
     def __str__(self):
-        return f"Phase {self.phase} Sub-task {self.sub_task_number}: {self.title}"
-
+        return f"Area {self.phase} Sub-task {self.sub_task_number}: {self.title}"
 
 # ===== Phase 12: Continuous Monitoring & Alerts =====
 

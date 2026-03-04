@@ -9,29 +9,30 @@ from .models import (
     CustomVitalDefinition, CustomVitalEntry, PainLog,
     RestingMetabolicRate, OrthostaticReading, ReproductiveHealthLog,
     SymptomJournal, MetabolicLog, KetoneLog, BODY_REGIONS,
-    # Phase 5
+    # Wearable Integrations
     WearableDevice, WearableSyncLog, WEARABLE_PLATFORMS,
-    # Phase 6
+    # Sleep & Nutrition Tracking
     SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
-    # Phase 7
+    # Multi-User Release
     UserProfile, FamilyAccount, EncryptionKey, AuditLog,
     APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
     AnonymizedDataReport, DatabaseScalingConfig, BackupConfiguration,
-    # Phase 8
+    # Advanced Analytics & AI
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
     HealthGoal, CriticalAlert,
-    # Phase 9
+    # Export, Sharing & Practitioner Access
     SecureViewingLink, PractitionerAccess, IntakeSummary,
     DataExportRequest, StakeholderEmail,
-    # Phase 10-12
+    # Integration Sub-tasks
     IntegrationConfig, IntegrationSubTask,
     INTEGRATION_CATEGORIES, INTEGRATION_FEATURE_TYPES,
-    # Phase 12
+    # Continuous Monitoring & Alerts
     MonitoringRule, MonitoringEvent, AnomalyDetectionResult,
     DataPipelineConfig, PredictiveModel, SecureStorageVault,
 )
+from .generic_crud import make_crud_views
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -45,7 +46,8 @@ import io
 import json
 import re
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Q as models_Q
+from django.db.models import Q as models_Q, Avg, Sum, Count
+from django.core.paginator import Paginator
 
 @login_required
 def index(request):
@@ -885,12 +887,49 @@ def export_data(request):
     return response
 
 
-# ===== Phase 2: Body Composition =====
+# ===== Body Composition =====
 
 @login_required
 def body_composition_list(request):
     entries = BodyComposition.objects.all().order_by('-date')
-    return render(request, 'body_composition_list.html', {'entries': entries})
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_body_fat=Avg('body_fat_percentage'),
+        avg_muscle_mass=Avg('skeletal_muscle_mass'),
+        avg_whr=Avg('waist_to_hip_ratio'),
+        total_entries=Count('id'),
+    )
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_body_fat = [e.body_fat_percentage for e in chart_entries if e.body_fat_percentage is not None]
+    chart_muscle = [e.skeletal_muscle_mass for e in chart_entries if e.skeletal_muscle_mass is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_body_fat': json.dumps(chart_body_fat),
+        'chart_muscle': json.dumps(chart_muscle),
+    }
+    return render(request, 'body_composition_list.html', context)
 
 @login_required
 def body_composition_add(request):
@@ -946,12 +985,53 @@ def body_composition_delete(request, pk):
     return redirect('body_composition_list')
 
 
-# ===== Phase 2: Hydration Tracking =====
+# ===== Hydration Tracking =====
 
 @login_required
 def hydration_list(request):
     entries = HydrationLog.objects.all().order_by('-date')
-    return render(request, 'hydration_list.html', {'entries': entries})
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_intake=Avg('fluid_intake_ml'),
+        avg_goal=Avg('goal_ml'),
+        total_entries=Count('id'),
+    )
+    # Calculate average goal achievement percentage
+    all_entries_for_stats = list(entries)
+    goal_percentages = [e.goal_percentage for e in all_entries_for_stats if e.goal_percentage is not None]
+    stats['avg_goal_pct'] = round(sum(goal_percentages) / len(goal_percentages), 1) if goal_percentages else None
+    stats['days_goal_met'] = sum(1 for p in goal_percentages if p >= 100)
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_intake = [e.fluid_intake_ml for e in chart_entries]
+    chart_goal = [e.goal_ml for e in chart_entries if e.goal_ml is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_intake': json.dumps(chart_intake),
+        'chart_goal': json.dumps(chart_goal),
+    }
+    return render(request, 'hydration_list.html', context)
 
 @login_required
 def hydration_add(request):
@@ -1004,7 +1084,7 @@ def hydration_delete(request, pk):
     return redirect('hydration_list')
 
 
-# ===== Phase 2: Energy and Fatigue Scoring =====
+# ===== Energy and Fatigue Scoring =====
 
 @login_required
 def energy_list(request):
@@ -1056,7 +1136,7 @@ def energy_delete(request, pk):
     return redirect('energy_list')
 
 
-# ===== Phase 2: Custom Vital Signs =====
+# ===== Custom Vital Signs =====
 
 @login_required
 def custom_vitals_list(request):
@@ -1148,408 +1228,8 @@ def custom_vital_delete_entry(request, pk):
     return redirect('custom_vitals_list')
 
 
-# ===== Phase 2: Anatomical Pain Mapping =====
+# ===== Anatomical Pain Mapping =====
 
-@login_required
-def pain_list(request):
-    entries = PainLog.objects.all().order_by('-date')
-    return render(request, 'pain_list.html', {'entries': entries, 'body_regions': BODY_REGIONS})
-
-@login_required
-def pain_add(request):
-    if request.method == 'POST':
-        date_str = request.POST.get('date')
-        if not date_str:
-            messages.error(request, 'Please select a date.')
-            return redirect('pain_add')
-        date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        try:
-            PainLog.objects.create(
-                date=date,
-                body_region=request.POST.get('body_region'),
-                pain_level=int(request.POST.get('pain_level', 1)),
-                description=request.POST.get('description', ''),
-            )
-            messages.success(request, 'Pain log added!')
-            return redirect('pain_list')
-        except Exception:
-            messages.error(request, 'Error adding pain log.')
-            return redirect('pain_add')
-    return render(request, 'pain_form.html', {
-        'date': datetime.now().strftime('%Y-%m-%d'),
-        'body_regions': BODY_REGIONS,
-        'editing': False,
-    })
-
-@login_required
-def pain_edit(request, pk):
-    entry = get_object_or_404(PainLog, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.body_region = request.POST.get('body_region')
-            entry.pain_level = int(request.POST.get('pain_level', 1))
-            entry.description = request.POST.get('description', '')
-            entry.save()
-            messages.success(request, 'Pain log updated!')
-            return redirect('pain_list')
-        except Exception:
-            messages.error(request, 'Error updating pain log.')
-            return redirect('pain_edit', pk=pk)
-    return render(request, 'pain_form.html', {
-        'entry': entry,
-        'body_regions': BODY_REGIONS,
-        'editing': True,
-    })
-
-@login_required
-def pain_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(PainLog, id=pk).delete()
-        messages.success(request, 'Pain log deleted!')
-    return redirect('pain_list')
-
-
-# ===== Phase 2: Resting Metabolic Rate =====
-
-@login_required
-def rmr_list(request):
-    entries = RestingMetabolicRate.objects.all().order_by('-date')
-    return render(request, 'rmr_list.html', {'entries': entries})
-
-@login_required
-def rmr_add(request):
-    if request.method == 'POST':
-        date_str = request.POST.get('date')
-        if not date_str:
-            messages.error(request, 'Please select a date.')
-            return redirect('rmr_add')
-        date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        try:
-            RestingMetabolicRate.objects.create(
-                date=date,
-                age=int(request.POST.get('age', 0)),
-                weight_kg=float(request.POST.get('weight_kg', 0)),
-                height_cm=float(request.POST.get('height_cm', 0)),
-                gender=request.POST.get('gender', 'M'),
-                formula=request.POST.get('formula', 'mifflin'),
-            )
-            messages.success(request, 'RMR entry added!')
-            return redirect('rmr_list')
-        except Exception:
-            messages.error(request, 'Error adding RMR entry.')
-            return redirect('rmr_add')
-    return render(request, 'rmr_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
-
-@login_required
-def rmr_edit(request, pk):
-    entry = get_object_or_404(RestingMetabolicRate, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.age = int(request.POST.get('age', 0))
-            entry.weight_kg = float(request.POST.get('weight_kg', 0))
-            entry.height_cm = float(request.POST.get('height_cm', 0))
-            entry.gender = request.POST.get('gender', 'M')
-            entry.formula = request.POST.get('formula', 'mifflin')
-            entry.save()
-            messages.success(request, 'RMR entry updated!')
-            return redirect('rmr_list')
-        except Exception:
-            messages.error(request, 'Error updating RMR entry.')
-            return redirect('rmr_edit', pk=pk)
-    return render(request, 'rmr_form.html', {'entry': entry, 'editing': True})
-
-@login_required
-def rmr_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(RestingMetabolicRate, id=pk).delete()
-        messages.success(request, 'RMR entry deleted!')
-    return redirect('rmr_list')
-
-
-# ===== Phase 2: Orthostatic Tracking =====
-
-@login_required
-def orthostatic_list(request):
-    entries = OrthostaticReading.objects.all().order_by('-date')
-    return render(request, 'orthostatic_list.html', {'entries': entries})
-
-@login_required
-def orthostatic_add(request):
-    if request.method == 'POST':
-        date_str = request.POST.get('date')
-        if not date_str:
-            messages.error(request, 'Please select a date.')
-            return redirect('orthostatic_add')
-        date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        try:
-            OrthostaticReading.objects.create(
-                date=date,
-                supine_hr=int(request.POST.get('supine_hr')) if request.POST.get('supine_hr') else None,
-                standing_hr=int(request.POST.get('standing_hr')) if request.POST.get('standing_hr') else None,
-                supine_systolic=int(request.POST.get('supine_systolic')) if request.POST.get('supine_systolic') else None,
-                supine_diastolic=int(request.POST.get('supine_diastolic')) if request.POST.get('supine_diastolic') else None,
-                standing_systolic=int(request.POST.get('standing_systolic')) if request.POST.get('standing_systolic') else None,
-                standing_diastolic=int(request.POST.get('standing_diastolic')) if request.POST.get('standing_diastolic') else None,
-                notes=request.POST.get('notes', ''),
-            )
-            messages.success(request, 'Orthostatic reading added!')
-            return redirect('orthostatic_list')
-        except Exception:
-            messages.error(request, 'Error adding orthostatic reading.')
-            return redirect('orthostatic_add')
-    return render(request, 'orthostatic_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
-
-@login_required
-def orthostatic_edit(request, pk):
-    entry = get_object_or_404(OrthostaticReading, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.supine_hr = int(request.POST.get('supine_hr')) if request.POST.get('supine_hr') else None
-            entry.standing_hr = int(request.POST.get('standing_hr')) if request.POST.get('standing_hr') else None
-            entry.supine_systolic = int(request.POST.get('supine_systolic')) if request.POST.get('supine_systolic') else None
-            entry.supine_diastolic = int(request.POST.get('supine_diastolic')) if request.POST.get('supine_diastolic') else None
-            entry.standing_systolic = int(request.POST.get('standing_systolic')) if request.POST.get('standing_systolic') else None
-            entry.standing_diastolic = int(request.POST.get('standing_diastolic')) if request.POST.get('standing_diastolic') else None
-            entry.notes = request.POST.get('notes', '')
-            entry.save()
-            messages.success(request, 'Orthostatic reading updated!')
-            return redirect('orthostatic_list')
-        except Exception:
-            messages.error(request, 'Error updating orthostatic reading.')
-            return redirect('orthostatic_edit', pk=pk)
-    return render(request, 'orthostatic_form.html', {'entry': entry, 'editing': True})
-
-@login_required
-def orthostatic_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(OrthostaticReading, id=pk).delete()
-        messages.success(request, 'Orthostatic reading deleted!')
-    return redirect('orthostatic_list')
-
-
-# ===== Phase 2: Reproductive Health =====
-
-@login_required
-def reproductive_list(request):
-    entries = ReproductiveHealthLog.objects.all().order_by('-date')
-    return render(request, 'reproductive_list.html', {'entries': entries})
-
-@login_required
-def reproductive_add(request):
-    if request.method == 'POST':
-        date_str = request.POST.get('date')
-        if not date_str:
-            messages.error(request, 'Please select a date.')
-            return redirect('reproductive_add')
-        date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        try:
-            ReproductiveHealthLog.objects.create(
-                date=date,
-                cycle_day=int(request.POST.get('cycle_day')) if request.POST.get('cycle_day') else None,
-                phase=request.POST.get('phase', ''),
-                flow_intensity=int(request.POST.get('flow_intensity')) if request.POST.get('flow_intensity') else None,
-                notes=request.POST.get('notes', ''),
-            )
-            messages.success(request, 'Reproductive health entry added!')
-            return redirect('reproductive_list')
-        except Exception:
-            messages.error(request, 'Error adding entry.')
-            return redirect('reproductive_add')
-    return render(request, 'reproductive_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
-
-@login_required
-def reproductive_edit(request, pk):
-    entry = get_object_or_404(ReproductiveHealthLog, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.cycle_day = int(request.POST.get('cycle_day')) if request.POST.get('cycle_day') else None
-            entry.phase = request.POST.get('phase', '')
-            entry.flow_intensity = int(request.POST.get('flow_intensity')) if request.POST.get('flow_intensity') else None
-            entry.notes = request.POST.get('notes', '')
-            entry.save()
-            messages.success(request, 'Reproductive health entry updated!')
-            return redirect('reproductive_list')
-        except Exception:
-            messages.error(request, 'Error updating entry.')
-            return redirect('reproductive_edit', pk=pk)
-    return render(request, 'reproductive_form.html', {'entry': entry, 'editing': True})
-
-@login_required
-def reproductive_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(ReproductiveHealthLog, id=pk).delete()
-        messages.success(request, 'Reproductive health entry deleted!')
-    return redirect('reproductive_list')
-
-
-# ===== Phase 2: Symptom Journaling =====
-
-@login_required
-def symptom_list(request):
-    entries = SymptomJournal.objects.all().order_by('-date')
-    return render(request, 'symptom_list.html', {'entries': entries})
-
-@login_required
-def symptom_add(request):
-    if request.method == 'POST':
-        date_str = request.POST.get('date')
-        symptom = request.POST.get('symptom')
-        if not date_str or not symptom:
-            messages.error(request, 'Date and symptom are required.')
-            return redirect('symptom_add')
-        date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        try:
-            SymptomJournal.objects.create(
-                date=date,
-                symptom=symptom,
-                severity=int(request.POST.get('severity', 1)),
-                duration=request.POST.get('duration', ''),
-                notes=request.POST.get('notes', ''),
-            )
-            messages.success(request, 'Symptom journal entry added!')
-            return redirect('symptom_list')
-        except Exception:
-            messages.error(request, 'Error adding symptom entry.')
-            return redirect('symptom_add')
-    return render(request, 'symptom_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
-
-@login_required
-def symptom_edit(request, pk):
-    entry = get_object_or_404(SymptomJournal, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.symptom = request.POST.get('symptom', '')
-            entry.severity = int(request.POST.get('severity', 1))
-            entry.duration = request.POST.get('duration', '')
-            entry.notes = request.POST.get('notes', '')
-            entry.save()
-            messages.success(request, 'Symptom journal entry updated!')
-            return redirect('symptom_list')
-        except Exception:
-            messages.error(request, 'Error updating symptom entry.')
-            return redirect('symptom_edit', pk=pk)
-    return render(request, 'symptom_form.html', {'entry': entry, 'editing': True})
-
-@login_required
-def symptom_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(SymptomJournal, id=pk).delete()
-        messages.success(request, 'Symptom journal entry deleted!')
-    return redirect('symptom_list')
-
-
-# ===== Phase 2: Metabolic Monitoring =====
-
-@login_required
-def metabolic_list(request):
-    entries = MetabolicLog.objects.all().order_by('-date')
-    return render(request, 'metabolic_list.html', {'entries': entries})
-
-@login_required
-def metabolic_add(request):
-    if request.method == 'POST':
-        date_str = request.POST.get('date')
-        if not date_str:
-            messages.error(request, 'Please select a date.')
-            return redirect('metabolic_add')
-        date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        try:
-            MetabolicLog.objects.create(
-                date=date,
-                blood_glucose=float(request.POST.get('blood_glucose')) if request.POST.get('blood_glucose') else None,
-                insulin_level=float(request.POST.get('insulin_level')) if request.POST.get('insulin_level') else None,
-                notes=request.POST.get('notes', ''),
-            )
-            messages.success(request, 'Metabolic log added!')
-            return redirect('metabolic_list')
-        except Exception:
-            messages.error(request, 'Error adding metabolic log.')
-            return redirect('metabolic_add')
-    return render(request, 'metabolic_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
-
-@login_required
-def metabolic_edit(request, pk):
-    entry = get_object_or_404(MetabolicLog, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.blood_glucose = float(request.POST.get('blood_glucose')) if request.POST.get('blood_glucose') else None
-            entry.insulin_level = float(request.POST.get('insulin_level')) if request.POST.get('insulin_level') else None
-            entry.notes = request.POST.get('notes', '')
-            entry.save()
-            messages.success(request, 'Metabolic log updated!')
-            return redirect('metabolic_list')
-        except Exception:
-            messages.error(request, 'Error updating metabolic log.')
-            return redirect('metabolic_edit', pk=pk)
-    return render(request, 'metabolic_form.html', {'entry': entry, 'editing': True})
-
-@login_required
-def metabolic_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(MetabolicLog, id=pk).delete()
-        messages.success(request, 'Metabolic log deleted!')
-    return redirect('metabolic_list')
-
-
-# ===== Phase 2: Ketone Level Tracking =====
-
-@login_required
-def ketone_list(request):
-    entries = KetoneLog.objects.all().order_by('-date')
-    return render(request, 'ketone_list.html', {'entries': entries})
-
-@login_required
-def ketone_add(request):
-    if request.method == 'POST':
-        date_str = request.POST.get('date')
-        if not date_str:
-            messages.error(request, 'Please select a date.')
-            return redirect('ketone_add')
-        date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        try:
-            KetoneLog.objects.create(
-                date=date,
-                value=float(request.POST.get('value', 0)),
-                measurement_type=request.POST.get('measurement_type', 'blood'),
-                notes=request.POST.get('notes', ''),
-            )
-            messages.success(request, 'Ketone log added!')
-            return redirect('ketone_list')
-        except Exception:
-            messages.error(request, 'Error adding ketone log.')
-            return redirect('ketone_add')
-    return render(request, 'ketone_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
-
-@login_required
-def ketone_edit(request, pk):
-    entry = get_object_or_404(KetoneLog, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            entry.value = float(request.POST.get('value', 0))
-            entry.measurement_type = request.POST.get('measurement_type', 'blood')
-            entry.notes = request.POST.get('notes', '')
-            entry.save()
-            messages.success(request, 'Ketone log updated!')
-            return redirect('ketone_list')
-        except Exception:
-            messages.error(request, 'Error updating ketone log.')
-            return redirect('ketone_edit', pk=pk)
-    return render(request, 'ketone_form.html', {'entry': entry, 'editing': True})
-
-@login_required
-def ketone_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(KetoneLog, id=pk).delete()
-        messages.success(request, 'Ketone log deleted!')
-    return redirect('ketone_list')
-# --- Data Point Annotation views ---
 
 def _safe_redirect(request, default='index'):
     next_url = request.POST.get('next', '')
@@ -1689,7 +1369,7 @@ def update_widgets(request):
 
 @login_required
 def global_search(request):
-    """Phase 3: Global search API endpoint for finding tests, vitals, and journal entries."""
+    """Global search API endpoint for finding tests, vitals, and journal entries."""
     q = request.GET.get('q', '').strip()
     if not q or len(q) < 2:
         return JsonResponse({'results': []})
@@ -1759,8 +1439,7 @@ def global_search(request):
     return JsonResponse({'results': results})
 
 
-
-# ===== Phase 5: Wearable Integrations =====
+# ===== Wearable Integrations =====
 
 def wearable_device_list(request):
     entries = WearableDevice.objects.all().order_by('-created_at')
@@ -1954,12 +1633,50 @@ def wearable_sync(request, pk):
     return redirect('wearable_device_list')
 
 
-# ===== Phase 6: Sleep & Circadian =====
+# ===== Sleep & Circadian =====
 
 @login_required
 def sleep_list(request):
     entries = SleepLog.objects.all().order_by('-date')
-    return render(request, 'sleep_list.html', {'entries': entries})
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_total_sleep=Avg('total_sleep_minutes'),
+        avg_quality=Avg('sleep_quality_score'),
+        avg_rem=Avg('rem_minutes'),
+        avg_deep=Avg('deep_sleep_minutes'),
+        total_entries=Count('id'),
+    )
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_quality = [e.sleep_quality_score for e in chart_entries if e.sleep_quality_score is not None]
+    chart_total = [e.total_sleep_minutes for e in chart_entries if e.total_sleep_minutes is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_quality': json.dumps(chart_quality),
+        'chart_total': json.dumps(chart_total),
+    }
+    return render(request, 'sleep_list.html', context)
 
 @login_required
 def sleep_add(request):
@@ -2034,7 +1751,7 @@ def sleep_delete(request, pk):
     return redirect('sleep_list')
 
 
-# ===== Phase 6: Circadian Rhythm =====
+# ===== Circadian Rhythm =====
 
 @login_required
 def circadian_list(request):
@@ -2096,7 +1813,7 @@ def circadian_delete(request, pk):
     return redirect('circadian_list')
 
 
-# ===== Phase 6: Dream Journal =====
+# ===== Dream Journal =====
 
 @login_required
 def dream_list(request):
@@ -2154,12 +1871,55 @@ def dream_delete(request, pk):
     return redirect('dream_list')
 
 
-# ===== Phase 6: Macronutrient Log =====
+# ===== Macronutrient Log =====
 
 @login_required
 def macro_list(request):
     entries = MacronutrientLog.objects.all().order_by('-date')
-    return render(request, 'macro_list.html', {'entries': entries})
+
+    # Date range filtering
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    if start_date:
+        entries = entries.filter(date__gte=start_date)
+    if end_date:
+        entries = entries.filter(date__lte=end_date)
+
+    # Summary statistics
+    stats = entries.aggregate(
+        avg_protein=Avg('protein_grams'),
+        avg_carbs=Avg('carbohydrate_grams'),
+        avg_fat=Avg('fat_grams'),
+        avg_calories=Avg('calories'),
+        avg_fiber=Avg('fiber_grams'),
+        total_entries=Count('id'),
+    )
+
+    # Chart data (last 30 entries, chronological)
+    chart_entries = entries.order_by('date')[:30]
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_protein = [e.protein_grams for e in chart_entries if e.protein_grams is not None]
+    chart_carbs = [e.carbohydrate_grams for e in chart_entries if e.carbohydrate_grams is not None]
+    chart_fat = [e.fat_grams for e in chart_entries if e.fat_grams is not None]
+    chart_calories = [e.calories for e in chart_entries if e.calories is not None]
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'chart_dates': json.dumps(chart_dates),
+        'chart_protein': json.dumps(chart_protein),
+        'chart_carbs': json.dumps(chart_carbs),
+        'chart_fat': json.dumps(chart_fat),
+        'chart_calories': json.dumps(chart_calories),
+    }
+    return render(request, 'macro_list.html', context)
 
 @login_required
 def macro_add(request):
@@ -2224,7 +1984,7 @@ def macro_delete(request, pk):
     return redirect('macro_list')
 
 
-# ===== Phase 6: Micronutrient Log =====
+# ===== Micronutrient Log =====
 
 @login_required
 def micro_list(request):
@@ -2284,7 +2044,7 @@ def micro_delete(request, pk):
     return redirect('micro_list')
 
 
-# ===== Phase 6: Food Entry =====
+# ===== Food Entry =====
 
 @login_required
 def food_list(request):
@@ -2360,7 +2120,7 @@ def food_delete(request, pk):
     return redirect('food_list')
 
 
-# ===== Phase 6: Fasting Log =====
+# ===== Fasting Log =====
 
 @login_required
 def fasting_list(request):
@@ -2422,7 +2182,7 @@ def fasting_delete(request, pk):
     return redirect('fasting_list')
 
 
-# ===== Phase 6: Caffeine & Alcohol Log =====
+# ===== Caffeine & Alcohol Log =====
 
 @login_required
 def caffeine_alcohol_list(request):
@@ -2482,7 +2242,7 @@ def caffeine_alcohol_delete(request, pk):
     return redirect('caffeine_alcohol_list')
 
 
-# ===== Phase 7: User Profile =====
+# ===== User Profile =====
 
 def user_profile_list(request):
     entries = UserProfile.objects.select_related('user').all().order_by('-created_at')
@@ -2530,7 +2290,7 @@ def user_profile_delete(request, pk):
     return redirect('user_profile_list')
 
 
-# ===== Phase 7: Family Account =====
+# ===== Family Account =====
 
 def family_account_list(request):
     entries = FamilyAccount.objects.all().order_by('-created_at')
@@ -2575,7 +2335,7 @@ def family_account_delete(request, pk):
     return redirect('family_account_list')
 
 
-# ===== Phase 7: Consent Log =====
+# ===== Consent Log =====
 
 def consent_log_list(request):
     entries = ConsentLog.objects.all().order_by('-accepted_at')
@@ -2620,7 +2380,7 @@ def consent_log_delete(request, pk):
     return redirect('consent_log_list')
 
 
-# ===== Phase 7: Tenant Config =====
+# ===== Tenant Config =====
 
 def tenant_config_list(request):
     entries = TenantConfig.objects.all().order_by('-created_at')
@@ -2663,7 +2423,7 @@ def tenant_config_delete(request, pk):
     return redirect('tenant_config_list')
 
 
-# ===== Phase 7: Admin Telemetry =====
+# ===== Admin Telemetry =====
 
 def admin_telemetry_list(request):
     entries = AdminTelemetry.objects.all().order_by('-recorded_at')
@@ -2706,7 +2466,7 @@ def admin_telemetry_delete(request, pk):
     return redirect('admin_telemetry_list')
 
 
-# ===== Phase 7: API Rate Limit Config =====
+# ===== API Rate Limit Config =====
 
 def api_rate_limit_list(request):
     entries = APIRateLimitConfig.objects.all().order_by('endpoint')
@@ -2755,7 +2515,7 @@ def api_rate_limit_delete(request, pk):
     return redirect('api_rate_limit_list')
 
 
-# ===== Phase 7: Encryption Keys =====
+# ===== Encryption Keys =====
 
 def encryption_key_list(request):
     entries = EncryptionKey.objects.all().order_by('-created_at')
@@ -2798,7 +2558,7 @@ def encryption_key_delete(request, pk):
     return redirect('encryption_key_list')
 
 
-# ===== Phase 7: Audit Logs =====
+# ===== Audit Logs =====
 
 def audit_log_list(request):
     entries = AuditLog.objects.all().order_by('-created_at')
@@ -2841,7 +2601,7 @@ def audit_log_delete(request, pk):
     return redirect('audit_log_list')
 
 
-# ===== Phase 7: Anonymized Data Reports =====
+# ===== Anonymized Data Reports =====
 
 def anonymized_data_list(request):
     entries = AnonymizedDataReport.objects.all().order_by('-generated_at')
@@ -2890,7 +2650,7 @@ def anonymized_data_delete(request, pk):
     return redirect('anonymized_data_list')
 
 
-# ===== Phase 7: Database Scaling Config =====
+# ===== Database Scaling Config =====
 
 def database_scaling_list(request):
     entries = DatabaseScalingConfig.objects.all().order_by('-created_at')
@@ -2939,7 +2699,7 @@ def database_scaling_delete(request, pk):
     return redirect('database_scaling_list')
 
 
-# ===== Phase 7: Backup Configuration =====
+# ===== Backup Configuration =====
 
 def backup_config_list(request):
     entries = BackupConfiguration.objects.all().order_by('-created_at')
@@ -2988,12 +2748,43 @@ def backup_config_delete(request, pk):
     return redirect('backup_config_list')
 
 
-# ===== Phase 8: Medication Schedule =====
+# ===== Medication Schedule =====
 
 def medication_schedule_list(request):
     entries = MedicationSchedule.objects.all().order_by('-start_date')
+
+    # Search by medication name
+    search_query = request.GET.get('q', '')
+    if search_query:
+        entries = entries.filter(medication_name__icontains=search_query)
+
+    # Filter by active status
+    status_filter = request.GET.get('status', '')
+    if status_filter == 'active':
+        entries = entries.filter(is_active=True)
+    elif status_filter == 'inactive':
+        entries = entries.filter(is_active=False)
+
     overdue_count = sum(1 for e in entries if e.is_overdue)
-    return render(request, 'medication_schedule_list.html', {'entries': entries, 'overdue_count': overdue_count})
+
+    # Summary statistics
+    total_active = entries.filter(is_active=True).count()
+    total_count = entries.count()
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'overdue_count': overdue_count,
+        'total_active': total_active,
+        'total_count': total_count,
+        'search_query': search_query,
+        'status_filter': status_filter,
+    }
+    return render(request, 'medication_schedule_list.html', context)
 
 def medication_schedule_add(request):
     if request.method == 'POST':
@@ -3046,11 +2837,43 @@ def medication_schedule_delete(request, pk):
     return redirect('medication_schedule_list')
 
 
-# ===== Phase 8: Health Goal =====
+# ===== Health Goal =====
 
 def health_goal_list(request):
     entries = HealthGoal.objects.all().order_by('-created_at')
-    return render(request, 'health_goal_list.html', {'entries': entries})
+
+    # Filter by status
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        entries = entries.filter(status=status_filter)
+
+    # Search by title
+    search_query = request.GET.get('q', '')
+    if search_query:
+        entries = entries.filter(title__icontains=search_query)
+
+    # Summary statistics
+    all_goals = HealthGoal.objects.all()
+    stats = {
+        'total': all_goals.count(),
+        'completed': all_goals.filter(status='completed').count(),
+        'in_progress': all_goals.filter(status='active').count(),
+        'paused': all_goals.filter(status='paused').count(),
+    }
+    stats['completion_rate'] = round((stats['completed'] / stats['total']) * 100, 1) if stats['total'] > 0 else 0
+
+    # Pagination
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'status_filter': status_filter,
+        'search_query': search_query,
+    }
+    return render(request, 'health_goal_list.html', context)
 
 def health_goal_add(request):
     if request.method == 'POST':
@@ -3102,62 +2925,41 @@ def health_goal_edit(request, pk):
 
 def health_goal_delete(request, pk):
     if request.method == 'POST':
-        get_object_or_404(HealthGoal, id=pk).delete()
-        messages.success(request, 'Health goal deleted!')
-    return redirect('health_goal_list')
+        device = get_object_or_404(WearableDevice, id=pk)
+        device.access_token = ''
+        device.refresh_token = ''
+        device.token_expires_at = None
+        device.scope = ''
+        device.save(update_fields=['access_token', 'refresh_token', 'token_expires_at', 'scope'])
+        messages.success(request, f'{device.get_platform_display()} disconnected.')
+    return redirect('wearable_device_list')
 
 
-# ===== Phase 8: Critical Alert =====
-
-def critical_alert_list(request):
-    entries = CriticalAlert.objects.all().order_by('-triggered_at')
-    return render(request, 'critical_alert_list.html', {'entries': entries})
-
-def critical_alert_add(request):
+@login_required
+def wearable_sync(request, pk):
+    """Trigger a data sync for a wearable device."""
     if request.method == 'POST':
-        try:
-            metric_value = request.POST.get('metric_value', '').strip()
-            threshold = request.POST.get('threshold_value', '').strip()
-            CriticalAlert.objects.create(
-                metric_name=request.POST.get('metric_name', ''),
-                metric_value=float(metric_value) if metric_value else None,
-                threshold_value=float(threshold) if threshold else None,
-                alert_level=request.POST.get('alert_level', ''),
-                message=request.POST.get('message', ''),
-                acknowledged=request.POST.get('acknowledged') == 'on',
-            )
-            messages.success(request, 'Critical alert added!')
-            return redirect('critical_alert_list')
-        except Exception:
-            messages.error(request, 'Error adding critical alert.')
-            return redirect('critical_alert_add')
-    return render(request, 'critical_alert_form.html', {'editing': False})
+        device = get_object_or_404(WearableDevice, id=pk)
+        if not device.access_token:
+            messages.error(request, f'{device.get_platform_display()} is not connected. Please connect first.')
+            return redirect('wearable_device_list')
 
-def critical_alert_edit(request, pk):
-    entry = get_object_or_404(CriticalAlert, id=pk)
-    if request.method == 'POST':
-        try:
-            metric_value = request.POST.get('metric_value', '').strip()
-            threshold = request.POST.get('threshold_value', '').strip()
-            entry.metric_name = request.POST.get('metric_name', '')
-            entry.metric_value = float(metric_value) if metric_value else None
-            entry.threshold_value = float(threshold) if threshold else None
-            entry.alert_level = request.POST.get('alert_level', '')
-            entry.message = request.POST.get('message', '')
-            entry.acknowledged = request.POST.get('acknowledged') == 'on'
-            entry.save()
-            messages.success(request, 'Critical alert updated!')
-            return redirect('critical_alert_list')
-        except Exception:
-            messages.error(request, 'Error updating critical alert.')
-            return redirect('critical_alert_edit', pk=pk)
-    return render(request, 'critical_alert_form.html', {'entry': entry, 'editing': True})
+        from tracker.integrations.registry import get_client
+        client = get_client(device.platform)
+        if not client:
+            messages.error(request, f'No integration client for {device.get_platform_display()}.')
+            return redirect('wearable_device_list')
 
-def critical_alert_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(CriticalAlert, id=pk).delete()
-        messages.success(request, 'Critical alert deleted!')
-    return redirect('critical_alert_list')
+        sync_log = client.sync_data(device)
+        if sync_log.status == 'success':
+            messages.success(request, f'Synced {sync_log.records_synced} records from {device.get_platform_display()}.')
+        else:
+            messages.error(request, f'Sync failed: {sync_log.error_message}')
+    return redirect('wearable_device_list')
+
+
+# ===== Sleep & Circadian =====
+
 
 def critical_alert_auto_check(request):
     if request.method == 'POST':
@@ -3169,55 +2971,8 @@ def critical_alert_auto_check(request):
     return redirect('critical_alert_list')
 
 
-# ===== Phase 8: Health Report =====
+# ===== Health Report =====
 
-def health_report_list(request):
-    entries = HealthReport.objects.all().order_by('-generated_at')
-    return render(request, 'health_report_list.html', {'entries': entries})
-
-def health_report_add(request):
-    if request.method == 'POST':
-        try:
-            period_start_str = request.POST.get('period_start', '').strip()
-            period_end_str = request.POST.get('period_end', '').strip()
-            HealthReport.objects.create(
-                report_type=request.POST.get('report_type', ''),
-                title=request.POST.get('title', ''),
-                content=request.POST.get('content', ''),
-                period_start=datetime.strptime(period_start_str, '%Y-%m-%d').date() if period_start_str else None,
-                period_end=datetime.strptime(period_end_str, '%Y-%m-%d').date() if period_end_str else None,
-            )
-            messages.success(request, 'Health report added!')
-            return redirect('health_report_list')
-        except Exception:
-            messages.error(request, 'Error adding health report.')
-            return redirect('health_report_add')
-    return render(request, 'health_report_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
-
-def health_report_edit(request, pk):
-    entry = get_object_or_404(HealthReport, id=pk)
-    if request.method == 'POST':
-        try:
-            period_start_str = request.POST.get('period_start', '').strip()
-            period_end_str = request.POST.get('period_end', '').strip()
-            entry.report_type = request.POST.get('report_type', '')
-            entry.title = request.POST.get('title', '')
-            entry.content = request.POST.get('content', '')
-            entry.period_start = datetime.strptime(period_start_str, '%Y-%m-%d').date() if period_start_str else None
-            entry.period_end = datetime.strptime(period_end_str, '%Y-%m-%d').date() if period_end_str else None
-            entry.save()
-            messages.success(request, 'Health report updated!')
-            return redirect('health_report_list')
-        except Exception:
-            messages.error(request, 'Error updating health report.')
-            return redirect('health_report_edit', pk=pk)
-    return render(request, 'health_report_form.html', {'entry': entry, 'editing': True})
-
-def health_report_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(HealthReport, id=pk).delete()
-        messages.success(request, 'Health report deleted!')
-    return redirect('health_report_list')
 
 def health_report_generate(request):
     if request.method == 'POST':
@@ -3234,60 +2989,8 @@ def health_report_generate(request):
     return redirect('health_report_list')
 
 
-# ===== Phase 8: Biological Age Calculation =====
+# ===== Biological Age Calculation =====
 
-def biological_age_list(request):
-    entries = BiologicalAgeCalculation.objects.all().order_by('-date')
-    return render(request, 'biological_age_list.html', {'entries': entries})
-
-def biological_age_add(request):
-    if request.method == 'POST':
-        date_str = request.POST.get('date')
-        if not date_str:
-            messages.error(request, 'Please select a date.')
-            return redirect('biological_age_add')
-        date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        try:
-            chrono = request.POST.get('chronological_age', '').strip()
-            bio = request.POST.get('biological_age', '').strip()
-            BiologicalAgeCalculation.objects.create(
-                date=date,
-                chronological_age=float(chrono) if chrono else None,
-                biological_age=float(bio) if bio else None,
-                method=request.POST.get('method', ''),
-                notes=request.POST.get('notes', ''),
-            )
-            messages.success(request, 'Biological age calculation added!')
-            return redirect('biological_age_list')
-        except Exception:
-            messages.error(request, 'Error adding biological age calculation.')
-            return redirect('biological_age_add')
-    return render(request, 'biological_age_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
-
-def biological_age_edit(request, pk):
-    entry = get_object_or_404(BiologicalAgeCalculation, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
-            chrono = request.POST.get('chronological_age', '').strip()
-            bio = request.POST.get('biological_age', '').strip()
-            entry.chronological_age = float(chrono) if chrono else None
-            entry.biological_age = float(bio) if bio else None
-            entry.method = request.POST.get('method', '')
-            entry.notes = request.POST.get('notes', '')
-            entry.save()
-            messages.success(request, 'Biological age calculation updated!')
-            return redirect('biological_age_list')
-        except Exception:
-            messages.error(request, 'Error updating biological age calculation.')
-            return redirect('biological_age_edit', pk=pk)
-    return render(request, 'biological_age_form.html', {'entry': entry, 'editing': True})
-
-def biological_age_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(BiologicalAgeCalculation, id=pk).delete()
-        messages.success(request, 'Biological age calculation deleted!')
-    return redirect('biological_age_list')
 
 def biological_age_estimate(request):
     if request.method == 'POST':
@@ -3303,57 +3006,8 @@ def biological_age_estimate(request):
     return redirect('biological_age_list')
 
 
-# ===== Phase 8: Predictive Biomarker =====
+# ===== Predictive Biomarker =====
 
-def predictive_biomarker_list(request):
-    entries = PredictiveBiomarker.objects.all().order_by('-generated_at')
-    return render(request, 'predictive_biomarker_list.html', {'entries': entries})
-
-def predictive_biomarker_add(request):
-    if request.method == 'POST':
-        try:
-            predicted = request.POST.get('predicted_value', '').strip()
-            confidence = request.POST.get('confidence_percent', '').strip()
-            pred_date_str = request.POST.get('prediction_date', '').strip()
-            PredictiveBiomarker.objects.create(
-                biomarker_name=request.POST.get('biomarker_name', ''),
-                predicted_value=float(predicted) if predicted else None,
-                confidence_percent=float(confidence) if confidence else None,
-                prediction_date=datetime.strptime(pred_date_str, '%Y-%m-%d').date() if pred_date_str else None,
-                notes=request.POST.get('notes', ''),
-            )
-            messages.success(request, 'Predictive biomarker added!')
-            return redirect('predictive_biomarker_list')
-        except Exception:
-            messages.error(request, 'Error adding predictive biomarker.')
-            return redirect('predictive_biomarker_add')
-    return render(request, 'predictive_biomarker_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
-
-def predictive_biomarker_edit(request, pk):
-    entry = get_object_or_404(PredictiveBiomarker, id=pk)
-    if request.method == 'POST':
-        try:
-            predicted = request.POST.get('predicted_value', '').strip()
-            confidence = request.POST.get('confidence_percent', '').strip()
-            pred_date_str = request.POST.get('prediction_date', '').strip()
-            entry.biomarker_name = request.POST.get('biomarker_name', '')
-            entry.predicted_value = float(predicted) if predicted else None
-            entry.confidence_percent = float(confidence) if confidence else None
-            entry.prediction_date = datetime.strptime(pred_date_str, '%Y-%m-%d').date() if pred_date_str else None
-            entry.notes = request.POST.get('notes', '')
-            entry.save()
-            messages.success(request, 'Predictive biomarker updated!')
-            return redirect('predictive_biomarker_list')
-        except Exception:
-            messages.error(request, 'Error updating predictive biomarker.')
-            return redirect('predictive_biomarker_edit', pk=pk)
-    return render(request, 'predictive_biomarker_form.html', {'entry': entry, 'editing': True})
-
-def predictive_biomarker_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(PredictiveBiomarker, id=pk).delete()
-        messages.success(request, 'Predictive biomarker deleted!')
-    return redirect('predictive_biomarker_list')
 
 def predictive_biomarker_generate(request):
     if request.method == 'POST':
@@ -3371,49 +3025,7 @@ def predictive_biomarker_generate(request):
     return redirect('predictive_biomarker_list')
 
 
-# ===== Phase 9: Secure Viewing Link =====
-
-def secure_viewing_link_list(request):
-    entries = SecureViewingLink.objects.all().order_by('-created_at')
-    return render(request, 'secure_viewing_link_list.html', {'entries': entries})
-
-def secure_viewing_link_add(request):
-    if request.method == 'POST':
-        try:
-            token = SecureViewingLink.generate_token()
-            SecureViewingLink.objects.create(
-                token=token,
-                data_types=request.POST.get('data_types', ''),
-                expires_at=request.POST.get('expires_at', '') or None,
-                is_active=request.POST.get('is_active') == 'on',
-            )
-            messages.success(request, 'Secure viewing link created!')
-            return redirect('secure_viewing_link_list')
-        except Exception:
-            messages.error(request, 'Error adding secure viewing link.')
-            return redirect('secure_viewing_link_add')
-    return render(request, 'secure_viewing_link_form.html', {'editing': False})
-
-def secure_viewing_link_edit(request, pk):
-    entry = get_object_or_404(SecureViewingLink, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.data_types = request.POST.get('data_types', '')
-            entry.expires_at = request.POST.get('expires_at', '') or None
-            entry.is_active = request.POST.get('is_active') == 'on'
-            entry.save()
-            messages.success(request, 'Secure viewing link updated!')
-            return redirect('secure_viewing_link_list')
-        except Exception:
-            messages.error(request, 'Error updating secure viewing link.')
-            return redirect('secure_viewing_link_edit', pk=pk)
-    return render(request, 'secure_viewing_link_form.html', {'entry': entry, 'editing': True})
-
-def secure_viewing_link_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(SecureViewingLink, id=pk).delete()
-        messages.success(request, 'Secure viewing link deleted!')
-    return redirect('secure_viewing_link_list')
+# ===== Secure Viewing Link =====
 
 
 def secure_link_shared_view(request, token):
@@ -3437,53 +3049,7 @@ def secure_link_shared_view(request, token):
     return render(request, 'secure_link_shared_view.html', context)
 
 
-# ===== Phase 9: Practitioner Access =====
-
-def practitioner_access_list(request):
-    entries = PractitionerAccess.objects.all().order_by('-granted_at')
-    return render(request, 'practitioner_access_list.html', {'entries': entries})
-
-def practitioner_access_add(request):
-    if request.method == 'POST':
-        try:
-            PractitionerAccess.objects.create(
-                practitioner_name=request.POST.get('practitioner_name', ''),
-                practitioner_email=request.POST.get('practitioner_email', ''),
-                specialty=request.POST.get('specialty', ''),
-                access_status=request.POST.get('access_status', ''),
-                expires_at=request.POST.get('expires_at', '') or None,
-            )
-            messages.success(request, 'Practitioner access added!')
-            return redirect('practitioner_access_list')
-        except Exception:
-            messages.error(request, 'Error adding practitioner access.')
-            return redirect('practitioner_access_add')
-    return render(request, 'practitioner_access_form.html', {'editing': False})
-
-def practitioner_access_edit(request, pk):
-    entry = get_object_or_404(PractitionerAccess, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.practitioner_name = request.POST.get('practitioner_name', '')
-            entry.practitioner_email = request.POST.get('practitioner_email', '')
-            entry.specialty = request.POST.get('specialty', '')
-            entry.access_status = request.POST.get('access_status', '')
-            entry.expires_at = request.POST.get('expires_at', '') or None
-            if entry.access_status == 'approved' and not entry.granted_at:
-                entry.granted_at = timezone.now()
-            entry.save()
-            messages.success(request, 'Practitioner access updated!')
-            return redirect('practitioner_access_list')
-        except Exception:
-            messages.error(request, 'Error updating practitioner access.')
-            return redirect('practitioner_access_edit', pk=pk)
-    return render(request, 'practitioner_access_form.html', {'entry': entry, 'editing': True})
-
-def practitioner_access_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(PractitionerAccess, id=pk).delete()
-        messages.success(request, 'Practitioner access deleted!')
-    return redirect('practitioner_access_list')
+# ===== Practitioner Access =====
 
 
 def practitioner_portal(request):
@@ -3534,51 +3100,7 @@ def practitioner_request_access(request):
     return render(request, 'practitioner_request_access.html')
 
 
-# ===== Phase 9: Intake Summary =====
-
-def intake_summary_list(request):
-    entries = IntakeSummary.objects.all().order_by('-generated_at')
-    return render(request, 'intake_summary_list.html', {'entries': entries})
-
-def intake_summary_add(request):
-    if request.method == 'POST':
-        try:
-            IntakeSummary.objects.create(
-                title=request.POST.get('title', ''),
-                summary_text=request.POST.get('summary_text', ''),
-                conditions=request.POST.get('conditions', ''),
-                medications=request.POST.get('medications', ''),
-                allergies=request.POST.get('allergies', ''),
-            )
-            messages.success(request, 'Intake summary added!')
-            return redirect('intake_summary_list')
-        except Exception:
-            messages.error(request, 'Error adding intake summary.')
-            return redirect('intake_summary_add')
-    return render(request, 'intake_summary_form.html', {'editing': False})
-
-def intake_summary_edit(request, pk):
-    entry = get_object_or_404(IntakeSummary, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.title = request.POST.get('title', '')
-            entry.summary_text = request.POST.get('summary_text', '')
-            entry.conditions = request.POST.get('conditions', '')
-            entry.medications = request.POST.get('medications', '')
-            entry.allergies = request.POST.get('allergies', '')
-            entry.save()
-            messages.success(request, 'Intake summary updated!')
-            return redirect('intake_summary_list')
-        except Exception:
-            messages.error(request, 'Error updating intake summary.')
-            return redirect('intake_summary_edit', pk=pk)
-    return render(request, 'intake_summary_form.html', {'entry': entry, 'editing': True})
-
-def intake_summary_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(IntakeSummary, id=pk).delete()
-        messages.success(request, 'Intake summary deleted!')
-    return redirect('intake_summary_list')
+# ===== Intake Summary =====
 
 
 def intake_summary_generate(request):
@@ -3628,7 +3150,7 @@ def intake_summary_generate(request):
     return redirect('intake_summary_list')
 
 
-# ===== Phase 9: Data Export Request =====
+# ===== Data Export Request =====
 
 def _collect_export_data():
     """Collect all health data for export."""
@@ -3670,48 +3192,6 @@ def _data_to_xml(data):
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(root, encoding='unicode')
 
 
-def data_export_list(request):
-    entries = DataExportRequest.objects.all().order_by('-requested_at')
-    return render(request, 'data_export_list.html', {'entries': entries})
-
-def data_export_add(request):
-    if request.method == 'POST':
-        try:
-            export_format = request.POST.get('export_format', 'json')
-            export_req = DataExportRequest.objects.create(
-                export_format=export_format,
-                status='completed',
-                completed_at=timezone.now(),
-            )
-            messages.success(request, f'Data export ({export_format.upper()}) created! Use the download button to get your data.')
-            return redirect('data_export_list')
-        except Exception:
-            messages.error(request, 'Error adding data export request.')
-            return redirect('data_export_add')
-    return render(request, 'data_export_form.html', {'editing': False})
-
-def data_export_edit(request, pk):
-    entry = get_object_or_404(DataExportRequest, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.export_format = request.POST.get('export_format', '')
-            entry.status = request.POST.get('status', '')
-            entry.file_path = request.POST.get('file_path', '')
-            entry.save()
-            messages.success(request, 'Data export request updated!')
-            return redirect('data_export_list')
-        except Exception:
-            messages.error(request, 'Error updating data export request.')
-            return redirect('data_export_edit', pk=pk)
-    return render(request, 'data_export_form.html', {'entry': entry, 'editing': True})
-
-def data_export_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(DataExportRequest, id=pk).delete()
-        messages.success(request, 'Data export request deleted!')
-    return redirect('data_export_list')
-
-
 def data_export_download(request, pk):
     """Download exported health data in the requested format (JSON or XML)."""
     export_req = get_object_or_404(DataExportRequest, id=pk)
@@ -3729,49 +3209,7 @@ def data_export_download(request, pk):
         return response
 
 
-# ===== Phase 9: Stakeholder Email =====
-
-def stakeholder_email_list(request):
-    entries = StakeholderEmail.objects.all().order_by('-created_at')
-    return render(request, 'stakeholder_email_list.html', {'entries': entries})
-
-def stakeholder_email_add(request):
-    if request.method == 'POST':
-        try:
-            StakeholderEmail.objects.create(
-                recipient_name=request.POST.get('recipient_name', ''),
-                recipient_email=request.POST.get('recipient_email', ''),
-                frequency=request.POST.get('frequency', ''),
-                is_active=request.POST.get('is_active') == 'on',
-            )
-            messages.success(request, 'Stakeholder email added!')
-            return redirect('stakeholder_email_list')
-        except Exception:
-            messages.error(request, 'Error adding stakeholder email.')
-            return redirect('stakeholder_email_add')
-    return render(request, 'stakeholder_email_form.html', {'editing': False})
-
-def stakeholder_email_edit(request, pk):
-    entry = get_object_or_404(StakeholderEmail, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.recipient_name = request.POST.get('recipient_name', '')
-            entry.recipient_email = request.POST.get('recipient_email', '')
-            entry.frequency = request.POST.get('frequency', '')
-            entry.is_active = request.POST.get('is_active') == 'on'
-            entry.save()
-            messages.success(request, 'Stakeholder email updated!')
-            return redirect('stakeholder_email_list')
-        except Exception:
-            messages.error(request, 'Error updating stakeholder email.')
-            return redirect('stakeholder_email_edit', pk=pk)
-    return render(request, 'stakeholder_email_form.html', {'entry': entry, 'editing': True})
-
-def stakeholder_email_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(StakeholderEmail, id=pk).delete()
-        messages.success(request, 'Stakeholder email deleted!')
-    return redirect('stakeholder_email_list')
+# ===== Stakeholder Email =====
 
 
 def _build_health_summary_text():
@@ -3837,58 +3275,8 @@ def stakeholder_email_send(request, pk):
     return redirect('stakeholder_email_list')
 
 
-# ===== Phase 10-12: Integration Config =====
+# ===== Integration Config =====
 
-def integration_config_list(request):
-    entries = IntegrationConfig.objects.all().order_by('-created_at')
-    return render(request, 'integration_config_list.html', {'entries': entries})
-
-def integration_config_add(request):
-    if request.method == 'POST':
-        try:
-            IntegrationConfig.objects.create(
-                category=request.POST.get('category', ''),
-                feature_type=request.POST.get('feature_type', ''),
-                is_enabled=request.POST.get('is_enabled') == 'on',
-                configuration=request.POST.get('configuration', ''),
-            )
-            messages.success(request, 'Integration config added!')
-            return redirect('integration_config_list')
-        except Exception:
-            messages.error(request, 'Error adding integration config.')
-            return redirect('integration_config_add')
-    return render(request, 'integration_config_form.html', {
-        'editing': False,
-        'categories': INTEGRATION_CATEGORIES,
-        'feature_types': INTEGRATION_FEATURE_TYPES,
-    })
-
-def integration_config_edit(request, pk):
-    entry = get_object_or_404(IntegrationConfig, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.category = request.POST.get('category', '')
-            entry.feature_type = request.POST.get('feature_type', '')
-            entry.is_enabled = request.POST.get('is_enabled') == 'on'
-            entry.configuration = request.POST.get('configuration', '')
-            entry.save()
-            messages.success(request, 'Integration config updated!')
-            return redirect('integration_config_list')
-        except Exception:
-            messages.error(request, 'Error updating integration config.')
-            return redirect('integration_config_edit', pk=pk)
-    return render(request, 'integration_config_form.html', {
-        'entry': entry,
-        'editing': True,
-        'categories': INTEGRATION_CATEGORIES,
-        'feature_types': INTEGRATION_FEATURE_TYPES,
-    })
-
-def integration_config_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(IntegrationConfig, id=pk).delete()
-        messages.success(request, 'Integration config deleted!')
-    return redirect('integration_config_list')
 
 def integration_config_activate(request, pk):
     entry = get_object_or_404(IntegrationConfig, id=pk)
@@ -3911,71 +3299,8 @@ def integration_config_run(request, pk):
     return redirect('integration_config_list')
 
 
-# ===== Phase 10-12: Integration Sub-Task =====
+# ===== Integration Sub-Task =====
 
-def integration_subtask_list(request):
-    entries = IntegrationSubTask.objects.all().order_by('-created_at')
-    return render(request, 'integration_subtask_list.html', {'entries': entries})
-
-def integration_subtask_add(request):
-    if request.method == 'POST':
-        try:
-            phase = request.POST.get('phase', '').strip()
-            sub_task_number = request.POST.get('sub_task_number', '').strip()
-            IntegrationSubTask.objects.create(
-                phase=int(phase) if phase else None,
-                sub_task_number=int(sub_task_number) if sub_task_number else None,
-                title=request.POST.get('title', ''),
-                category=request.POST.get('category', ''),
-                feature_type=request.POST.get('feature_type', ''),
-                status=request.POST.get('status', ''),
-                details=request.POST.get('details', ''),
-            )
-            messages.success(request, 'Integration sub-task added!')
-            return redirect('integration_subtask_list')
-        except Exception:
-            messages.error(request, 'Error adding integration sub-task.')
-            return redirect('integration_subtask_add')
-    return render(request, 'integration_subtask_form.html', {
-        'editing': False,
-        'categories': INTEGRATION_CATEGORIES,
-        'feature_types': INTEGRATION_FEATURE_TYPES,
-    })
-
-def integration_subtask_edit(request, pk):
-    entry = get_object_or_404(IntegrationSubTask, id=pk)
-    if request.method == 'POST':
-        try:
-            phase = request.POST.get('phase', '').strip()
-            sub_task_number = request.POST.get('sub_task_number', '').strip()
-            entry.phase = int(phase) if phase else None
-            entry.sub_task_number = int(sub_task_number) if sub_task_number else None
-            entry.title = request.POST.get('title', '')
-            entry.category = request.POST.get('category', '')
-            entry.feature_type = request.POST.get('feature_type', '')
-            entry.status = request.POST.get('status', '')
-            entry.details = request.POST.get('details', '')
-            entry.save()
-            messages.success(request, 'Integration sub-task updated!')
-            return redirect('integration_subtask_list')
-        except Exception:
-            messages.error(request, 'Error updating integration sub-task.')
-            return redirect('integration_subtask_edit', pk=pk)
-    return render(request, 'integration_subtask_form.html', {
-        'entry': entry,
-        'editing': True,
-        'categories': INTEGRATION_CATEGORIES,
-        'feature_types': INTEGRATION_FEATURE_TYPES,
-    })
-
-def integration_subtask_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(IntegrationSubTask, id=pk).delete()
-        messages.success(request, 'Integration sub-task deleted!')
-    return redirect('integration_subtask_list')
-
-
-# ===== Phase 11: Interoperability Dashboard =====
 
 def phase11_dashboard(request):
     subtasks = IntegrationSubTask.objects.filter(phase=11).order_by('sub_task_number')
@@ -4027,6 +3352,936 @@ def phase11_dashboard(request):
     }
     return render(request, 'phase11_dashboard.html', context)
 
+
+
+# ===================================================================
+# Generic CRUD registrations (replaces individual CRUD view functions)
+# ===================================================================
+
+# ===== Body Composition =====
+_body_composition = make_crud_views(
+    model_class=BodyComposition,
+    display_name='Body Composition',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'body_fat_percentage', 'type': 'float', 'step': '0.1', 'placeholder': 'e.g. 18.5', 'label': 'Body Fat (%)'},
+        {'name': 'skeletal_muscle_mass', 'type': 'float', 'step': '0.1', 'placeholder': 'e.g. 30.0', 'label': 'Skeletal Muscle Mass (kg)'},
+        {'name': 'bone_density', 'type': 'float', 'step': '0.01', 'placeholder': 'e.g. 1.2', 'label': 'Bone Density (g/cm²)'},
+        {'name': 'waist_circumference', 'type': 'float', 'step': '0.1', 'placeholder': 'e.g. 80', 'label': 'Waist (cm)'},
+        {'name': 'hip_circumference', 'type': 'float', 'step': '0.1', 'placeholder': 'e.g. 95', 'label': 'Hip (cm)'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='body_composition_list',
+    add_url_name='body_composition_add',
+    edit_url_name='body_composition_edit',
+)
+body_composition_add = _body_composition['add']
+body_composition_edit = _body_composition['edit']
+body_composition_delete = _body_composition['delete']
+
+# ===== Hydration =====
+_hydration = make_crud_views(
+    model_class=HydrationLog,
+    display_name='Hydration',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'fluid_intake_ml', 'type': 'float', 'default': 0, 'placeholder': 'e.g. 2000', 'label': 'Fluid Intake (ml)'},
+        {'name': 'goal_ml', 'type': 'float', 'default': 2500, 'placeholder': 'e.g. 2500', 'label': 'Goal (ml)'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='hydration_list',
+    add_url_name='hydration_add',
+    edit_url_name='hydration_edit',
+)
+hydration_add = _hydration['add']
+hydration_edit = _hydration['edit']
+hydration_delete = _hydration['delete']
+
+# ===== Energy & Fatigue =====
+_energy = make_crud_views(
+    model_class=EnergyFatigueLog,
+    display_name='Energy & Fatigue',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'energy_score', 'type': 'int', 'default': 5, 'placeholder': '1-10', 'label': 'Energy Score'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='energy_list',
+    add_url_name='energy_add',
+    edit_url_name='energy_edit',
+)
+energy_list = _energy['list']
+energy_add = _energy['add']
+energy_edit = _energy['edit']
+energy_delete = _energy['delete']
+
+# ===== Pain =====
+_pain = make_crud_views(
+    model_class=PainLog,
+    display_name='Pain Log',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'body_region', 'type': 'str', 'choices': BODY_REGIONS, 'label': 'Body Region'},
+        {'name': 'pain_level', 'type': 'int', 'default': 1, 'placeholder': '1-10', 'label': 'Pain Level'},
+        {'name': 'description', 'type': 'str', 'widget': 'textarea', 'label': 'Description'},
+    ],
+    list_url_name='pain_list',
+    add_url_name='pain_add',
+    edit_url_name='pain_edit',
+    extra_list_context={'body_regions': BODY_REGIONS},
+    extra_form_context={'body_regions': BODY_REGIONS},
+    list_template='pain_list.html',
+)
+pain_list = _pain['list']
+pain_add = _pain['add']
+pain_edit = _pain['edit']
+pain_delete = _pain['delete']
+
+# ===== RMR =====
+_rmr = make_crud_views(
+    model_class=RestingMetabolicRate,
+    display_name='Resting Metabolic Rate',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'age', 'type': 'int', 'required': True, 'label': 'Age'},
+        {'name': 'weight_kg', 'type': 'float', 'required': True, 'default': 0, 'label': 'Weight (kg)'},
+        {'name': 'height_cm', 'type': 'float', 'required': True, 'default': 0, 'label': 'Height (cm)'},
+        {'name': 'gender', 'type': 'str', 'choices': RestingMetabolicRate.GENDER_CHOICES, 'default': 'M', 'label': 'Gender'},
+        {'name': 'formula', 'type': 'str', 'choices': RestingMetabolicRate.FORMULA_CHOICES, 'default': 'mifflin', 'label': 'Formula'},
+    ],
+    list_url_name='rmr_list',
+    add_url_name='rmr_add',
+    edit_url_name='rmr_edit',
+)
+rmr_list = _rmr['list']
+rmr_add = _rmr['add']
+rmr_edit = _rmr['edit']
+rmr_delete = _rmr['delete']
+
+# ===== Orthostatic =====
+_orthostatic = make_crud_views(
+    model_class=OrthostaticReading,
+    display_name='Orthostatic Reading',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'supine_hr', 'type': 'int', 'label': 'Supine HR'},
+        {'name': 'standing_hr', 'type': 'int', 'label': 'Standing HR'},
+        {'name': 'supine_systolic', 'type': 'int', 'label': 'Supine Systolic'},
+        {'name': 'supine_diastolic', 'type': 'int', 'label': 'Supine Diastolic'},
+        {'name': 'standing_systolic', 'type': 'int', 'label': 'Standing Systolic'},
+        {'name': 'standing_diastolic', 'type': 'int', 'label': 'Standing Diastolic'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='orthostatic_list',
+    add_url_name='orthostatic_add',
+    edit_url_name='orthostatic_edit',
+)
+orthostatic_list = _orthostatic['list']
+orthostatic_add = _orthostatic['add']
+orthostatic_edit = _orthostatic['edit']
+orthostatic_delete = _orthostatic['delete']
+
+# ===== Reproductive Health =====
+_reproductive = make_crud_views(
+    model_class=ReproductiveHealthLog,
+    display_name='Reproductive Health',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'cycle_day', 'type': 'int', 'label': 'Cycle Day'},
+        {'name': 'phase', 'type': 'str', 'choices': ReproductiveHealthLog.PHASE_CHOICES, 'label': 'Phase'},
+        {'name': 'flow_intensity', 'type': 'int', 'placeholder': '0-5', 'label': 'Flow Intensity'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='reproductive_list',
+    add_url_name='reproductive_add',
+    edit_url_name='reproductive_edit',
+)
+reproductive_list = _reproductive['list']
+reproductive_add = _reproductive['add']
+reproductive_edit = _reproductive['edit']
+reproductive_delete = _reproductive['delete']
+
+# ===== Symptom Journal =====
+_symptom = make_crud_views(
+    model_class=SymptomJournal,
+    display_name='Symptom Journal',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'symptom', 'type': 'str', 'required': True, 'label': 'Symptom'},
+        {'name': 'severity', 'type': 'int', 'choices': SymptomJournal.SEVERITY_CHOICES, 'default': 1, 'label': 'Severity'},
+        {'name': 'duration', 'type': 'str', 'label': 'Duration'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='symptom_list',
+    add_url_name='symptom_add',
+    edit_url_name='symptom_edit',
+)
+symptom_list = _symptom['list']
+symptom_add = _symptom['add']
+symptom_edit = _symptom['edit']
+symptom_delete = _symptom['delete']
+
+# ===== Metabolic =====
+_metabolic = make_crud_views(
+    model_class=MetabolicLog,
+    display_name='Glucose & Insulin',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'blood_glucose', 'type': 'float', 'label': 'Blood Glucose'},
+        {'name': 'insulin_level', 'type': 'float', 'label': 'Insulin Level'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='metabolic_list',
+    add_url_name='metabolic_add',
+    edit_url_name='metabolic_edit',
+)
+metabolic_list = _metabolic['list']
+metabolic_add = _metabolic['add']
+metabolic_edit = _metabolic['edit']
+metabolic_delete = _metabolic['delete']
+
+# ===== Ketone =====
+_ketone = make_crud_views(
+    model_class=KetoneLog,
+    display_name='Ketone',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'value', 'type': 'float', 'required': True, 'label': 'Value'},
+        {'name': 'measurement_type', 'type': 'str', 'choices': KetoneLog.MEASUREMENT_CHOICES, 'default': 'blood', 'label': 'Measurement Type'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='ketone_list',
+    add_url_name='ketone_add',
+    edit_url_name='ketone_edit',
+)
+ketone_list = _ketone['list']
+ketone_add = _ketone['add']
+ketone_edit = _ketone['edit']
+ketone_delete = _ketone['delete']
+
+# ===== Sleep =====
+_sleep = make_crud_views(
+    model_class=SleepLog,
+    display_name='Sleep',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'bedtime', 'type': 'time', 'label': 'Bedtime'},
+        {'name': 'wake_time', 'type': 'time', 'label': 'Wake Time'},
+        {'name': 'total_sleep_minutes', 'type': 'int', 'label': 'Total Sleep (min)'},
+        {'name': 'rem_minutes', 'type': 'int', 'label': 'REM (min)'},
+        {'name': 'deep_sleep_minutes', 'type': 'int', 'label': 'Deep Sleep (min)'},
+        {'name': 'light_sleep_minutes', 'type': 'int', 'label': 'Light Sleep (min)'},
+        {'name': 'awake_minutes', 'type': 'int', 'label': 'Awake (min)'},
+        {'name': 'sleep_quality_score', 'type': 'float', 'step': '0.1', 'placeholder': '1-10', 'label': 'Quality Score'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='sleep_list',
+    add_url_name='sleep_add',
+    edit_url_name='sleep_edit',
+)
+sleep_add = _sleep['add']
+sleep_edit = _sleep['edit']
+sleep_delete = _sleep['delete']
+
+# ===== Circadian Rhythm =====
+_circadian = make_crud_views(
+    model_class=CircadianRhythmLog,
+    display_name='Circadian Rhythm',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'wake_time', 'type': 'time', 'label': 'Wake Time'},
+        {'name': 'sleep_onset', 'type': 'time', 'label': 'Sleep Onset'},
+        {'name': 'peak_energy_time', 'type': 'time', 'label': 'Peak Energy Time'},
+        {'name': 'lowest_energy_time', 'type': 'time', 'label': 'Lowest Energy Time'},
+        {'name': 'light_exposure_minutes', 'type': 'int', 'label': 'Light Exposure (min)'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='circadian_list',
+    add_url_name='circadian_add',
+    edit_url_name='circadian_edit',
+)
+circadian_list = _circadian['list']
+circadian_add = _circadian['add']
+circadian_edit = _circadian['edit']
+circadian_delete = _circadian['delete']
+
+# ===== Dream Journal =====
+_dream = make_crud_views(
+    model_class=DreamJournal,
+    display_name='Dream Journal',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'dream_description', 'type': 'str', 'widget': 'textarea', 'label': 'Dream Description'},
+        {'name': 'lucidity_level', 'type': 'int', 'placeholder': '0-5', 'label': 'Lucidity Level'},
+        {'name': 'mood_on_waking', 'type': 'str', 'label': 'Mood on Waking'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='dream_list',
+    add_url_name='dream_add',
+    edit_url_name='dream_edit',
+)
+dream_list = _dream['list']
+dream_add = _dream['add']
+dream_edit = _dream['edit']
+dream_delete = _dream['delete']
+
+# ===== Macronutrients =====
+_macro = make_crud_views(
+    model_class=MacronutrientLog,
+    display_name='Macronutrients',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'protein_grams', 'type': 'float', 'label': 'Protein (g)'},
+        {'name': 'carbohydrate_grams', 'type': 'float', 'label': 'Carbs (g)'},
+        {'name': 'fat_grams', 'type': 'float', 'label': 'Fat (g)'},
+        {'name': 'calories', 'type': 'float', 'label': 'Calories'},
+        {'name': 'fiber_grams', 'type': 'float', 'label': 'Fiber (g)'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='macro_list',
+    add_url_name='macro_add',
+    edit_url_name='macro_edit',
+)
+macro_add = _macro['add']
+macro_edit = _macro['edit']
+macro_delete = _macro['delete']
+
+# ===== Micronutrients =====
+_micro = make_crud_views(
+    model_class=MicronutrientLog,
+    display_name='Micronutrients',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'nutrient_name', 'type': 'str', 'required': True, 'label': 'Nutrient Name'},
+        {'name': 'amount', 'type': 'float', 'required': True, 'label': 'Amount'},
+        {'name': 'unit', 'type': 'str', 'default': 'mg', 'label': 'Unit'},
+        {'name': 'deficiency_risk', 'type': 'str', 'label': 'Deficiency Risk'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='micro_list',
+    add_url_name='micro_add',
+    edit_url_name='micro_edit',
+)
+micro_list = _micro['list']
+micro_add = _micro['add']
+micro_edit = _micro['edit']
+micro_delete = _micro['delete']
+
+# ===== Food Entries =====
+_food = make_crud_views(
+    model_class=FoodEntry,
+    display_name='Food Entry',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'food_name', 'type': 'str', 'required': True, 'label': 'Food Name'},
+        {'name': 'barcode', 'type': 'str', 'label': 'Barcode'},
+        {'name': 'serving_size', 'type': 'str', 'label': 'Serving Size'},
+        {'name': 'calories', 'type': 'float', 'label': 'Calories'},
+        {'name': 'protein_grams', 'type': 'float', 'label': 'Protein (g)'},
+        {'name': 'carbohydrate_grams', 'type': 'float', 'label': 'Carbs (g)'},
+        {'name': 'fat_grams', 'type': 'float', 'label': 'Fat (g)'},
+        {'name': 'source', 'type': 'str', 'label': 'Source'},
+        {'name': 'food_database_id', 'type': 'str', 'label': 'Database ID'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='food_list',
+    add_url_name='food_add',
+    edit_url_name='food_edit',
+)
+food_list = _food['list']
+food_add = _food['add']
+food_edit = _food['edit']
+food_delete = _food['delete']
+
+# ===== Fasting =====
+_fasting = make_crud_views(
+    model_class=FastingLog,
+    display_name='Fasting',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'fast_start', 'type': 'datetime', 'label': 'Fast Start'},
+        {'name': 'fast_end', 'type': 'datetime', 'label': 'Fast End'},
+        {'name': 'target_hours', 'type': 'float', 'label': 'Target Hours'},
+        {'name': 'actual_hours', 'type': 'float', 'label': 'Actual Hours'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='fasting_list',
+    add_url_name='fasting_add',
+    edit_url_name='fasting_edit',
+)
+fasting_list = _fasting['list']
+fasting_add = _fasting['add']
+fasting_edit = _fasting['edit']
+fasting_delete = _fasting['delete']
+
+# ===== Caffeine & Alcohol =====
+_caffeine_alcohol = make_crud_views(
+    model_class=CaffeineAlcoholLog,
+    display_name='Caffeine & Alcohol',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'substance', 'type': 'str', 'choices': CaffeineAlcoholLog.SUBSTANCE_CHOICES, 'label': 'Substance'},
+        {'name': 'amount_mg', 'type': 'float', 'label': 'Amount (mg)'},
+        {'name': 'drink_name', 'type': 'str', 'label': 'Drink Name'},
+        {'name': 'time_consumed', 'type': 'time', 'label': 'Time Consumed'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='caffeine_alcohol_list',
+    add_url_name='caffeine_alcohol_add',
+    edit_url_name='caffeine_alcohol_edit',
+)
+caffeine_alcohol_list = _caffeine_alcohol['list']
+caffeine_alcohol_add = _caffeine_alcohol['add']
+caffeine_alcohol_edit = _caffeine_alcohol['edit']
+caffeine_alcohol_delete = _caffeine_alcohol['delete']
+
+# ===== Medication Schedule =====
+_medication = make_crud_views(
+    model_class=MedicationSchedule,
+    display_name='Medication Schedule',
+    fields=[
+        {'name': 'medication_name', 'type': 'str', 'required': True, 'label': 'Medication Name'},
+        {'name': 'dosage', 'type': 'str', 'required': True, 'label': 'Dosage'},
+        {'name': 'frequency', 'type': 'str', 'required': True, 'label': 'Frequency'},
+        {'name': 'start_date', 'type': 'date', 'required': True, 'label': 'Start Date'},
+        {'name': 'end_date', 'type': 'date', 'label': 'End Date'},
+        {'name': 'time_of_day', 'type': 'time', 'label': 'Time of Day'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='medication_schedule_list',
+    add_url_name='medication_schedule_add',
+    edit_url_name='medication_schedule_edit',
+    order_by='-start_date',
+)
+medication_schedule_add = _medication['add']
+medication_schedule_edit = _medication['edit']
+medication_schedule_delete = _medication['delete']
+
+# ===== Health Goals =====
+_health_goal = make_crud_views(
+    model_class=HealthGoal,
+    display_name='Health Goal',
+    fields=[
+        {'name': 'title', 'type': 'str', 'required': True, 'label': 'Title'},
+        {'name': 'description', 'type': 'str', 'widget': 'textarea', 'label': 'Description'},
+        {'name': 'target_value', 'type': 'float', 'label': 'Target Value'},
+        {'name': 'current_value', 'type': 'float', 'label': 'Current Value'},
+        {'name': 'unit', 'type': 'str', 'label': 'Unit'},
+        {'name': 'status', 'type': 'str', 'choices': HealthGoal.STATUS_CHOICES, 'default': 'active', 'label': 'Status'},
+        {'name': 'start_date', 'type': 'date', 'required': True, 'label': 'Start Date'},
+        {'name': 'target_date', 'type': 'date', 'label': 'Target Date'},
+    ],
+    list_url_name='health_goal_list',
+    add_url_name='health_goal_add',
+    edit_url_name='health_goal_edit',
+    order_by='-start_date',
+)
+health_goal_add = _health_goal['add']
+health_goal_edit = _health_goal['edit']
+health_goal_delete = _health_goal['delete']
+
+# ===== Critical Alerts =====
+_critical_alert = make_crud_views(
+    model_class=CriticalAlert,
+    display_name='Critical Alert',
+    fields=[
+        {'name': 'metric_name', 'type': 'str', 'required': True, 'label': 'Metric Name'},
+        {'name': 'metric_value', 'type': 'float', 'required': True, 'label': 'Metric Value'},
+        {'name': 'threshold_value', 'type': 'float', 'required': True, 'label': 'Threshold Value'},
+        {'name': 'alert_level', 'type': 'str', 'choices': CriticalAlert.ALERT_LEVELS, 'default': 'warning', 'label': 'Alert Level'},
+        {'name': 'message', 'type': 'str', 'widget': 'textarea', 'label': 'Message'},
+        {'name': 'acknowledged', 'type': 'bool', 'label': 'Acknowledged'},
+    ],
+    list_url_name='critical_alert_list',
+    add_url_name='critical_alert_add',
+    edit_url_name='critical_alert_edit',
+    order_by='-triggered_at',
+)
+critical_alert_list = _critical_alert['list']
+critical_alert_add = _critical_alert['add']
+critical_alert_edit = _critical_alert['edit']
+critical_alert_delete = _critical_alert['delete']
+
+# ===== Health Reports =====
+_health_report = make_crud_views(
+    model_class=HealthReport,
+    display_name='Health Report',
+    fields=[
+        {'name': 'report_type', 'type': 'str', 'choices': HealthReport.REPORT_TYPES, 'default': 'monthly', 'label': 'Report Type'},
+        {'name': 'title', 'type': 'str', 'required': True, 'label': 'Title'},
+        {'name': 'content', 'type': 'str', 'widget': 'textarea', 'label': 'Content'},
+        {'name': 'period_start', 'type': 'date', 'required': True, 'label': 'Period Start'},
+        {'name': 'period_end', 'type': 'date', 'required': True, 'label': 'Period End'},
+    ],
+    list_url_name='health_report_list',
+    add_url_name='health_report_add',
+    edit_url_name='health_report_edit',
+    order_by='-generated_at',
+)
+health_report_list = _health_report['list']
+health_report_add = _health_report['add']
+health_report_edit = _health_report['edit']
+health_report_delete = _health_report['delete']
+
+# ===== Biological Age =====
+_biological_age = make_crud_views(
+    model_class=BiologicalAgeCalculation,
+    display_name='Biological Age',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'chronological_age', 'type': 'float', 'required': True, 'label': 'Chronological Age'},
+        {'name': 'biological_age', 'type': 'float', 'required': True, 'label': 'Biological Age'},
+        {'name': 'method', 'type': 'str', 'label': 'Method'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='biological_age_list',
+    add_url_name='biological_age_add',
+    edit_url_name='biological_age_edit',
+)
+biological_age_list = _biological_age['list']
+biological_age_add = _biological_age['add']
+biological_age_edit = _biological_age['edit']
+biological_age_delete = _biological_age['delete']
+
+# ===== Predictive Biomarkers =====
+_predictive_biomarker = make_crud_views(
+    model_class=PredictiveBiomarker,
+    display_name='Predictive Biomarker',
+    fields=[
+        {'name': 'biomarker_name', 'type': 'str', 'required': True, 'label': 'Biomarker Name'},
+        {'name': 'predicted_value', 'type': 'float', 'required': True, 'label': 'Predicted Value'},
+        {'name': 'confidence_percent', 'type': 'float', 'label': 'Confidence (%)'},
+        {'name': 'prediction_date', 'type': 'date', 'required': True, 'label': 'Prediction Date'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='predictive_biomarker_list',
+    add_url_name='predictive_biomarker_add',
+    edit_url_name='predictive_biomarker_edit',
+    order_by='-prediction_date',
+)
+predictive_biomarker_list = _predictive_biomarker['list']
+predictive_biomarker_add = _predictive_biomarker['add']
+predictive_biomarker_edit = _predictive_biomarker['edit']
+predictive_biomarker_delete = _predictive_biomarker['delete']
+
+# ===== Secure Viewing Links =====
+_secure_viewing_link = make_crud_views(
+    model_class=SecureViewingLink,
+    display_name='Secure Viewing Link',
+    fields=[
+        {'name': 'data_types', 'type': 'str', 'label': 'Data Types'},
+        {'name': 'expires_at', 'type': 'datetime', 'required': True, 'label': 'Expires At'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+    ],
+    list_url_name='secure_viewing_link_list',
+    add_url_name='secure_viewing_link_add',
+    edit_url_name='secure_viewing_link_edit',
+    order_by='-created_at',
+)
+secure_viewing_link_list = _secure_viewing_link['list']
+secure_viewing_link_delete = _secure_viewing_link['delete']
+
+def secure_viewing_link_add(request):
+    if request.method == 'POST':
+        try:
+            expires_str = request.POST.get('expires_at', '').strip()
+            expires_dt = datetime.strptime(expires_str, '%Y-%m-%dT%H:%M') if expires_str else None
+            SecureViewingLink.objects.create(
+                token=SecureViewingLink.generate_token(),
+                data_types=request.POST.get('data_types', ''),
+                expires_at=expires_dt,
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'Secure viewing link created!')
+            return redirect('secure_viewing_link_list')
+        except Exception:
+            messages.error(request, 'Error creating secure viewing link.')
+            return redirect('secure_viewing_link_add')
+    return render(request, 'secure_viewing_link_form.html', {'editing': False})
+
+def secure_viewing_link_edit(request, pk):
+    entry = get_object_or_404(SecureViewingLink, id=pk)
+    if request.method == 'POST':
+        try:
+            expires_str = request.POST.get('expires_at', '').strip()
+            entry.data_types = request.POST.get('data_types', '')
+            entry.expires_at = datetime.strptime(expires_str, '%Y-%m-%dT%H:%M') if expires_str else entry.expires_at
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'Secure viewing link updated!')
+            return redirect('secure_viewing_link_list')
+        except Exception:
+            messages.error(request, 'Error updating secure viewing link.')
+            return redirect('secure_viewing_link_edit', pk=pk)
+    return render(request, 'secure_viewing_link_form.html', {'entry': entry, 'editing': True})
+
+# ===== Practitioner Access =====
+_practitioner_access = make_crud_views(
+    model_class=PractitionerAccess,
+    display_name='Practitioner Access',
+    fields=[
+        {'name': 'practitioner_name', 'type': 'str', 'required': True, 'label': 'Practitioner Name'},
+        {'name': 'practitioner_email', 'type': 'str', 'required': True, 'label': 'Email'},
+        {'name': 'specialty', 'type': 'str', 'label': 'Specialty'},
+        {'name': 'access_status', 'type': 'str', 'choices': PractitionerAccess.ACCESS_STATUS, 'default': 'pending', 'label': 'Status'},
+        {'name': 'expires_at', 'type': 'datetime', 'label': 'Expires At'},
+    ],
+    list_url_name='practitioner_access_list',
+    add_url_name='practitioner_access_add',
+    edit_url_name='practitioner_access_edit',
+    order_by='-granted_at',
+)
+practitioner_access_list = _practitioner_access['list']
+practitioner_access_add = _practitioner_access['add']
+practitioner_access_delete = _practitioner_access['delete']
+
+def practitioner_access_edit(request, pk):
+    entry = get_object_or_404(PractitionerAccess, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.practitioner_name = request.POST.get('practitioner_name', '')
+            entry.practitioner_email = request.POST.get('practitioner_email', '')
+            entry.specialty = request.POST.get('specialty', '')
+            new_status = request.POST.get('access_status', entry.access_status)
+            if new_status == 'approved' and entry.access_status != 'approved':
+                entry.granted_at = timezone.now()
+            entry.access_status = new_status
+            entry.save()
+            messages.success(request, 'Practitioner access updated!')
+            return redirect('practitioner_access_list')
+        except Exception:
+            messages.error(request, 'Error updating practitioner access.')
+            return redirect('practitioner_access_edit', pk=pk)
+    return render(request, 'practitioner_access_form.html', {'entry': entry, 'editing': True})
+
+# ===== Intake Summaries =====
+_intake_summary = make_crud_views(
+    model_class=IntakeSummary,
+    display_name='Intake Summary',
+    fields=[
+        {'name': 'title', 'type': 'str', 'required': True, 'label': 'Title'},
+        {'name': 'summary_text', 'type': 'str', 'widget': 'textarea', 'label': 'Summary'},
+        {'name': 'conditions', 'type': 'str', 'widget': 'textarea', 'label': 'Conditions'},
+        {'name': 'medications', 'type': 'str', 'widget': 'textarea', 'label': 'Medications'},
+        {'name': 'allergies', 'type': 'str', 'widget': 'textarea', 'label': 'Allergies'},
+    ],
+    list_url_name='intake_summary_list',
+    add_url_name='intake_summary_add',
+    edit_url_name='intake_summary_edit',
+    order_by='-generated_at',
+)
+intake_summary_list = _intake_summary['list']
+intake_summary_add = _intake_summary['add']
+intake_summary_edit = _intake_summary['edit']
+intake_summary_delete = _intake_summary['delete']
+
+# ===== Data Export =====
+_data_export = make_crud_views(
+    model_class=DataExportRequest,
+    display_name='Data Export',
+    fields=[
+        {'name': 'export_format', 'type': 'str', 'choices': DataExportRequest.FORMAT_CHOICES, 'default': 'json', 'label': 'Format'},
+        {'name': 'status', 'type': 'str', 'choices': DataExportRequest.STATUS_CHOICES, 'default': 'pending', 'label': 'Status'},
+        {'name': 'file_path', 'type': 'str', 'label': 'File Path'},
+    ],
+    list_url_name='data_export_list',
+    add_url_name='data_export_add',
+    edit_url_name='data_export_edit',
+    order_by='-requested_at',
+)
+data_export_list = _data_export['list']
+data_export_edit = _data_export['edit']
+data_export_delete = _data_export['delete']
+
+def data_export_add(request):
+    if request.method == 'POST':
+        try:
+            export_format = request.POST.get('export_format', 'json')
+            DataExportRequest.objects.create(
+                export_format=export_format,
+                status='completed',
+                completed_at=timezone.now(),
+            )
+            messages.success(request, 'Data export created!')
+            return redirect('data_export_list')
+        except Exception:
+            messages.error(request, 'Error creating data export.')
+            return redirect('data_export_add')
+    return render(request, 'data_export_form.html', {'editing': False})
+
+# ===== Stakeholder Emails =====
+_stakeholder_email = make_crud_views(
+    model_class=StakeholderEmail,
+    display_name='Stakeholder Email',
+    fields=[
+        {'name': 'recipient_name', 'type': 'str', 'required': True, 'label': 'Recipient Name'},
+        {'name': 'recipient_email', 'type': 'str', 'required': True, 'label': 'Recipient Email'},
+        {'name': 'frequency', 'type': 'str', 'choices': StakeholderEmail.FREQUENCY_CHOICES, 'default': 'monthly', 'label': 'Frequency'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+    ],
+    list_url_name='stakeholder_email_list',
+    add_url_name='stakeholder_email_add',
+    edit_url_name='stakeholder_email_edit',
+    order_by='-created_at',
+)
+stakeholder_email_list = _stakeholder_email['list']
+stakeholder_email_add = _stakeholder_email['add']
+stakeholder_email_edit = _stakeholder_email['edit']
+stakeholder_email_delete = _stakeholder_email['delete']
+
+# ===== User Profiles (RBAC) =====
+_user_profile = make_crud_views(
+    model_class=UserProfile,
+    display_name='User Profile',
+    fields=[
+        {'name': 'role', 'type': 'str', 'choices': UserProfile.ROLE_CHOICES, 'default': 'user', 'label': 'Role'},
+    ],
+    list_url_name='user_profile_list',
+    add_url_name='user_profile_add',
+    edit_url_name='user_profile_edit',
+    order_by='-created_at',
+)
+user_profile_list = _user_profile['list']
+
+# ===== Family Accounts =====
+_family_account = make_crud_views(
+    model_class=FamilyAccount,
+    display_name='Family Account',
+    fields=[
+        {'name': 'member_name', 'type': 'str', 'required': True, 'label': 'Member Name'},
+        {'name': 'relationship', 'type': 'str', 'label': 'Relationship'},
+        {'name': 'is_minor', 'type': 'bool', 'label': 'Is Minor'},
+    ],
+    list_url_name='family_account_list',
+    add_url_name='family_account_add',
+    edit_url_name='family_account_edit',
+    order_by='-created_at',
+)
+family_account_list = _family_account['list']
+family_account_add = _family_account['add']
+family_account_edit = _family_account['edit']
+family_account_delete = _family_account['delete']
+
+# ===== Consent Logs =====
+_consent_log = make_crud_views(
+    model_class=ConsentLog,
+    display_name='Consent Log',
+    fields=[
+        {'name': 'consent_type', 'type': 'str', 'required': True, 'label': 'Consent Type'},
+        {'name': 'version', 'type': 'str', 'required': True, 'label': 'Version'},
+        {'name': 'accepted', 'type': 'bool', 'label': 'Accepted'},
+        {'name': 'ip_address', 'type': 'str', 'label': 'IP Address'},
+    ],
+    list_url_name='consent_log_list',
+    add_url_name='consent_log_add',
+    edit_url_name='consent_log_edit',
+    order_by='-accepted_at',
+)
+consent_log_list = _consent_log['list']
+consent_log_add = _consent_log['add']
+consent_log_edit = _consent_log['edit']
+consent_log_delete = _consent_log['delete']
+
+# ===== Tenant Config =====
+_tenant_config = make_crud_views(
+    model_class=TenantConfig,
+    display_name='Tenant Config',
+    fields=[
+        {'name': 'tenant_name', 'type': 'str', 'required': True, 'label': 'Tenant Name'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+        {'name': 'data_isolation_level', 'type': 'str', 'default': 'full', 'label': 'Data Isolation Level'},
+    ],
+    list_url_name='tenant_config_list',
+    add_url_name='tenant_config_add',
+    edit_url_name='tenant_config_edit',
+    order_by='-created_at',
+)
+tenant_config_list = _tenant_config['list']
+tenant_config_add = _tenant_config['add']
+tenant_config_edit = _tenant_config['edit']
+tenant_config_delete = _tenant_config['delete']
+
+# ===== Admin Telemetry =====
+_admin_telemetry = make_crud_views(
+    model_class=AdminTelemetry,
+    display_name='Admin Telemetry',
+    fields=[
+        {'name': 'metric_name', 'type': 'str', 'required': True, 'label': 'Metric Name'},
+        {'name': 'metric_value', 'type': 'float', 'required': True, 'label': 'Metric Value'},
+    ],
+    list_url_name='admin_telemetry_list',
+    add_url_name='admin_telemetry_add',
+    edit_url_name='admin_telemetry_edit',
+    order_by='-recorded_at',
+)
+admin_telemetry_list = _admin_telemetry['list']
+admin_telemetry_add = _admin_telemetry['add']
+admin_telemetry_edit = _admin_telemetry['edit']
+admin_telemetry_delete = _admin_telemetry['delete']
+
+# ===== API Rate Limits =====
+_api_rate_limit = make_crud_views(
+    model_class=APIRateLimitConfig,
+    display_name='API Rate Limit',
+    fields=[
+        {'name': 'endpoint', 'type': 'str', 'required': True, 'label': 'Endpoint'},
+        {'name': 'max_requests_per_minute', 'type': 'int', 'default': 60, 'label': 'Max/Minute'},
+        {'name': 'max_requests_per_hour', 'type': 'int', 'default': 1000, 'label': 'Max/Hour'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+    ],
+    list_url_name='api_rate_limit_list',
+    add_url_name='api_rate_limit_add',
+    edit_url_name='api_rate_limit_edit',
+    order_by='endpoint',
+)
+api_rate_limit_list = _api_rate_limit['list']
+api_rate_limit_add = _api_rate_limit['add']
+api_rate_limit_edit = _api_rate_limit['edit']
+api_rate_limit_delete = _api_rate_limit['delete']
+
+# ===== Encryption Keys =====
+_encryption_key = make_crud_views(
+    model_class=EncryptionKey,
+    display_name='Encryption Key',
+    fields=[
+        {'name': 'key_identifier', 'type': 'str', 'required': True, 'label': 'Key Identifier'},
+        {'name': 'public_key', 'type': 'str', 'widget': 'textarea', 'required': True, 'label': 'Public Key'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+    ],
+    list_url_name='encryption_key_list',
+    add_url_name='encryption_key_add',
+    edit_url_name='encryption_key_edit',
+    order_by='-created_at',
+)
+encryption_key_list = _encryption_key['list']
+encryption_key_add = _encryption_key['add']
+encryption_key_edit = _encryption_key['edit']
+encryption_key_delete = _encryption_key['delete']
+
+# ===== Audit Logs =====
+_audit_log = make_crud_views(
+    model_class=AuditLog,
+    display_name='Audit Log',
+    fields=[
+        {'name': 'action', 'type': 'str', 'required': True, 'label': 'Action'},
+        {'name': 'details', 'type': 'str', 'widget': 'textarea', 'label': 'Details'},
+        {'name': 'ip_address', 'type': 'str', 'label': 'IP Address'},
+    ],
+    list_url_name='audit_log_list',
+    add_url_name='audit_log_add',
+    edit_url_name='audit_log_edit',
+    order_by='-created_at',
+)
+audit_log_list = _audit_log['list']
+audit_log_add = _audit_log['add']
+audit_log_edit = _audit_log['edit']
+audit_log_delete = _audit_log['delete']
+
+# ===== Anonymized Data =====
+_anonymized_data = make_crud_views(
+    model_class=AnonymizedDataReport,
+    display_name='Anonymized Data Report',
+    fields=[
+        {'name': 'report_title', 'type': 'str', 'required': True, 'label': 'Report Title'},
+        {'name': 'report_type', 'type': 'str', 'choices': AnonymizedDataReport.REPORT_TYPE_CHOICES, 'label': 'Report Type'},
+        {'name': 'total_records', 'type': 'int', 'default': 0, 'label': 'Total Records'},
+        {'name': 'anonymization_method', 'type': 'str', 'label': 'Anonymization Method'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='anonymized_data_list',
+    add_url_name='anonymized_data_add',
+    edit_url_name='anonymized_data_edit',
+    order_by='-generated_at',
+)
+anonymized_data_list = _anonymized_data['list']
+anonymized_data_add = _anonymized_data['add']
+anonymized_data_edit = _anonymized_data['edit']
+anonymized_data_delete = _anonymized_data['delete']
+
+# ===== Database Scaling =====
+_database_scaling = make_crud_views(
+    model_class=DatabaseScalingConfig,
+    display_name='Database Scaling',
+    fields=[
+        {'name': 'config_name', 'type': 'str', 'required': True, 'label': 'Config Name'},
+        {'name': 'scaling_type', 'type': 'str', 'choices': DatabaseScalingConfig.SCALING_TYPE_CHOICES, 'label': 'Scaling Type'},
+        {'name': 'is_active', 'type': 'bool', 'label': 'Active'},
+        {'name': 'max_connections', 'type': 'int', 'default': 100, 'label': 'Max Connections'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+    ],
+    list_url_name='database_scaling_list',
+    add_url_name='database_scaling_add',
+    edit_url_name='database_scaling_edit',
+    order_by='-created_at',
+)
+database_scaling_list = _database_scaling['list']
+database_scaling_add = _database_scaling['add']
+database_scaling_edit = _database_scaling['edit']
+database_scaling_delete = _database_scaling['delete']
+
+# ===== Backup Config =====
+_backup_config = make_crud_views(
+    model_class=BackupConfiguration,
+    display_name='Backup Configuration',
+    fields=[
+        {'name': 'backup_name', 'type': 'str', 'required': True, 'label': 'Backup Name'},
+        {'name': 'frequency', 'type': 'str', 'choices': BackupConfiguration.FREQUENCY_CHOICES, 'label': 'Frequency'},
+        {'name': 'retention_days', 'type': 'int', 'default': 30, 'label': 'Retention (days)'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+        {'name': 'storage_location', 'type': 'str', 'label': 'Storage Location'},
+    ],
+    list_url_name='backup_config_list',
+    add_url_name='backup_config_add',
+    edit_url_name='backup_config_edit',
+    order_by='-created_at',
+)
+backup_config_list = _backup_config['list']
+backup_config_add = _backup_config['add']
+backup_config_edit = _backup_config['edit']
+backup_config_delete = _backup_config['delete']
+
+# ===== Integration Config =====
+_integration_config = make_crud_views(
+    model_class=IntegrationConfig,
+    display_name='Integration Config',
+    fields=[
+        {'name': 'category', 'type': 'str', 'choices': INTEGRATION_CATEGORIES, 'label': 'Category'},
+        {'name': 'feature_type', 'type': 'str', 'choices': INTEGRATION_FEATURE_TYPES, 'label': 'Feature Type'},
+        {'name': 'is_enabled', 'type': 'bool', 'label': 'Enabled'},
+    ],
+    list_url_name='integration_config_list',
+    add_url_name='integration_config_add',
+    edit_url_name='integration_config_edit',
+    order_by='-created_at',
+)
+integration_config_list = _integration_config['list']
+integration_config_add = _integration_config['add']
+integration_config_edit = _integration_config['edit']
+integration_config_delete = _integration_config['delete']
+
+# ===== Integration Sub-tasks =====
+_integration_subtask = make_crud_views(
+    model_class=IntegrationSubTask,
+    display_name='Integration Sub-task',
+    fields=[
+        {'name': 'phase', 'type': 'int', 'choices': IntegrationSubTask.PHASE_CHOICES, 'label': 'Phase'},
+        {'name': 'sub_task_number', 'type': 'int', 'required': True, 'label': 'Sub-task Number'},
+        {'name': 'title', 'type': 'str', 'required': True, 'label': 'Title'},
+        {'name': 'category', 'type': 'str', 'choices': INTEGRATION_CATEGORIES, 'label': 'Category'},
+        {'name': 'feature_type', 'type': 'str', 'choices': INTEGRATION_FEATURE_TYPES, 'label': 'Feature Type'},
+        {'name': 'status', 'type': 'str', 'choices': IntegrationSubTask.STATUS_CHOICES, 'default': 'pending', 'label': 'Status'},
+        {'name': 'details', 'type': 'str', 'widget': 'textarea', 'label': 'Details'},
+    ],
+    list_url_name='integration_subtask_list',
+    add_url_name='integration_subtask_add',
+    edit_url_name='integration_subtask_edit',
+    order_by='phase',
+)
+integration_subtask_list = _integration_subtask['list']
+integration_subtask_add = _integration_subtask['add']
+integration_subtask_edit = _integration_subtask['edit']
+integration_subtask_delete = _integration_subtask['delete']
 
 # ===== Phase 12: Continuous Monitoring & Alerts =====
 

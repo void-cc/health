@@ -231,7 +231,7 @@ class ViewWithDataTests(TestCase):
         self.assertEqual(VitalSign.objects.count(), 0)
 
 
-# ===== Phase 2 Tests =====
+# ===== Model Tests =====
 
 from tracker.models import (
     BodyComposition, HydrationLog, EnergyFatigueLog,
@@ -242,7 +242,7 @@ from tracker.models import (
 
 
 class Phase2ModelTests(TestCase):
-    """Test model creation, __str__, and calculated fields for Phase 2 models."""
+    """Test model creation, __str__, and calculated fields for these models."""
 
     def test_body_composition_waist_to_hip_ratio(self):
         bc = BodyComposition.objects.create(
@@ -399,7 +399,7 @@ class Phase2ModelTests(TestCase):
 
 
 class Phase2StatusCodeTests(TestCase):
-    """Test GET requests return 200 for all Phase 2 list and add pages."""
+    """Test GET requests return 200 for all Vital Signs list and add pages."""
 
     def setUp(self):
         self.client = Client()
@@ -501,7 +501,7 @@ class Phase2StatusCodeTests(TestCase):
 
 
 class Phase2CRUDTests(TestCase):
-    """Test POST create, edit, and delete for each Phase 2 module."""
+    """Test POST create, edit, and delete for each Vital Signs module."""
 
     def setUp(self):
         self.client = Client()
@@ -1184,7 +1184,7 @@ class PDFExportTests(TestCase):
 
 
 class Phase3DarkModeTests(TestCase):
-    """Phase 3: Dark mode toggle and theme infrastructure."""
+    """Dark mode toggle and theme infrastructure."""
 
     def setUp(self):
         self.client = Client()
@@ -1200,17 +1200,17 @@ class Phase3DarkModeTests(TestCase):
         response = self.client.get(reverse('index'))
         self.assertContains(response, 'data-theme=')
 
-    def test_phase3_css_loaded(self):
+    def test_ui_css_loaded(self):
         response = self.client.get(reverse('index'))
-        self.assertContains(response, 'css/phase3.css')
+        self.assertContains(response, 'css/ui.css')
 
-    def test_phase3_js_loaded(self):
+    def test_ui_js_loaded(self):
         response = self.client.get(reverse('index'))
-        self.assertContains(response, 'js/phase3.js')
+        self.assertContains(response, 'js/ui.js')
 
 
 class Phase3NavigationTests(TestCase):
-    """Phase 3: Sidebar navigation system."""
+    """Sidebar navigation system."""
 
     def setUp(self):
         self.client = Client()
@@ -1226,10 +1226,10 @@ class Phase3NavigationTests(TestCase):
     def test_sidebar_has_categories(self):
         response = self.client.get(reverse('index'))
         self.assertContains(response, 'sidebar-category')
-        self.assertContains(response, 'Body &amp; Metrics')
-        self.assertContains(response, 'Charts &amp; Visualizations')
-        self.assertContains(response, 'Health Tracking')
-        self.assertContains(response, 'Data Management')
+        self.assertContains(response, 'Tracking')
+        self.assertContains(response, 'Analytics')
+        self.assertContains(response, 'Intelligence')
+        self.assertContains(response, 'Settings')
 
     def test_sidebar_has_all_nav_links(self):
         response = self.client.get(reverse('index'))
@@ -1242,7 +1242,7 @@ class Phase3NavigationTests(TestCase):
 
 
 class Phase3AccessibilityTests(TestCase):
-    """Phase 3: WCAG 2.1 AA compliance features."""
+    """WCAG 2.1 AA compliance features."""
 
     def setUp(self):
         self.client = Client()
@@ -1278,7 +1278,7 @@ class Phase3AccessibilityTests(TestCase):
 
 
 class Phase3QuickEntryTests(TestCase):
-    """Phase 3: Quick-entry vitals modal."""
+    """Quick-entry vitals modal."""
 
     def setUp(self):
         self.client = Client()
@@ -1305,7 +1305,7 @@ class Phase3QuickEntryTests(TestCase):
 
 
 class Phase3PWATests(TestCase):
-    """Phase 3: Progressive Web App features."""
+    """Progressive Web App features."""
 
     def setUp(self):
         self.client = Client()
@@ -1323,11 +1323,11 @@ class Phase3PWATests(TestCase):
 
     def test_service_worker_js_registered(self):
         response = self.client.get(reverse('index'))
-        self.assertContains(response, 'js/phase3.js')
+        self.assertContains(response, 'js/ui.js')
 
 
 class Phase3GlobalSearchTests(TestCase):
-    """Phase 3: Global search API."""
+    """Global search API."""
 
     def setUp(self):
         self.client = Client()
@@ -1378,7 +1378,7 @@ class Phase3GlobalSearchTests(TestCase):
 
 
 class Phase3MedicalTooltipTests(TestCase):
-    """Phase 3: Medical tooltips on forms and labels."""
+    """Medical tooltips on forms and labels."""
 
     def setUp(self):
         self.client = Client()
@@ -1397,7 +1397,7 @@ class Phase3MedicalTooltipTests(TestCase):
 
 
 class Phase3VoiceInputTests(TestCase):
-    """Phase 3: Voice-to-text integration."""
+    """Voice-to-text integration."""
 
     def setUp(self):
         self.client = Client()
@@ -1415,7 +1415,7 @@ class Phase3VoiceInputTests(TestCase):
 
 
 class Phase3OnboardingTests(TestCase):
-    """Phase 3: Onboarding tour button."""
+    """Onboarding tour button."""
 
     def setUp(self):
         self.client = Client()
@@ -1433,7 +1433,7 @@ class Phase3OnboardingTests(TestCase):
 
 
 # ============================================================================
-# Phase 4: User Authentication and Profile Tests
+# User Authentication and Profile Tests
 # ============================================================================
 
 class Phase4RegistrationTests(TestCase):
@@ -1849,11 +1849,10 @@ class DynamicSidebarTests(TestCase):
     def test_sidebar_has_all_categories(self):
         response = self.client.get(reverse('index'))
         expected = [
-            'Core', 'Charts &amp; Visualizations', 'Body &amp; Metrics',
-            'Health Tracking', 'Wearables &amp; Devices',
-            'Sleep &amp; Circadian', 'Nutrition', 'Health Intelligence',
-            'Sharing &amp; Access', 'Administration', 'Integrations',
-            'Data Management', 'Account',
+            'Overview', 'Analytics', 'Tracking',
+            'Sleep &amp; Nutrition', 'Intelligence',
+            'Devices', 'Sharing',
+            'Settings', 'Administration',
         ]
         for cat in expected:
             self.assertContains(response, cat)
@@ -1916,7 +1915,7 @@ class DynamicSidebarTests(TestCase):
                 self.assertTrue(item['url'].startswith('/'))
 
 
-# ===== Phase 5-12 Tests =====
+# ===== Model Tests =====
 
 from tracker.models import (
     WearableDevice, WearableSyncLog, WEARABLE_PLATFORMS,
@@ -1936,7 +1935,7 @@ from tracker.models import (
 
 
 class Phase5ModelTests(TestCase):
-    """Test model creation, __str__, and defaults for Phase 5 models."""
+    """Test model creation, __str__, and defaults for these models."""
 
     def test_wearable_device_str(self):
         d = WearableDevice.objects.create(platform='fitbit', device_name='Charge 5')
@@ -2158,7 +2157,7 @@ class Phase5SyncDataTests(TestCase):
 
 
 class Phase6ModelTests(TestCase):
-    """Test model creation, __str__, and calculated fields for Phase 6 models."""
+    """Test model creation, __str__, and calculated fields for these models."""
 
     def test_sleep_log_str(self):
         s = SleepLog.objects.create(date=date(2026, 3, 1))
@@ -2280,7 +2279,7 @@ class Phase6ModelTests(TestCase):
 
 
 class Phase7ModelTests(TestCase):
-    """Test model creation and __str__ for Phase 7 models."""
+    """Test model creation and __str__ for these models."""
 
     def test_user_profile_role(self):
         user = User.objects.create_user(username='testuser', password='pass')
@@ -2342,7 +2341,7 @@ class Phase7ModelTests(TestCase):
 
 
 class Phase8ModelTests(TestCase):
-    """Test model creation, __str__, and calculated fields for Phase 8 models."""
+    """Test model creation, __str__, and calculated fields for these models."""
 
     def test_biological_age_difference(self):
         ba = BiologicalAgeCalculation.objects.create(
@@ -2409,7 +2408,7 @@ class Phase8ModelTests(TestCase):
 
 
 class Phase9ModelTests(TestCase):
-    """Test model creation and __str__ for Phase 9 models."""
+    """Test model creation and __str__ for these models."""
 
     def test_secure_viewing_link_str(self):
         from django.utils import timezone
@@ -2440,7 +2439,7 @@ class Phase9ModelTests(TestCase):
 
 
 class Phase10_12ModelTests(TestCase):
-    """Test model creation and __str__ for Phase 10-12 models."""
+    """Test model creation and __str__ for these models."""
 
     def test_integration_config_str(self):
         ic = IntegrationConfig.objects.create(category='genomics', feature_type='export')
@@ -2451,18 +2450,18 @@ class Phase10_12ModelTests(TestCase):
             phase=10, sub_task_number=1, title='Test Task',
             category='genomics', feature_type='export', status='pending',
         )
-        self.assertIn('Phase 10', str(ist))
+        self.assertIn('Area 10', str(ist))
 
 
 class Phase5To12StatusCodeTests(TestCase):
-    """Test GET requests return 200 for all Phase 5-12 list and add pages."""
+    """Test GET requests return 200 for all list and add pages."""
 
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
         self.client.login(username='testuser', password='testpass123')
 
-    # Phase 5
+    # ---
     def test_wearable_device_list(self):
         self.assertEqual(self.client.get(reverse('wearable_device_list')).status_code, 200)
 
@@ -2472,7 +2471,7 @@ class Phase5To12StatusCodeTests(TestCase):
     def test_sync_log_list(self):
         self.assertEqual(self.client.get(reverse('sync_log_list')).status_code, 200)
 
-    # Phase 6
+    # ---
     def test_sleep_list(self):
         self.assertEqual(self.client.get(reverse('sleep_list')).status_code, 200)
 
@@ -2521,7 +2520,7 @@ class Phase5To12StatusCodeTests(TestCase):
     def test_caffeine_alcohol_add(self):
         self.assertEqual(self.client.get(reverse('caffeine_alcohol_add')).status_code, 200)
 
-    # Phase 7
+    # ---
     def test_user_profile_list(self):
         self.assertEqual(self.client.get(reverse('user_profile_list')).status_code, 200)
 
@@ -2588,7 +2587,7 @@ class Phase5To12StatusCodeTests(TestCase):
     def test_backup_config_add(self):
         self.assertEqual(self.client.get(reverse('backup_config_add')).status_code, 200)
 
-    # Phase 8
+    # ---
     def test_medication_schedule_list(self):
         self.assertEqual(self.client.get(reverse('medication_schedule_list')).status_code, 200)
 
@@ -2625,7 +2624,7 @@ class Phase5To12StatusCodeTests(TestCase):
     def test_predictive_biomarker_add(self):
         self.assertEqual(self.client.get(reverse('predictive_biomarker_add')).status_code, 200)
 
-    # Phase 9
+    # ---
     def test_secure_viewing_link_list(self):
         self.assertEqual(self.client.get(reverse('secure_viewing_link_list')).status_code, 200)
 
@@ -2656,7 +2655,7 @@ class Phase5To12StatusCodeTests(TestCase):
     def test_stakeholder_email_add(self):
         self.assertEqual(self.client.get(reverse('stakeholder_email_add')).status_code, 200)
 
-    # Phases 10-12
+    # Integration Areas
     def test_integration_config_list(self):
         self.assertEqual(self.client.get(reverse('integration_config_list')).status_code, 200)
 
@@ -2671,7 +2670,7 @@ class Phase5To12StatusCodeTests(TestCase):
 
 
 class Phase5To12CRUDTests(TestCase):
-    """Test POST create, edit, and delete for Phase 5-12 models."""
+    """Test POST create, edit, and delete for these models."""
 
     def setUp(self):
         self.client = Client()
@@ -2937,7 +2936,7 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(CaffeineAlcoholLog.objects.count(), 0)
 
-    # ----- UserProfile (Phase 7) -----
+    # ----- UserProfile -----
     def test_user_profile_add_post(self):
         response = self.client.post(reverse('user_profile_add'), {
             'username': 'newuser',
@@ -2964,7 +2963,7 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(UserProfile.objects.filter(user__username='testuser').count(), 0)
 
-    # ----- EncryptionKey (Phase 7) -----
+    # ----- EncryptionKey -----
     def test_encryption_key_add_post(self):
         response = self.client.post(reverse('encryption_key_add'), {
             'key_identifier': 'key-test-001',
@@ -2991,7 +2990,7 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(EncryptionKey.objects.count(), 0)
 
-    # ----- AuditLog (Phase 7) -----
+    # ----- AuditLog -----
     def test_audit_log_add_post(self):
         response = self.client.post(reverse('audit_log_add'), {
             'action': 'user_login',
@@ -3016,7 +3015,7 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(AuditLog.objects.count(), 0)
 
-    # ----- AnonymizedDataReport (Phase 7) -----
+    # ----- AnonymizedDataReport -----
     def test_anonymized_data_add_post(self):
         response = self.client.post(reverse('anonymized_data_add'), {
             'report_title': 'Q1 Stats',
@@ -3048,7 +3047,7 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(AnonymizedDataReport.objects.count(), 0)
 
-    # ----- DatabaseScalingConfig (Phase 7) -----
+    # ----- DatabaseScalingConfig -----
     def test_database_scaling_add_post(self):
         response = self.client.post(reverse('database_scaling_add'), {
             'config_name': 'Primary Replica',
@@ -3079,7 +3078,7 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(DatabaseScalingConfig.objects.count(), 0)
 
-    # ----- BackupConfiguration (Phase 7) -----
+    # ----- BackupConfiguration -----
     def test_backup_config_add_post(self):
         response = self.client.post(reverse('backup_config_add'), {
             'backup_name': 'Nightly Backup',
@@ -3289,7 +3288,7 @@ class Phase5To12CRUDTests(TestCase):
 
 
 class Phase11DashboardTests(TestCase):
-    """Test Phase 11 Interoperability dashboard view."""
+    """Test Interoperability dashboard view."""
 
     def setUp(self):
         self.client = Client()
@@ -3357,11 +3356,11 @@ class Phase11DashboardTests(TestCase):
 
     def test_dashboard_excludes_other_phases(self):
         IntegrationSubTask.objects.create(
-            phase=10, sub_task_number=1, title='Phase 10 Task',
+            phase=10, sub_task_number=1, title='Genomics Task',
             category='genomics', feature_type='export', status='pending',
         )
         response = self.client.get(reverse('phase11_dashboard'))
-        self.assertNotContains(response, 'Phase 10 Task')
+        self.assertNotContains(response, 'Genomics Task')
         self.assertEqual(response.context['total'], 5)
 
     def test_dashboard_interoperability_categories(self):
@@ -3373,7 +3372,7 @@ class Phase11DashboardTests(TestCase):
 
 
 class Phase11SubTaskModelTests(TestCase):
-    """Test Phase 11 IntegrationSubTask model with interoperability-specific data."""
+    """Test IntegrationSubTask model with interoperability-specific data."""
 
     def setUp(self):
         IntegrationSubTask.objects.filter(phase=11).delete()
@@ -3383,7 +3382,7 @@ class Phase11SubTaskModelTests(TestCase):
             phase=11, sub_task_number=104, title='IHE_XDM Data Pipeline',
             category='ihe_xdm', feature_type='data_pipeline', status='pending',
         )
-        self.assertEqual(str(ist), 'Phase 11 Sub-task 104: IHE_XDM Data Pipeline')
+        self.assertEqual(str(ist), 'Area 11 Sub-task 104: IHE_XDM Data Pipeline')
         self.assertEqual(ist.phase, 11)
         self.assertEqual(ist.category, 'ihe_xdm')
         self.assertEqual(ist.feature_type, 'data_pipeline')
@@ -4176,7 +4175,7 @@ class WearableSyncTests(TestCase):
         device = WearableDevice.objects.create(
             platform='fitbit', device_name='Charge 5', is_active=True,
         )
-        response = self.client.post(reverse('wearable_device_sync', kwargs={'pk': device.pk}))
+        response = self.client.post(reverse('wearable_sync', kwargs={'pk': device.pk}))
         self.assertEqual(response.status_code, 302)
 
 
@@ -4353,6 +4352,319 @@ class IntegrationConfigActivateTests(TestCase):
         response = self.client.post(reverse('integration_config_run', kwargs={'pk': config.pk}))
         self.assertEqual(response.status_code, 302)
 
+
+# ===== Enhanced List View Tests =====
+
+class SleepListEnhancedTests(TestCase):
+    """Tests for enhanced sleep list view with pagination, filtering, and stats."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        for i in range(25):
+            SleepLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                total_sleep_minutes=420 + i,
+                deep_sleep_minutes=90 + i,
+                sleep_quality_score=60 + i,
+            )
+
+    def test_sleep_list_has_pagination(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('page_obj', response.context)
+        self.assertEqual(response.context['page_obj'].paginator.count, 25)
+        self.assertEqual(len(response.context['page_obj']), 20)
+
+    def test_sleep_list_page_2(self):
+        response = self.client.get(reverse('sleep_list'), {'page': 2})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['page_obj']), 5)
+
+    def test_sleep_list_has_stats(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertIn('stats', response.context)
+        self.assertEqual(response.context['stats']['total_entries'], 25)
+        self.assertIsNotNone(response.context['stats']['avg_total_sleep'])
+        self.assertIsNotNone(response.context['stats']['avg_quality'])
+
+    def test_sleep_list_date_filtering(self):
+        response = self.client.get(reverse('sleep_list'), {
+            'start_date': '2026-01-10',
+            'end_date': '2026-01-15',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].paginator.count, 6)
+
+    def test_sleep_list_date_filtering_start_only(self):
+        response = self.client.get(reverse('sleep_list'), {'start_date': '2026-01-20'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].paginator.count, 6)
+
+    def test_sleep_list_has_chart_data(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertIn('chart_dates', response.context)
+        self.assertIn('chart_quality', response.context)
+        self.assertIn('chart_total', response.context)
+
+    def test_sleep_list_renders_summary_stats(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertContains(response, 'Avg Sleep (min)')
+        self.assertContains(response, 'Avg Quality Score')
+
+    def test_sleep_list_renders_filter_form(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertContains(response, 'startDate')
+        self.assertContains(response, 'endDate')
+
+    def test_sleep_list_renders_trend_chart(self):
+        response = self.client.get(reverse('sleep_list'))
+        self.assertContains(response, 'sleepTrendChart')
+
+
+class HydrationListEnhancedTests(TestCase):
+    """Tests for enhanced hydration list view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        for i in range(25):
+            HydrationLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                fluid_intake_ml=2000 + i * 50,
+                goal_ml=2500,
+            )
+
+    def test_hydration_list_has_pagination(self):
+        response = self.client.get(reverse('hydration_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].paginator.count, 25)
+        self.assertEqual(len(response.context['page_obj']), 20)
+
+    def test_hydration_list_has_stats(self):
+        response = self.client.get(reverse('hydration_list'))
+        stats = response.context['stats']
+        self.assertEqual(stats['total_entries'], 25)
+        self.assertIsNotNone(stats['avg_intake'])
+        self.assertIsNotNone(stats['avg_goal_pct'])
+        self.assertIsNotNone(stats['days_goal_met'])
+
+    def test_hydration_list_date_filtering(self):
+        response = self.client.get(reverse('hydration_list'), {
+            'start_date': '2026-01-10',
+            'end_date': '2026-01-15',
+        })
+        self.assertEqual(response.context['page_obj'].paginator.count, 6)
+
+    def test_hydration_list_renders_summary(self):
+        response = self.client.get(reverse('hydration_list'))
+        self.assertContains(response, 'Avg Daily Intake')
+        self.assertContains(response, 'Days Goal Met')
+
+    def test_hydration_list_renders_chart(self):
+        response = self.client.get(reverse('hydration_list'))
+        self.assertContains(response, 'hydrationTrendChart')
+
+
+class BodyCompositionListEnhancedTests(TestCase):
+    """Tests for enhanced body composition list view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        for i in range(5):
+            BodyComposition.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i * 7),
+                body_fat_percentage=18.0 + i * 0.5,
+                skeletal_muscle_mass=35.0 + i * 0.2,
+                waist_circumference=80 + i,
+                hip_circumference=100,
+            )
+
+    def test_body_composition_list_has_stats(self):
+        response = self.client.get(reverse('body_composition_list'))
+        self.assertEqual(response.status_code, 200)
+        stats = response.context['stats']
+        self.assertEqual(stats['total_entries'], 5)
+        self.assertIsNotNone(stats['avg_body_fat'])
+        self.assertIsNotNone(stats['avg_muscle_mass'])
+
+    def test_body_composition_list_date_filtering(self):
+        response = self.client.get(reverse('body_composition_list'), {
+            'start_date': '2026-01-01',
+            'end_date': '2026-01-14',
+        })
+        self.assertEqual(response.context['page_obj'].paginator.count, 2)
+
+    def test_body_composition_list_has_chart_data(self):
+        response = self.client.get(reverse('body_composition_list'))
+        self.assertIn('chart_dates', response.context)
+        self.assertIn('chart_body_fat', response.context)
+        self.assertIn('chart_muscle', response.context)
+
+    def test_body_composition_list_renders_stats(self):
+        response = self.client.get(reverse('body_composition_list'))
+        self.assertContains(response, 'Avg Body Fat')
+        self.assertContains(response, 'Avg Muscle Mass')
+
+
+class MedicationScheduleListEnhancedTests(TestCase):
+    """Tests for enhanced medication schedule list view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        MedicationSchedule.objects.create(
+            medication_name='Aspirin', dosage='100mg', frequency='Daily',
+            start_date=date(2026, 1, 1), is_active=True,
+        )
+        MedicationSchedule.objects.create(
+            medication_name='Ibuprofen', dosage='200mg', frequency='As needed',
+            start_date=date(2026, 1, 1), is_active=False,
+        )
+        MedicationSchedule.objects.create(
+            medication_name='Vitamin D', dosage='1000IU', frequency='Daily',
+            start_date=date(2026, 1, 1), is_active=True,
+        )
+
+    def test_medication_list_has_search(self):
+        response = self.client.get(reverse('medication_schedule_list'), {'q': 'Aspirin'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
+
+    def test_medication_list_filter_active(self):
+        response = self.client.get(reverse('medication_schedule_list'), {'status': 'active'})
+        self.assertEqual(response.context['page_obj'].paginator.count, 2)
+
+    def test_medication_list_filter_inactive(self):
+        response = self.client.get(reverse('medication_schedule_list'), {'status': 'inactive'})
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
+
+    def test_medication_list_has_summary_counts(self):
+        response = self.client.get(reverse('medication_schedule_list'))
+        self.assertEqual(response.context['total_count'], 3)
+        self.assertEqual(response.context['total_active'], 2)
+
+    def test_medication_list_renders_search_form(self):
+        response = self.client.get(reverse('medication_schedule_list'))
+        self.assertContains(response, 'searchQuery')
+        self.assertContains(response, 'statusFilter')
+
+    def test_medication_list_has_pagination(self):
+        response = self.client.get(reverse('medication_schedule_list'))
+        self.assertIn('page_obj', response.context)
+
+
+class HealthGoalListEnhancedTests(TestCase):
+    """Tests for enhanced health goal list view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        HealthGoal.objects.create(
+            title='Lose Weight', target_value=70, current_value=65,
+            unit='kg', status='active', start_date=date(2026, 1, 1),
+        )
+        HealthGoal.objects.create(
+            title='Run 5K', target_value=5, current_value=5,
+            unit='km', status='completed', start_date=date(2026, 1, 1),
+        )
+        HealthGoal.objects.create(
+            title='Sleep 8 hours', target_value=8, current_value=6,
+            unit='hours', status='paused', start_date=date(2026, 1, 1),
+        )
+
+    def test_health_goal_list_has_stats(self):
+        response = self.client.get(reverse('health_goal_list'))
+        self.assertEqual(response.status_code, 200)
+        stats = response.context['stats']
+        self.assertEqual(stats['total'], 3)
+        self.assertEqual(stats['completed'], 1)
+        self.assertEqual(stats['in_progress'], 1)
+        self.assertEqual(stats['paused'], 1)
+
+    def test_health_goal_list_filter_by_status(self):
+        response = self.client.get(reverse('health_goal_list'), {'status': 'active'})
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
+
+    def test_health_goal_list_search_by_title(self):
+        response = self.client.get(reverse('health_goal_list'), {'q': 'Weight'})
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
+
+    def test_health_goal_list_completion_rate(self):
+        response = self.client.get(reverse('health_goal_list'))
+        stats = response.context['stats']
+        self.assertAlmostEqual(stats['completion_rate'], 33.3, places=1)
+
+    def test_health_goal_list_renders_stats(self):
+        response = self.client.get(reverse('health_goal_list'))
+        self.assertContains(response, 'Completion Rate')
+        self.assertContains(response, 'Active')  # replaces 'In Progress'
+
+    def test_health_goal_list_has_pagination(self):
+        response = self.client.get(reverse('health_goal_list'))
+        self.assertIn('page_obj', response.context)
+
+
+class MacroListEnhancedTests(TestCase):
+    """Tests for enhanced macronutrient list view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        for i in range(25):
+            MacronutrientLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                protein_grams=120 + i,
+                carbohydrate_grams=200 + i,
+                fat_grams=60 + i,
+                calories=2000 + i * 20,
+                fiber_grams=25 + i,
+            )
+
+    def test_macro_list_has_pagination(self):
+        response = self.client.get(reverse('macro_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].paginator.count, 25)
+        self.assertEqual(len(response.context['page_obj']), 20)
+
+    def test_macro_list_has_stats(self):
+        response = self.client.get(reverse('macro_list'))
+        stats = response.context['stats']
+        self.assertEqual(stats['total_entries'], 25)
+        self.assertIsNotNone(stats['avg_protein'])
+        self.assertIsNotNone(stats['avg_carbs'])
+        self.assertIsNotNone(stats['avg_fat'])
+        self.assertIsNotNone(stats['avg_calories'])
+
+    def test_macro_list_date_filtering(self):
+        response = self.client.get(reverse('macro_list'), {
+            'start_date': '2026-01-10',
+            'end_date': '2026-01-15',
+        })
+        self.assertEqual(response.context['page_obj'].paginator.count, 6)
+
+    def test_macro_list_renders_summary(self):
+        response = self.client.get(reverse('macro_list'))
+        self.assertContains(response, 'Avg Calories')
+        self.assertContains(response, 'Avg Protein')
+        self.assertContains(response, 'Avg Carbs')
+
+    def test_macro_list_has_chart_data(self):
+        response = self.client.get(reverse('macro_list'))
+        self.assertIn('chart_dates', response.context)
+        self.assertIn('chart_protein', response.context)
+        self.assertIn('chart_calories', response.context)
+
+    def test_macro_list_renders_chart(self):
+        response = self.client.get(reverse('macro_list'))
+        self.assertContains(response, 'macroTrendChart')
 
 # ===== Phase 12: Continuous Monitoring & Alerts Tests =====
 
