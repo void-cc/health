@@ -14,28 +14,8 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AddField(
-            model_name='bloodtest',
-            name='user',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='blood_tests', to=settings.AUTH_USER_MODEL),
-        ),
-        migrations.AddField(
-            model_name='medicationschedule',
-            name='user',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='medication_schedules', to=settings.AUTH_USER_MODEL),
-        ),
-        migrations.AddField(
             model_name='practitioneraccess',
             name='patient',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='practitioner_accesses', to=settings.AUTH_USER_MODEL),
-        ),
-        migrations.AddField(
-            model_name='vitalsign',
-            name='user',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='vital_signs', to=settings.AUTH_USER_MODEL),
-        ),
-        migrations.AlterField(
-            model_name='integrationsubtask',
-            name='phase',
-            field=models.IntegerField(choices=[(10, 'Genomics & Personalized Medicine'), (11, 'Interoperability'), (12, 'Continuous Monitoring & Alerts')]),
         ),
     ]
