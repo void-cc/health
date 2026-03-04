@@ -286,6 +286,12 @@ urlpatterns = [
     path('biomarkers/delete/<int:pk>/', views.predictive_biomarker_delete, name='predictive_biomarker_delete'),
     path('biomarkers/generate/', views.predictive_biomarker_generate, name='predictive_biomarker_generate'),
 
+    # Clinical Trial Matches
+    path('clinical-trials/', views.clinical_trial_list, name='clinical_trial_list'),
+    path('clinical-trials/add/', views.clinical_trial_add, name='clinical_trial_add'),
+    path('clinical-trials/edit/<int:pk>/', views.clinical_trial_edit, name='clinical_trial_edit'),
+    path('clinical-trials/delete/<int:pk>/', views.clinical_trial_delete, name='clinical_trial_delete'),
+
     # Secure Viewing Links
     path('secure-links/', views.secure_viewing_link_list, name='secure_viewing_link_list'),
     path('secure-links/add/', views.secure_viewing_link_add, name='secure_viewing_link_add'),

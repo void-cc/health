@@ -2798,6 +2798,12 @@ class Phase5To12StatusCodeTests(TestCase):
     def test_predictive_biomarker_add(self):
         self.assertEqual(self.client.get(reverse('predictive_biomarker_add')).status_code, 200)
 
+    def test_clinical_trial_list(self):
+        self.assertEqual(self.client.get(reverse('clinical_trial_list')).status_code, 200)
+
+    def test_clinical_trial_add(self):
+        self.assertEqual(self.client.get(reverse('clinical_trial_add')).status_code, 200)
+
     # ---
     def test_secure_viewing_link_list(self):
         self.assertEqual(self.client.get(reverse('secure_viewing_link_list')).status_code, 200)
@@ -3498,6 +3504,41 @@ class Phase5To12CRUDTests(TestCase):
         response = self.client.post(reverse('integration_subtask_delete', kwargs={'pk': ist.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(IntegrationSubTask.objects.count(), count_before - 1)
+
+    # ----- ClinicalTrialMatch -----
+    def test_clinical_trial_add_post(self):
+        response = self.client.post(reverse('clinical_trial_add'), {
+            'trial_id': 'NCT12345678',
+            'trial_title': 'Test Trial',
+            'condition': 'Hypertension',
+            'match_score': '0.85',
+            'status': 'recruiting',
+            'url': 'https://clinicaltrials.gov/ct2/show/NCT12345678',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(ClinicalTrialMatch.objects.count(), 1)
+
+    def test_clinical_trial_edit_post(self):
+        ct = ClinicalTrialMatch.objects.create(
+            trial_id='NCT12345678', trial_title='Test Trial', condition='Hypertension',
+        )
+        response = self.client.post(reverse('clinical_trial_edit', kwargs={'pk': ct.pk}), {
+            'trial_id': 'NCT12345678',
+            'trial_title': 'Updated Trial',
+            'condition': 'Hypertension',
+        })
+        self.assertEqual(response.status_code, 302)
+        ct.refresh_from_db()
+        self.assertEqual(ct.trial_title, 'Updated Trial')
+
+    def test_clinical_trial_delete_post(self):
+        ct = ClinicalTrialMatch.objects.create(
+            trial_id='NCT12345678', trial_title='Test Trial', condition='Hypertension',
+        )
+        count_before = ClinicalTrialMatch.objects.count()
+        response = self.client.post(reverse('clinical_trial_delete', kwargs={'pk': ct.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(ClinicalTrialMatch.objects.count(), count_before - 1)
 
 
 class Phase11DashboardTests(TestCase):
