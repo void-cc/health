@@ -5,6 +5,7 @@ from django.utils import timezone
 
 
 class BloodTest(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='blood_tests')
     test_name = models.CharField(max_length=100)
     value = models.FloatField()
     unit = models.CharField(max_length=20)
@@ -27,6 +28,7 @@ class BloodTestInfo(models.Model):
         return self.test_name
 
 class VitalSign(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='vital_signs')
     date = models.DateField()
     weight = models.FloatField(null=True, blank=True)  # in kg or lbs
     heart_rate = models.IntegerField(null=True, blank=True) # bpm
@@ -1230,6 +1232,7 @@ class BiologicalAgeCalculation(models.Model):
 
 
 class MedicationSchedule(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='medication_schedules')
     medication_name = models.CharField(max_length=200)
     dosage = models.CharField(max_length=100)
     frequency = models.CharField(max_length=100)
@@ -1493,6 +1496,7 @@ class PractitionerAccess(models.Model):
         ('approved', 'Approved'),
         ('revoked', 'Revoked'),
     ]
+    patient = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='practitioner_accesses')
     practitioner_name = models.CharField(max_length=200)
     practitioner_email = models.EmailField()
     specialty = models.CharField(max_length=100, blank=True, default='')

@@ -3731,7 +3731,9 @@ class Phase9PractitionerPortalTests(TestCase):
         self.assertContains(response, 'No approved access found')
 
     def test_approve_practitioner_sets_granted_at(self):
-        """Approving a practitioner should set granted_at timestamp."""
+        """Approving a practitioner should set granted_at timestamp and link the patient."""
+        user = User.objects.create_user(username='patient_user', password='testpass123')
+        self.client.login(username='patient_user', password='testpass123')
         pa = PractitionerAccess.objects.create(
             practitioner_name='Dr. New',
             practitioner_email='new@hospital.com',
@@ -3747,6 +3749,39 @@ class Phase9PractitionerPortalTests(TestCase):
         pa.refresh_from_db()
         self.assertEqual(pa.access_status, 'approved')
         self.assertIsNotNone(pa.granted_at)
+        self.assertEqual(pa.patient, user)
+
+    def test_portal_only_shows_authorized_patient_data(self):
+        """Portal must not expose data belonging to patients who did not authorize the practitioner."""
+        from django.utils import timezone
+        patient_a = User.objects.create_user(username='patient_a', password='testpass123')
+        patient_b = User.objects.create_user(username='patient_b', password='testpass123')
+        # Only patient_a authorized Dr. Smith
+        PractitionerAccess.objects.create(
+            practitioner_name='Dr. Smith',
+            practitioner_email='smith@hospital.com',
+            access_status='approved',
+            granted_at=timezone.now(),
+            patient=patient_a,
+        )
+        # Create health data for both patients
+        BloodTest.objects.create(
+            user=patient_a, test_name='Glucose', value=90.0, unit='mg/dL',
+            date=timezone.now().date(),
+        )
+        BloodTest.objects.create(
+            user=patient_b, test_name='Cholesterol', value=180.0, unit='mg/dL',
+            date=timezone.now().date(),
+        )
+        response = self.client.post(reverse('practitioner_portal'), {
+            'practitioner_email': 'smith@hospital.com',
+        })
+        self.assertEqual(response.status_code, 200)
+        patient_data = response.context.get('patient_data', {})
+        blood_test_names = [bt['test_name'] for bt in patient_data.get('blood_tests', [])]
+        # Dr. Smith should only see patient_a's Glucose, not patient_b's Cholesterol
+        self.assertIn('Glucose', blood_test_names)
+        self.assertNotIn('Cholesterol', blood_test_names)
 
     def test_request_access_requires_name_and_email(self):
         """Access request without name/email should not create entry."""
