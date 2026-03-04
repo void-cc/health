@@ -5,7 +5,7 @@ from .models import (
     ClinicalTrialMatch, HabitLog, Reminder,
     NotificationPreference, NotificationTemplate, NotificationTrigger,
     NotificationLog,
-    MedicationLog, MedicationInventory,
+    MedicationLog, MedicationInventory, MedicationConcept,
 )
 
 
@@ -125,3 +125,11 @@ class MedicationInventoryAdmin(admin.ModelAdmin):
     list_filter = ('expiration_date',)
     search_fields = ('medication_name', 'pharmacy_name', 'notes')
     raw_id_fields = ('user', 'schedule')
+
+
+
+@admin.register(MedicationConcept)
+class MedicationConceptAdmin(admin.ModelAdmin):
+    list_display = ('name', 'rxcui', 'drug_class', 'source', 'last_fetched')
+    list_filter = ('source',)
+    search_fields = ('name', 'rxcui', 'synonyms', 'drug_class')

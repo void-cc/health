@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2><i class="fas fa-exchange-alt"></i> Interaction Dashboard</h2>
+  <a href="{% url 'medication_schedule_list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back to Schedules
+  </a>
+</div>
+
+<!-- Quick Links -->
+<div class="row g-2 mb-4">
+  <div class="col-auto">
+    <a href="{% url 'medication_schedule_list' %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-pills me-1"></i>Schedules</a>
+  </div>
+  <div class="col-auto">
+    <a href="{% url 'pharmacological_interaction_list' %}" class="btn btn-outline-warning btn-sm"><i class="fas fa-list me-1"></i>All Interactions</a>
+  </div>
+</div>
+
+<!-- Severity summary cards -->
+<div class="row g-3 mb-4">
+  {% if severity_counts.critical %}
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-danger bg-danger text-white">
+      <div class="card-body py-2">
+        <div class="small">Critical</div>
+        <div class="h4 mb-0">{{ severity_counts.critical }}</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if severity_counts.high %}
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-danger">
+      <div class="card-body py-2">
+        <div class="text-muted small">High</div>
+        <div class="h4 mb-0 text-danger">{{ severity_counts.high }}</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-warning">
+      <div class="card-body py-2">
+        <div class="text-muted small">Moderate</div>
+        <div class="h4 mb-0 text-warning">{{ severity_counts.moderate }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-info">
+      <div class="card-body py-2">
+        <div class="text-muted small">Low</div>
+        <div class="h4 mb-0 text-info">{{ severity_counts.low }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Active medications on regimen -->
+{% if active_schedules %}
+<div class="alert alert-info mb-4">
+  <strong><i class="fas fa-pills me-1"></i>Current Regimen:</strong>
+  {% for s in active_schedules %}
+    <span class="badge bg-primary me-1">{{ s.medication_name }}</span>
+  {% endfor %}
+  <a href="{% url 'medication_schedule_add' %}" class="btn btn-sm btn-primary ms-2">
+    <i class="fas fa-plus me-1"></i>Add Medication
+  </a>
+</div>
+{% else %}
+<div class="alert alert-info mb-4">
+  No active medication schedules. <a href="{% url 'medication_schedule_add' %}">Add one</a> to check for interactions.
+</div>
+{% endif %}
+
+<!-- Interaction list -->
+{% if interactions %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Severity</th>
+        <th>Medication A</th>
+        <th>Medication B</th>
+        <th>Description</th>
+        <th>Source</th>
+        <th>Detected</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for interaction in interactions %}
+      <tr>
+        <td>
+          {% if interaction.severity == 'critical' %}
+            <span class="badge bg-danger">Critical</span>
+          {% elif interaction.severity == 'high' %}
+            <span class="badge bg-danger">High</span>
+          {% elif interaction.severity == 'moderate' %}
+            <span class="badge bg-warning text-dark">Moderate</span>
+          {% else %}
+            <span class="badge bg-info text-dark">Low</span>
+          {% endif %}
+        </td>
+        <td><strong>{{ interaction.medication_a }}</strong></td>
+        <td><strong>{{ interaction.medication_b }}</strong></td>
+        <td>
+          {{ interaction.description|default:"—"|truncatechars:200 }}
+          {% if interaction.reference_url %}
+            <a href="{{ interaction.reference_url }}" target="_blank" rel="noopener noreferrer" class="ms-1 small">
+              <i class="fas fa-external-link-alt"></i>
+            </a>
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge bg-secondary">{{ interaction.get_source_display }}</span>
+        </td>
+        <td class="text-muted small">{{ interaction.detected_at|date:"Y-m-d" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-success">
+  <i class="fas fa-check-circle me-2"></i>
+  No known interactions detected for your current medications.
+  Interactions are checked automatically when you add or edit a medication schedule.
+</div>
+{% endif %}
+
+<div class="mt-4 text-muted small">
+  <i class="fas fa-info-circle me-1"></i>
+  Interaction data sourced from <a href="https://rxnav.nlm.nih.gov/" target="_blank" rel="noopener noreferrer">RxNav (NIH/NLM)</a>.
+  This is for informational purposes only and does not replace professional medical advice.
+  Always consult your healthcare provider before making changes to your medications.
+</div>
+{% endblock %}

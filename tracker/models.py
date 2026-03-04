@@ -1241,9 +1241,29 @@ class BiologicalAgeCalculation(models.Model):
         return f"Bio Age on {self.date}: {self.biological_age} (chrono: {self.chronological_age})"
 
 
+class MedicationConcept(models.Model):
+    """Canonical medication concept cached from an external database (e.g. RxNorm)."""
+    name = models.CharField(max_length=200, db_index=True)
+    rxcui = models.CharField(max_length=20, blank=True, default='', db_index=True)
+    synonyms = models.TextField(blank=True, default='')
+    drug_class = models.CharField(max_length=200, blank=True, default='')
+    source = models.CharField(max_length=50, default='rxnorm')
+    last_fetched = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} (RXCUI: {self.rxcui})" if self.rxcui else self.name
+
+
 class MedicationSchedule(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='medication_schedules')
     medication_name = models.CharField(max_length=200)
+    rxcui = models.CharField(max_length=20, blank=True, default='', help_text='RxNorm Concept Unique Identifier')
+    concept = models.ForeignKey(
+        MedicationConcept,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='schedules',
+    )
     dosage = models.CharField(max_length=100)
     frequency = models.CharField(max_length=100)
     start_date = models.DateField()
@@ -1288,10 +1308,23 @@ class PharmacologicalInteraction(models.Model):
         ('high', 'High'),
         ('critical', 'Critical'),
     ]
+    SOURCE_CHOICES = [
+        ('manual', 'Manual'),
+        ('rxnorm', 'RxNorm'),
+        ('openfda', 'OpenFDA'),
+    ]
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='pharmacological_interactions',
+    )
     medication_a = models.CharField(max_length=200)
     medication_b = models.CharField(max_length=200)
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='low')
     description = models.TextField(blank=True, default='')
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='manual')
+    reference_url = models.URLField(blank=True, default='')
     detected_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
