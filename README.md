@@ -52,14 +52,14 @@ A comprehensive personal health tracking web application built with Django. Trac
 ### Authentication & Security
 - Secure registration and login with bcrypt/Argon2 password hashing
 - Multi-Factor Authentication (MFA) via TOTP
-- OAuth2 Single Sign-On (Google, Apple, Microsoft)
+- OAuth2 Single Sign-On (Google, Apple, Microsoft) *(placeholder)*
 - Session management with inactivity timeouts
 - Security activity logging
 - Privacy preference centre
 - Account deletion
 
 ### Wearable Integrations *(in progress)*
-- Fitbit, Garmin, Oura Ring, Withings, Google Fit, Samsung Health, Strava, Dexcom
+- Fitbit, Garmin, Oura Ring, Withings, Google Fit, Samsung Health, Strava, Dexcom *(stub)*
 
 ## Tech Stack
 
