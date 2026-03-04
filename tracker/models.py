@@ -354,6 +354,9 @@ class UserProfile(models.Model):
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     theme_preference = models.CharField(max_length=20, choices=THEME_CHOICES, default='system')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
+    allergies = models.TextField(blank=True, default='', help_text='List known allergies, one per line.')
+    medications = models.TextField(blank=True, default='', help_text='Current medications, one per line.')
+    chronic_conditions = models.TextField(blank=True, default='', help_text='Chronic conditions or diagnoses, one per line.')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -848,6 +851,7 @@ class EncryptionKey(models.Model):
 
 
 class AuditLog(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_logs')
     action = models.CharField(max_length=200)
     details = models.TextField(blank=True, default='')
     ip_address = models.GenericIPAddressField(null=True, blank=True)

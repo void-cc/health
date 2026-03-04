@@ -1695,8 +1695,40 @@ class Phase4ProfileTests(TestCase):
         response = self.client.get(reverse('profile'))
         self.assertEqual(response.status_code, 302)
 
+    def test_profile_health_fields_saved(self):
+        response = self.client.post(reverse('profile'), {
+            'first_name': 'Test',
+            'last_name': 'User',
+            'email': 'test@example.com',
+            'theme_preference': 'system',
+            'allergies': 'Penicillin\nPeanuts',
+            'medications': 'Metformin 500mg',
+            'chronic_conditions': 'Type 2 Diabetes',
+        })
+        self.assertEqual(response.status_code, 302)
+        profile = UserProfile.objects.get(user=self.user)
+        self.assertIn('Penicillin', profile.allergies)
+        self.assertEqual(profile.medications, 'Metformin 500mg')
+        self.assertEqual(profile.chronic_conditions, 'Type 2 Diabetes')
 
-class Phase4PasswordChangeTests(TestCase):
+    def test_profile_update_creates_audit_log(self):
+        from tracker.models import AuditLog
+        self.client.post(reverse('profile'), {
+            'first_name': 'Test',
+            'last_name': 'User',
+            'email': 'test@example.com',
+            'theme_preference': 'system',
+        })
+        self.assertTrue(AuditLog.objects.filter(user=self.user, action='profile_updated').exists())
+
+    def test_profile_page_shows_health_section(self):
+        response = self.client.get(reverse('profile'))
+        self.assertContains(response, 'Health Information')
+        self.assertContains(response, 'name="allergies"')
+        self.assertContains(response, 'name="medications"')
+        self.assertContains(response, 'name="chronic_conditions"')
+
+
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
