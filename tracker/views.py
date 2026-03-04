@@ -1232,7 +1232,7 @@ def export_data(request):
 
 # ===== Body Composition =====
 
-@staff_only
+@login_required
 def body_composition_list(request):
     entries = BodyComposition.objects.all().order_by('-date')
 
@@ -1274,7 +1274,7 @@ def body_composition_list(request):
     }
     return render(request, 'body_composition_list.html', context)
 
-@staff_only
+@login_required
 def body_composition_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1299,7 +1299,7 @@ def body_composition_add(request):
             return redirect('body_composition_add')
     return render(request, 'body_composition_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def body_composition_edit(request, pk):
     entry = get_object_or_404(BodyComposition, id=pk)
     if request.method == 'POST':
@@ -1319,7 +1319,7 @@ def body_composition_edit(request, pk):
             return redirect('body_composition_edit', pk=pk)
     return render(request, 'body_composition_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def body_composition_delete(request, pk):
     if request.method == 'POST':
         entry = get_object_or_404(BodyComposition, id=pk)
@@ -1330,7 +1330,7 @@ def body_composition_delete(request, pk):
 
 # ===== Hydration Tracking =====
 
-@staff_only
+@login_required
 def hydration_list(request):
     entries = HydrationLog.objects.all().order_by('-date')
 
@@ -1376,7 +1376,7 @@ def hydration_list(request):
     }
     return render(request, 'hydration_list.html', context)
 
-@staff_only
+@login_required
 def hydration_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1400,7 +1400,7 @@ def hydration_add(request):
             return redirect('hydration_add')
     return render(request, 'hydration_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def hydration_edit(request, pk):
     entry = get_object_or_404(HydrationLog, id=pk)
     if request.method == 'POST':
@@ -1419,7 +1419,7 @@ def hydration_edit(request, pk):
             return redirect('hydration_edit', pk=pk)
     return render(request, 'hydration_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def hydration_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(HydrationLog, id=pk).delete()
@@ -1429,12 +1429,12 @@ def hydration_delete(request, pk):
 
 # ===== Energy and Fatigue Scoring =====
 
-@staff_only
+@login_required
 def energy_list(request):
     entries = EnergyFatigueLog.objects.all().order_by('-date')
     return render(request, 'energy_list.html', {'entries': entries})
 
-@staff_only
+@login_required
 def energy_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1455,7 +1455,7 @@ def energy_add(request):
             return redirect('energy_add')
     return render(request, 'energy_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def energy_edit(request, pk):
     entry = get_object_or_404(EnergyFatigueLog, id=pk)
     if request.method == 'POST':
@@ -1471,7 +1471,7 @@ def energy_edit(request, pk):
             return redirect('energy_edit', pk=pk)
     return render(request, 'energy_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def energy_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(EnergyFatigueLog, id=pk).delete()
@@ -1481,13 +1481,13 @@ def energy_delete(request, pk):
 
 # ===== Custom Vital Signs =====
 
-@staff_only
+@login_required
 def custom_vitals_list(request):
     definitions = CustomVitalDefinition.objects.all()
     entries = CustomVitalEntry.objects.all().order_by('-date')
     return render(request, 'custom_vitals_list.html', {'definitions': definitions, 'entries': entries})
 
-@staff_only
+@login_required
 def custom_vital_define(request):
     if request.method == 'POST':
         name = request.POST.get('name')
@@ -1510,7 +1510,7 @@ def custom_vital_define(request):
             return redirect('custom_vital_define')
     return render(request, 'custom_vital_define.html')
 
-@staff_only
+@login_required
 def custom_vital_add_entry(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -1539,7 +1539,7 @@ def custom_vital_add_entry(request):
         'editing': False,
     })
 
-@staff_only
+@login_required
 def custom_vital_edit_entry(request, pk):
     entry = get_object_or_404(CustomVitalEntry, id=pk)
     if request.method == 'POST':
@@ -1563,7 +1563,7 @@ def custom_vital_edit_entry(request, pk):
         'editing': True,
     })
 
-@staff_only
+@login_required
 def custom_vital_delete_entry(request, pk):
     if request.method == 'POST':
         get_object_or_404(CustomVitalEntry, id=pk).delete()
@@ -1984,7 +1984,7 @@ def wearable_sync(request, pk):
 
 # ===== Sleep & Circadian =====
 
-@staff_only
+@login_required
 def sleep_list(request):
     entries = SleepLog.objects.all().order_by('-date')
 
@@ -2006,10 +2006,10 @@ def sleep_list(request):
     )
 
     # Chart data (last 30 entries, chronological)
-    chart_entries = entries.order_by('date')[:30]
+    chart_entries = list(entries.order_by('date')[:30])
     chart_dates = [e.date.isoformat() for e in chart_entries]
-    chart_quality = [e.sleep_quality_score for e in chart_entries if e.sleep_quality_score is not None]
-    chart_total = [e.total_sleep_minutes for e in chart_entries if e.total_sleep_minutes is not None]
+    chart_quality = [e.sleep_quality_score for e in chart_entries]
+    chart_total = [e.total_sleep_minutes for e in chart_entries]
 
     # Pagination
     paginator = Paginator(entries, 20)
@@ -2027,7 +2027,7 @@ def sleep_list(request):
     }
     return render(request, 'sleep_list.html', context)
 
-@staff_only
+@login_required
 def sleep_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2063,7 +2063,7 @@ def sleep_add(request):
             return redirect('sleep_add')
     return render(request, 'sleep_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def sleep_edit(request, pk):
     entry = get_object_or_404(SleepLog, id=pk)
     if request.method == 'POST':
@@ -2092,7 +2092,7 @@ def sleep_edit(request, pk):
             return redirect('sleep_edit', pk=pk)
     return render(request, 'sleep_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def sleep_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(SleepLog, id=pk).delete()
@@ -2102,12 +2102,12 @@ def sleep_delete(request, pk):
 
 # ===== Circadian Rhythm =====
 
-@staff_only
+@login_required
 def circadian_list(request):
     entries = CircadianRhythmLog.objects.all().order_by('-date')
     return render(request, 'circadian_list.html', {'entries': entries})
 
-@staff_only
+@login_required
 def circadian_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2133,7 +2133,7 @@ def circadian_add(request):
             return redirect('circadian_add')
     return render(request, 'circadian_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def circadian_edit(request, pk):
     entry = get_object_or_404(CircadianRhythmLog, id=pk)
     if request.method == 'POST':
@@ -2154,7 +2154,7 @@ def circadian_edit(request, pk):
             return redirect('circadian_edit', pk=pk)
     return render(request, 'circadian_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def circadian_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(CircadianRhythmLog, id=pk).delete()
@@ -2164,12 +2164,12 @@ def circadian_delete(request, pk):
 
 # ===== Dream Journal =====
 
-@staff_only
+@login_required
 def dream_list(request):
     entries = DreamJournal.objects.all().order_by('-date')
     return render(request, 'dream_list.html', {'entries': entries})
 
-@staff_only
+@login_required
 def dream_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2193,7 +2193,7 @@ def dream_add(request):
             return redirect('dream_add')
     return render(request, 'dream_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def dream_edit(request, pk):
     entry = get_object_or_404(DreamJournal, id=pk)
     if request.method == 'POST':
@@ -2212,7 +2212,7 @@ def dream_edit(request, pk):
             return redirect('dream_edit', pk=pk)
     return render(request, 'dream_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def dream_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(DreamJournal, id=pk).delete()
@@ -2222,7 +2222,7 @@ def dream_delete(request, pk):
 
 # ===== Macronutrient Log =====
 
-@staff_only
+@login_required
 def macro_list(request):
     entries = MacronutrientLog.objects.all().order_by('-date')
 
@@ -2270,7 +2270,7 @@ def macro_list(request):
     }
     return render(request, 'macro_list.html', context)
 
-@staff_only
+@login_required
 def macro_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2300,7 +2300,7 @@ def macro_add(request):
             return redirect('macro_add')
     return render(request, 'macro_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def macro_edit(request, pk):
     entry = get_object_or_404(MacronutrientLog, id=pk)
     if request.method == 'POST':
@@ -2325,7 +2325,7 @@ def macro_edit(request, pk):
             return redirect('macro_edit', pk=pk)
     return render(request, 'macro_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def macro_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MacronutrientLog, id=pk).delete()
@@ -2335,12 +2335,12 @@ def macro_delete(request, pk):
 
 # ===== Micronutrient Log =====
 
-@staff_only
+@login_required
 def micro_list(request):
     entries = MicronutrientLog.objects.all().order_by('-date')
     return render(request, 'micro_list.html', {'entries': entries})
 
-@staff_only
+@login_required
 def micro_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2365,7 +2365,7 @@ def micro_add(request):
             return redirect('micro_add')
     return render(request, 'micro_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def micro_edit(request, pk):
     entry = get_object_or_404(MicronutrientLog, id=pk)
     if request.method == 'POST':
@@ -2385,7 +2385,7 @@ def micro_edit(request, pk):
             return redirect('micro_edit', pk=pk)
     return render(request, 'micro_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def micro_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MicronutrientLog, id=pk).delete()
@@ -2395,12 +2395,12 @@ def micro_delete(request, pk):
 
 # ===== Food Entry =====
 
-@staff_only
+@login_required
 def food_list(request):
     entries = FoodEntry.objects.all().order_by('-date')
     return render(request, 'food_list.html', {'entries': entries})
 
-@staff_only
+@login_required
 def food_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2433,7 +2433,7 @@ def food_add(request):
             return redirect('food_add')
     return render(request, 'food_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def food_edit(request, pk):
     entry = get_object_or_404(FoodEntry, id=pk)
     if request.method == 'POST':
@@ -2461,7 +2461,7 @@ def food_edit(request, pk):
             return redirect('food_edit', pk=pk)
     return render(request, 'food_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def food_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(FoodEntry, id=pk).delete()
@@ -2471,12 +2471,12 @@ def food_delete(request, pk):
 
 # ===== Fasting Log =====
 
-@staff_only
+@login_required
 def fasting_list(request):
     entries = FastingLog.objects.all().order_by('-date')
     return render(request, 'fasting_list.html', {'entries': entries})
 
-@staff_only
+@login_required
 def fasting_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2502,7 +2502,7 @@ def fasting_add(request):
             return redirect('fasting_add')
     return render(request, 'fasting_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def fasting_edit(request, pk):
     entry = get_object_or_404(FastingLog, id=pk)
     if request.method == 'POST':
@@ -2523,7 +2523,7 @@ def fasting_edit(request, pk):
             return redirect('fasting_edit', pk=pk)
     return render(request, 'fasting_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def fasting_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(FastingLog, id=pk).delete()
@@ -2533,12 +2533,12 @@ def fasting_delete(request, pk):
 
 # ===== Caffeine & Alcohol Log =====
 
-@staff_only
+@login_required
 def caffeine_alcohol_list(request):
     entries = CaffeineAlcoholLog.objects.all().order_by('-date')
     return render(request, 'caffeine_alcohol_list.html', {'entries': entries})
 
-@staff_only
+@login_required
 def caffeine_alcohol_add(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -2563,7 +2563,7 @@ def caffeine_alcohol_add(request):
             return redirect('caffeine_alcohol_add')
     return render(request, 'caffeine_alcohol_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def caffeine_alcohol_edit(request, pk):
     entry = get_object_or_404(CaffeineAlcoholLog, id=pk)
     if request.method == 'POST':
@@ -2583,7 +2583,7 @@ def caffeine_alcohol_edit(request, pk):
             return redirect('caffeine_alcohol_edit', pk=pk)
     return render(request, 'caffeine_alcohol_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def caffeine_alcohol_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(CaffeineAlcoholLog, id=pk).delete()
@@ -3145,7 +3145,7 @@ def backup_config_delete(request, pk):
 
 # ===== Medication Schedule =====
 
-@staff_only
+@login_required
 def medication_schedule_list(request):
     entries = MedicationSchedule.objects.all().order_by('-start_date')
 
@@ -3182,7 +3182,7 @@ def medication_schedule_list(request):
     }
     return render(request, 'medication_schedule_list.html', context)
 
-@staff_only
+@login_required
 def medication_schedule_add(request):
     if request.method == 'POST':
         try:
@@ -3211,7 +3211,7 @@ def medication_schedule_add(request):
             return redirect('medication_schedule_add')
     return render(request, 'medication_schedule_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def medication_schedule_edit(request, pk):
     entry = get_object_or_404(MedicationSchedule, id=pk)
     if request.method == 'POST':
@@ -3238,7 +3238,7 @@ def medication_schedule_edit(request, pk):
             return redirect('medication_schedule_edit', pk=pk)
     return render(request, 'medication_schedule_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def medication_schedule_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MedicationSchedule, id=pk).delete()
@@ -3264,7 +3264,7 @@ def _warn_interactions(request, medication_name):
         pass  # Graceful degradation: never block the save because of API failure
 
 
-@staff_only
+@login_required
 def medication_autocomplete(request):
     """AJAX endpoint returning JSON list of medication name suggestions."""
     from .rxnorm import search_medication_names
@@ -3273,7 +3273,7 @@ def medication_autocomplete(request):
     return JsonResponse({'results': results})
 
 
-@staff_only
+@login_required
 def medication_concept_detail(request, name):
     """
     Overview page for a single medication concept.
@@ -3320,7 +3320,7 @@ def medication_concept_detail(request, name):
     })
 
 
-@staff_only
+@login_required
 def interaction_dashboard(request):
     """Dashboard showing all known/potential interaction risks for the user's current medications."""
     interactions = PharmacologicalInteraction.objects.filter(
@@ -3347,7 +3347,7 @@ def interaction_dashboard(request):
 
 # ===== Medication Log (Dose Check-in) =====
 
-@staff_only
+@login_required
 def medication_log_list(request):
     schedule_id = request.GET.get('schedule')
     entries = MedicationLog.objects.filter(user=request.user).order_by('-taken_at')
@@ -3390,7 +3390,7 @@ def medication_log_list(request):
     return render(request, 'medication_log_list.html', context)
 
 
-@staff_only
+@login_required
 def medication_log_add(request):
     schedules = MedicationSchedule.objects.filter(user=request.user, is_active=True).order_by('medication_name')
     schedule_id = request.GET.get('schedule') or request.POST.get('schedule')
@@ -3431,7 +3431,7 @@ def medication_log_add(request):
     return render(request, 'medication_log_form.html', context)
 
 
-@staff_only
+@login_required
 def medication_log_edit(request, pk):
     entry = get_object_or_404(MedicationLog, id=pk, user=request.user)
     schedules = MedicationSchedule.objects.filter(user=request.user, is_active=True).order_by('medication_name')
@@ -3466,7 +3466,7 @@ def medication_log_edit(request, pk):
     return render(request, 'medication_log_form.html', context)
 
 
-@staff_only
+@login_required
 def medication_log_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MedicationLog, id=pk, user=request.user).delete()
@@ -3476,7 +3476,7 @@ def medication_log_delete(request, pk):
 
 # ===== Medication Inventory =====
 
-@staff_only
+@login_required
 def medication_inventory_list(request):
     entries = MedicationInventory.objects.filter(user=request.user).order_by('medication_name')
 
@@ -3509,7 +3509,7 @@ def medication_inventory_list(request):
     return render(request, 'medication_inventory_list.html', context)
 
 
-@staff_only
+@login_required
 def medication_inventory_add(request):
     schedules = MedicationSchedule.objects.filter(user=request.user, is_active=True).order_by('medication_name')
 
@@ -3545,7 +3545,7 @@ def medication_inventory_add(request):
     return render(request, 'medication_inventory_form.html', context)
 
 
-@staff_only
+@login_required
 def medication_inventory_edit(request, pk):
     entry = get_object_or_404(MedicationInventory, id=pk, user=request.user)
     schedules = MedicationSchedule.objects.filter(user=request.user, is_active=True).order_by('medication_name')
@@ -3579,7 +3579,7 @@ def medication_inventory_edit(request, pk):
     return render(request, 'medication_inventory_form.html', context)
 
 
-@staff_only
+@login_required
 def medication_inventory_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MedicationInventory, id=pk, user=request.user).delete()
@@ -3589,7 +3589,7 @@ def medication_inventory_delete(request, pk):
 
 
 
-@staff_only
+@login_required
 def health_goal_list(request):
     entries = HealthGoal.objects.all().order_by('-created_at')
 
@@ -3626,7 +3626,7 @@ def health_goal_list(request):
     }
     return render(request, 'health_goal_list.html', context)
 
-@staff_only
+@login_required
 def health_goal_add(request):
     if request.method == 'POST':
         try:
@@ -3651,7 +3651,7 @@ def health_goal_add(request):
             return redirect('health_goal_add')
     return render(request, 'health_goal_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
-@staff_only
+@login_required
 def health_goal_edit(request, pk):
     entry = get_object_or_404(HealthGoal, id=pk)
     if request.method == 'POST':
@@ -3676,7 +3676,7 @@ def health_goal_edit(request, pk):
             return redirect('health_goal_edit', pk=pk)
     return render(request, 'health_goal_form.html', {'entry': entry, 'editing': True})
 
-@staff_only
+@login_required
 def health_goal_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(HealthGoal, id=pk).delete()
@@ -3684,7 +3684,7 @@ def health_goal_delete(request, pk):
     return redirect('health_goal_list')
 
 
-@staff_only
+@login_required
 def critical_alert_auto_check(request):
     if request.method == 'POST':
         new_alerts = CriticalAlert.check_and_create_alerts()
@@ -3698,7 +3698,7 @@ def critical_alert_auto_check(request):
 # ===== Health Report =====
 
 
-@staff_only
+@login_required
 def health_report_generate(request):
     if request.method == 'POST':
         report_type = request.POST.get('report_type', 'monthly')
@@ -3717,7 +3717,7 @@ def health_report_generate(request):
 # ===== Biological Age Calculation =====
 
 
-@staff_only
+@login_required
 def biological_age_estimate(request):
     if request.method == 'POST':
         try:
@@ -3735,7 +3735,7 @@ def biological_age_estimate(request):
 # ===== Predictive Biomarker =====
 
 
-@staff_only
+@login_required
 def predictive_biomarker_generate(request):
     if request.method == 'POST':
         biomarker_name = request.POST.get('biomarker_name', '').strip()
@@ -3781,7 +3781,7 @@ def secure_link_shared_view(request, token):
 # ===== Practitioner Access =====
 
 
-@staff_only
+@login_required
 def practitioner_portal(request):
     """Dedicated portal for practitioners to request access and view patient data."""
     context = {'access_entries': [], 'error': None}
@@ -3814,7 +3814,7 @@ def practitioner_portal(request):
     return render(request, 'practitioner_portal.html', context)
 
 
-@staff_only
+@login_required
 def practitioner_request_access(request):
     """Allow a practitioner to request access to patient data."""
     if request.method == 'POST':
@@ -3838,7 +3838,7 @@ def practitioner_request_access(request):
 # ===== Intake Summary =====
 
 
-@staff_only
+@login_required
 def intake_summary_generate(request):
     """Auto-generate an intake summary from existing health data."""
     blood_tests = BloodTest.objects.all().order_by('-date')[:10]
@@ -3928,7 +3928,7 @@ def _data_to_xml(data):
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(root, encoding='unicode')
 
 
-@staff_only
+@login_required
 def data_export_download(request, pk):
     """Download exported health data in the requested format (JSON or XML)."""
     export_req = get_object_or_404(DataExportRequest, id=pk)
@@ -3988,7 +3988,7 @@ def _build_health_summary_text():
     return "\n".join(lines)
 
 
-@staff_only
+@login_required
 def stakeholder_email_send(request, pk):
     """Send a health summary email to a specific stakeholder."""
     entry = get_object_or_404(StakeholderEmail, id=pk)
@@ -4662,7 +4662,7 @@ _secure_viewing_link = make_crud_views(
 secure_viewing_link_list = _secure_viewing_link['list']
 secure_viewing_link_delete = _secure_viewing_link['delete']
 
-@staff_only
+@login_required
 def secure_viewing_link_add(request):
     if request.method == 'POST':
         try:
@@ -4682,7 +4682,7 @@ def secure_viewing_link_add(request):
             return redirect('secure_viewing_link_add')
     return render(request, 'secure_viewing_link_form.html', {'editing': False})
 
-@staff_only
+@login_required
 def secure_viewing_link_edit(request, pk):
     entry = get_object_or_404(SecureViewingLink, id=pk)
     if request.method == 'POST':
@@ -4719,7 +4719,7 @@ practitioner_access_list = _practitioner_access['list']
 practitioner_access_add = _practitioner_access['add']
 practitioner_access_delete = _practitioner_access['delete']
 
-@staff_only
+@login_required
 def practitioner_access_edit(request, pk):
     entry = get_object_or_404(PractitionerAccess, id=pk)
     if request.method == 'POST':
@@ -4782,7 +4782,7 @@ data_export_list = _data_export['list']
 data_export_edit = _data_export['edit']
 data_export_delete = _data_export['delete']
 
-@staff_only
+@login_required
 def data_export_add(request):
     if request.method == 'POST':
         try:
@@ -5146,7 +5146,7 @@ notification_trigger_edit = _notification_trigger_crud['edit']
 notification_trigger_delete = _notification_trigger_crud['delete']
 
 
-@staff_only
+@login_required
 def notification_trigger_set_channels(request, pk):
     """Update the channels list for a trigger (channels are multi-value)."""
     trigger = get_object_or_404(NotificationTrigger, id=pk)
@@ -5159,7 +5159,7 @@ def notification_trigger_set_channels(request, pk):
     return redirect('notification_trigger_list')
 
 
-@staff_only
+@login_required
 def notification_log_list(request):
     """Display the notification delivery log (read-only)."""
     logs = NotificationLog.objects.select_related('user', 'trigger').order_by('-created_at')
@@ -5194,6 +5194,7 @@ _habit_log = make_crud_views(
     add_url_name='habit_log_add',
     edit_url_name='habit_log_edit',
     order_by='-date',
+    require_staff=False,
 )
 habit_log_list = _habit_log['list']
 habit_log_add = _habit_log['add']
@@ -5215,6 +5216,7 @@ _reminder = make_crud_views(
     add_url_name='reminder_add',
     edit_url_name='reminder_edit',
     order_by='due_datetime',
+    require_staff=False,
 )
 reminder_list = _reminder['list']
 reminder_add = _reminder['add']
