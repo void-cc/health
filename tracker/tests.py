@@ -6317,6 +6317,101 @@ class RxNormHelperTests(TestCase):
         self.assertEqual(results[0]['name'], 'Metformin')
 
 
+class RxNormHardeningTests(TestCase):
+    """Tests for RxNav 404/429 handling, negative cache, and multi-provider fallback."""
+
+    def setUp(self):
+        from tracker import rxnorm
+        rxnorm._not_found_cache.clear()
+
+    def tearDown(self):
+        from tracker import rxnorm
+        rxnorm._not_found_cache.clear()
+
+    def test_404_logged_at_debug_not_warning(self):
+        """HTTP 404 from a drug API should be logged at DEBUG, not WARNING."""
+        from tracker.rxnorm import _get
+        from unittest.mock import patch, MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.json.return_value = {}
+
+        with patch('tracker.rxnorm.requests.get', return_value=mock_resp):
+            with patch('tracker.rxnorm.logger') as mock_logger:
+                result = _get('https://rxnav.nlm.nih.gov/REST/rxcui/999999/property.json')
+
+        self.assertIsNone(result)
+        mock_logger.warning.assert_not_called()
+        mock_logger.debug.assert_called_once()
+
+    def test_429_logged_at_warning(self):
+        """HTTP 429 from a drug API should be logged at WARNING level."""
+        from tracker.rxnorm import _get
+        from unittest.mock import patch, MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 429
+        mock_resp.json.return_value = {}
+
+        with patch('tracker.rxnorm.requests.get', return_value=mock_resp):
+            with patch('tracker.rxnorm.logger') as mock_logger:
+                result = _get('https://rxnav.nlm.nih.gov/REST/approximateTerm.json')
+
+        self.assertIsNone(result)
+        mock_logger.warning.assert_called_once()
+        warning_msg = mock_logger.warning.call_args[0][0]
+        self.assertIn('429', warning_msg)
+
+    def test_negative_cache_prevents_repeat_requests(self):
+        """After a 404 on _get_rxnorm_name, the second call hits the cache."""
+        from tracker import rxnorm
+        from unittest.mock import patch, MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.json.return_value = {}
+
+        with patch('tracker.rxnorm.requests.get', return_value=mock_resp) as mock_get:
+            rxnorm._get_rxnorm_name('999999')
+            rxnorm._get_rxnorm_name('999999')
+
+        # requests.get should only have been called once (second hit the cache)
+        self.assertEqual(mock_get.call_count, 1)
+
+    def test_autocomplete_uses_fallback_when_rxnorm_fails(self):
+        """When RxNorm returns nothing, a fallback provider supplies results."""
+        from tracker.rxnorm import search_medication_names
+        from unittest.mock import patch
+
+        with patch('tracker.rxnorm._get', return_value=None), \
+             patch('tracker.rxnorm._search_openfda', return_value=[
+                 {'name': 'Ibuprofen 200mg', 'rxcui': '', 'source': 'openfda'}
+             ]):
+            results = search_medication_names('ibuprofen')
+
+        self.assertGreater(len(results), 0)
+        self.assertEqual(results[0]['name'], 'Ibuprofen 200mg')
+        self.assertEqual(results[0]['source'], 'openfda')
+
+    def test_deduplication_across_providers(self):
+        """The same drug name from multiple providers appears only once."""
+        from tracker.rxnorm import search_medication_names
+        from unittest.mock import patch
+
+        with patch('tracker.rxnorm._get', return_value=None), \
+             patch('tracker.rxnorm._search_openfda', return_value=[
+                 {'name': 'Aspirin', 'rxcui': '', 'source': 'openfda'}
+             ]), \
+             patch('tracker.rxnorm._search_dailymed', return_value=[
+                 {'name': 'Aspirin', 'rxcui': '', 'source': 'dailymed'}
+             ]):
+            results = search_medication_names('aspirin')
+
+        names = [r['name'] for r in results]
+        self.assertEqual(names.count('Aspirin'), 1)
+
+
 class MedicationScheduleAddInteractionTests(TestCase):
     """Tests that the medication schedule add/edit views emit interaction warnings."""
 
