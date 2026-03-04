@@ -100,15 +100,30 @@ def index(request):
                 'unit': test.unit
             }
 
+    # Compute additional dashboard metrics
+    in_range = total_tests - out_of_range
+    in_range_pct = round((in_range / total_tests) * 100) if total_tests > 0 else 0
+    categories_tracked = len(tests_by_category)
+
+    # Recent vitals for sparkline data (last 7 entries)
+    recent_vitals_qs = VitalSign.objects.all().order_by('-date')[:7]
+    recent_hr_data = [v.heart_rate for v in reversed(recent_vitals_qs) if v.heart_rate]
+    recent_weight_data = [float(v.weight) for v in reversed(recent_vitals_qs) if v.weight]
+
     context = {
         'tests': tests,
         'test_types': test_types,
         'bars': bars,
         'total_tests': total_tests,
         'out_of_range': out_of_range,
+        'in_range': in_range,
+        'in_range_pct': in_range_pct,
+        'categories_tracked': categories_tracked,
         'latest_vitals': latest_vitals,
         'tests_by_category': tests_by_category,
         'widgets': _get_dashboard_widgets(),
+        'recent_hr_data': recent_hr_data,
+        'recent_weight_data': recent_weight_data,
     }
     return render(request, 'index.html', context)
 

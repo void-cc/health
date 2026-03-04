@@ -9,6 +9,10 @@
     <p class="page-header-subtitle">Your health overview at a glance</p>
   </div>
   <div class="page-header-actions">
+    <a href="{% url 'customize_dashboard' %}" class="toolbar-btn">
+      <i class="fas fa-sliders-h" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Customize</span>
+    </a>
     <button class="toolbar-btn" onclick="exportDashboardPDF()">
       <i class="fas fa-download" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Export PDF</span>
@@ -28,16 +32,40 @@
 {% for widget in widgets %}{% if widget.visible %}
 
 {% if widget.widget_type == 'summary_cards' %}
-<!-- KPI Row -->
-<div class="kpi-grid mb-6">
+<!-- KPI Row — 4 cards with micro-visualizations -->
+<div class="kpi-grid kpi-grid-4 mb-6">
   <div class="kpi-card">
     <div class="kpi-card-header">
       <span class="kpi-card-label">Total Tests</span>
       <span class="kpi-card-icon icon-primary"><i class="fas fa-vial"></i></span>
     </div>
     <div class="kpi-card-value">{{ total_tests }}</div>
+    <div class="kpi-card-trend">
+      <span class="kpi-card-trend-text">{{ categories_tracked }} categor{{ categories_tracked|pluralize:"y,ies" }} tracked</span>
+    </div>
     <div class="kpi-card-footer">
-      <a href="{% url 'history' %}">View history</a>
+      <a href="{% url 'history' %}">View history <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">In Range</span>
+      <span class="kpi-card-icon icon-success"><i class="fas fa-check-circle"></i></span>
+    </div>
+    <div class="kpi-card-value">{{ in_range_pct }}<span class="kpi-card-value-unit">%</span></div>
+    <div class="kpi-card-trend">
+      <!-- Mini doughnut for in-range ratio -->
+      <div class="kpi-mini-doughnut">
+        <svg viewBox="0 0 36 36" class="kpi-doughnut-svg">
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--gray-200)" stroke-width="3"/>
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--color-success)" stroke-width="3" stroke-dasharray="{{ in_range_pct }} {{ in_range_pct|add:'-100'|cut:'-' }}" stroke-dashoffset="25" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="kpi-card-trend-text">{{ in_range }} of {{ total_tests }} normal</span>
+    </div>
+    <div class="kpi-card-footer">
+      <a href="{% url 'comparative_bar_charts' %}">Compare results <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
     </div>
   </div>
 
@@ -49,12 +77,17 @@
       </span>
     </div>
     <div class="kpi-card-value {% if out_of_range > 0 %}value-danger{% endif %}">{{ out_of_range }}</div>
-    <div class="kpi-card-footer">
+    <div class="kpi-card-trend">
       {% if out_of_range > 0 %}
-        <span class="text-requires-attention">Requires attention</span>
+        <span class="kpi-status-dot kpi-status-dot-error"></span>
+        <span class="kpi-card-trend-text text-requires-attention">Requires attention</span>
       {% else %}
-        All values in range
+        <span class="kpi-status-dot kpi-status-dot-success"></span>
+        <span class="kpi-card-trend-text">All values in range</span>
       {% endif %}
+    </div>
+    <div class="kpi-card-footer">
+      <a href="{% url 'blood_tests_charts' %}">View trends <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
     </div>
   </div>
 
@@ -65,15 +98,32 @@
     </div>
     {% if latest_vitals %}
       <div class="kpi-card-value kpi-card-value-sm">
-        {% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }} bpm{% else %}—{% endif %}
+        {% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }}<span class="kpi-card-value-unit">bpm</span>{% else %}—{% endif %}
+      </div>
+      <div class="kpi-card-trend">
+        {% if recent_hr_data %}
+        <div class="kpi-sparkline" aria-hidden="true">
+          <svg viewBox="0 0 80 24" preserveAspectRatio="none" class="kpi-sparkline-svg">
+            {% with hr_data=recent_hr_data %}
+            {% for val in hr_data %}
+            {% if forloop.first %}
+            <polyline fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="{% endif %}{{ forloop.counter0|add:"0" }}{% widthratio forloop.counter0 hr_data|length 80 %},{% widthratio val 200 24 %} {% if forloop.last %}"/></polyline>{% endif %}
+            {% endfor %}
+            {% endwith %}
+          </svg>
+        </div>
+        {% endif %}
+        <span class="kpi-card-trend-text">{{ latest_vitals.date|date:"M j, Y" }}</span>
       </div>
       <div class="kpi-card-footer">
-        {{ latest_vitals.date|date:"M j, Y" }} &nbsp;·&nbsp;
-        <a href="{% url 'vitals' %}">View all vitals</a>
+        <a href="{% url 'vitals' %}">View all vitals <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
       </div>
     {% else %}
       <div class="kpi-card-value kpi-card-value-sm">—</div>
-      <div class="kpi-card-footer"><a href="{% url 'add_vitals' %}">Record vitals</a></div>
+      <div class="kpi-card-trend">
+        <span class="kpi-card-trend-text">No vitals recorded yet</span>
+      </div>
+      <div class="kpi-card-footer"><a href="{% url 'add_vitals' %}">Record vitals <i class="fas fa-arrow-right" aria-hidden="true"></i></a></div>
     {% endif %}
   </div>
 </div>
@@ -84,14 +134,14 @@
 <div class="dashboard-grid">
   <!-- Left column: blood test results -->
   <div>
-    <div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="section-header-bar">
       <h2 class="results-section-title">Recent Blood Results</h2>
-      <div class="d-flex gap-2">
-        <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn">
+      <div class="section-header-actions">
+        <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn toolbar-btn-sm">
           <i class="fas fa-chart-bar"></i>
           <span class="d-none d-md-inline">Compare</span>
         </a>
-        <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn">
+        <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn toolbar-btn-sm">
           <i class="fas fa-chart-line"></i>
           <span class="d-none d-md-inline">Charts</span>
         </a>
@@ -109,12 +159,13 @@
         <div class="result-list">
           {% for test in cat_tests %}
           <div class="result-item">
-            <div>
+            <div class="result-item-body">
               <div class="result-item-title">{{ test.test_name }}</div>
               <div class="result-item-meta">
-                <i class="far fa-calendar-alt me-1"></i>{{ test.date|date:"M j, Y" }}
+                <span class="result-item-meta-date"><i class="far fa-calendar-alt"></i> {{ test.date|date:"M j, Y" }}</span>
                 {% if test.normal_min is not None and test.normal_max is not None %}
-                  &nbsp;·&nbsp; Range: {{ test.normal_min }}–{{ test.normal_max }} {{ test.unit }}
+                  <span class="result-item-meta-sep">&middot;</span>
+                  <span>Range: {{ test.normal_min }}–{{ test.normal_max }} {{ test.unit }}</span>
                 {% endif %}
               </div>
 
@@ -145,11 +196,11 @@
             </div>
 
             <div class="result-item-actions">
-              <a href="{% url 'chart' test_name=test.test_name %}" class="toolbar-btn" title="View chart">
+              <a href="{% url 'chart' test_name=test.test_name %}" class="toolbar-btn toolbar-btn-icon" title="View chart">
                 <i class="fas fa-chart-line"></i>
               </a>
               <div class="dropdown">
-                <button class="toolbar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">
+                <button class="toolbar-btn toolbar-btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">
                   <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
@@ -159,17 +210,18 @@
                     </a>
                   </li>
                   <li>
+                    <button type="button" class="dropdown-item" data-bs-toggle="collapse" data-bs-target="#notes{{ test.id }}">
+                      <i class="fas fa-sticky-note me-2"></i>Notes
+                    </button>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
                     <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ test.id }}">
                       <i class="fas fa-trash-alt me-2"></i>Delete
                     </button>
                   </li>
                 </ul>
               </div>
-
-              <!-- Annotations toggle -->
-              <button class="toolbar-btn" type="button" data-bs-toggle="collapse" data-bs-target="#notes{{ test.id }}" aria-expanded="false" title="Notes">
-                <i class="fas fa-sticky-note"></i>
-              </button>
             </div>
           </div>
 
@@ -235,45 +287,48 @@
   </div>
 
   <!-- Right column: quick info panel -->
-  <div>
+  <div class="dashboard-sidebar">
     <!-- Latest Vitals Panel -->
     {% if latest_vitals %}
-    <div class="vitals-summary mb-4">
-      <div class="vitals-summary-title">Latest Vitals — {{ latest_vitals.date|date:"M j, Y" }}</div>
-      <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-weight me-1"></i> Weight</span>
-        <span class="vital-row-value">{% if latest_vitals.weight %}{{ latest_vitals.weight }} kg{% else %}—{% endif %}</span>
+    <div class="vitals-summary">
+      <div class="vitals-summary-header">
+        <span class="vitals-summary-title">Latest Vitals</span>
+        <span class="vitals-summary-date">{{ latest_vitals.date|date:"M j" }}</span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-heartbeat me-1"></i> Heart Rate</span>
-        <span class="vital-row-value">{% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }} bpm{% else %}—{% endif %}</span>
+        <span class="vital-row-label"><i class="fas fa-weight"></i> Weight</span>
+        <span class="vital-row-value">{% if latest_vitals.weight %}{{ latest_vitals.weight }} <span class="vital-row-unit">kg</span>{% else %}—{% endif %}</span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-tachometer-alt me-1"></i> Blood Pressure</span>
+        <span class="vital-row-label"><i class="fas fa-heartbeat"></i> Heart Rate</span>
+        <span class="vital-row-value">{% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }} <span class="vital-row-unit">bpm</span>{% else %}—{% endif %}</span>
+      </div>
+      <div class="vital-row">
+        <span class="vital-row-label"><i class="fas fa-tachometer-alt"></i> Blood Pressure</span>
         <span class="vital-row-value">
           {% if latest_vitals.systolic_bp and latest_vitals.diastolic_bp %}
-            {{ latest_vitals.systolic_bp }}/{{ latest_vitals.diastolic_bp }}
+            {{ latest_vitals.systolic_bp }}/{{ latest_vitals.diastolic_bp }} <span class="vital-row-unit">mmHg</span>
           {% else %}—{% endif %}
         </span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-lungs me-1"></i> SpO2</span>
-        <span class="vital-row-value">{% if latest_vitals.spo2 %}{{ latest_vitals.spo2 }}%{% else %}—{% endif %}</span>
+        <span class="vital-row-label"><i class="fas fa-lungs"></i> SpO2</span>
+        <span class="vital-row-value">{% if latest_vitals.spo2 %}{{ latest_vitals.spo2 }}<span class="vital-row-unit">%</span>{% else %}—{% endif %}</span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-thermometer-half me-1"></i> BBT</span>
-        <span class="vital-row-value">{% if latest_vitals.bbt %}{{ latest_vitals.bbt }}°C{% else %}—{% endif %}</span>
+        <span class="vital-row-label"><i class="fas fa-thermometer-half"></i> BBT</span>
+        <span class="vital-row-value">{% if latest_vitals.bbt %}{{ latest_vitals.bbt }}<span class="vital-row-unit">°C</span>{% else %}—{% endif %}</span>
       </div>
-      <div class="mt-3">
-        <a href="{% url 'vitals' %}" class="toolbar-btn toolbar-btn-full">
-          <i class="fas fa-list me-1"></i> View all vitals
+      <div class="vital-row-actions">
+        <a href="{% url 'vitals' %}" class="toolbar-btn toolbar-btn-full toolbar-btn-sm">
+          View all vitals <i class="fas fa-arrow-right ms-1"></i>
         </a>
       </div>
     </div>
     {% endif %}
 
     <!-- Quick Actions Panel -->
-    <div class="quick-actions-panel mb-4">
+    <div class="quick-actions-panel">
       <div class="quick-actions-panel-title">Quick Actions</div>
       <a href="{% url 'add_test' %}" class="quick-action-item">
         <i class="fas fa-plus-circle"></i>
