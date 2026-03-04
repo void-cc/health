@@ -3973,6 +3973,28 @@ predictive_biomarker_add = _predictive_biomarker['add']
 predictive_biomarker_edit = _predictive_biomarker['edit']
 predictive_biomarker_delete = _predictive_biomarker['delete']
 
+# ===== Clinical Trial Matches =====
+_clinical_trial = make_crud_views(
+    model_class=ClinicalTrialMatch,
+    display_name='Clinical Trial Match',
+    fields=[
+        {'name': 'trial_id', 'type': 'str', 'required': True, 'label': 'Trial ID'},
+        {'name': 'trial_title', 'type': 'str', 'required': True, 'label': 'Trial Title'},
+        {'name': 'condition', 'type': 'str', 'required': True, 'label': 'Condition'},
+        {'name': 'match_score', 'type': 'float', 'label': 'Match Score'},
+        {'name': 'status', 'type': 'str', 'label': 'Status'},
+        {'name': 'url', 'type': 'str', 'label': 'URL'},
+    ],
+    list_url_name='clinical_trial_list',
+    add_url_name='clinical_trial_add',
+    edit_url_name='clinical_trial_edit',
+    order_by='-found_at',
+)
+clinical_trial_list = _clinical_trial['list']
+clinical_trial_add = _clinical_trial['add']
+clinical_trial_edit = _clinical_trial['edit']
+clinical_trial_delete = _clinical_trial['delete']
+
 # ===== Secure Viewing Links =====
 _secure_viewing_link = make_crud_views(
     model_class=SecureViewingLink,

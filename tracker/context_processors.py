@@ -71,6 +71,7 @@ SIDEBAR_CONFIG = [
             {"label": "Health Reports", "icon": "fa-file-medical-alt", "url_name": "health_report_list", "match": ["health_report"]},
             {"label": "Biological Age", "icon": "fa-dna", "url_name": "biological_age_list", "match": ["biological_age"]},
             {"label": "Predictive Biomarkers", "icon": "fa-microscope", "url_name": "predictive_biomarker_list", "match": ["predictive_biomarker"]},
+            {"label": "Clinical Trials", "icon": "fa-flask", "url_name": "clinical_trial_list", "match": ["clinical_trial"]},
         ],
     },
     {
