@@ -18,3 +18,7 @@ Pillow
 # Wearable Integrations
 requests
 requests-oauthlib
+
+# Code quality & testing
+flake8
+coverage

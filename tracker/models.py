@@ -361,6 +361,9 @@ class UserProfile(models.Model):
     theme_preference = models.CharField(max_length=20, choices=THEME_CHOICES, default='system')
     language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, default='en')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
+    allergies = models.TextField(blank=True, default='', help_text='List known allergies, one per line.')
+    medications = models.TextField(blank=True, default='', help_text='Current medications, one per line.')
+    chronic_conditions = models.TextField(blank=True, default='', help_text='Chronic conditions or diagnoses, one per line.')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -475,7 +478,7 @@ class WearableDevice(models.Model):
             records_synced = 0
 
             # Import heart rate, SpO2, and weight as a VitalSign entry
-            vital = VitalSign.objects.create(
+            VitalSign.objects.create(
                 date=timezone.now().date(),
                 heart_rate=None,
                 spo2=None,
@@ -654,7 +657,6 @@ class CircadianRhythmLog(models.Model):
         Uses average sleep onset and wake time from recent entries to suggest
         the best sleep/wake times for this individual.
         """
-        from datetime import timedelta, datetime as dt
         recent = CircadianRhythmLog.objects.filter(
             sleep_onset__isnull=False, wake_time__isnull=False,
         ).order_by('-date')[:7]
@@ -856,6 +858,7 @@ class EncryptionKey(models.Model):
 
 
 class AuditLog(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_logs')
     action = models.CharField(max_length=200)
     details = models.TextField(blank=True, default='')
     ip_address = models.GenericIPAddressField(null=True, blank=True)
@@ -1678,3 +1681,195 @@ class IntegrationSubTask(models.Model):
 
     def __str__(self):
         return f"Area {self.phase} Sub-task {self.sub_task_number}: {self.title}"
+
+
+# ===== Notification System =====
+
+NOTIFICATION_CHANNELS = [
+    ('email', 'Email'),
+    ('sms', 'SMS'),
+    ('push', 'Push Notification'),
+]
+
+NOTIFICATION_EVENT_TYPES = [
+    ('critical_alert', 'Critical Alert'),
+    ('blood_test_out_of_range', 'Blood Test Out of Range'),
+    ('medication_due', 'Medication Due'),
+    ('health_goal_achieved', 'Health Goal Achieved'),
+    ('weekly_summary', 'Weekly Summary'),
+    ('monthly_report', 'Monthly Report'),
+    ('data_export_ready', 'Data Export Ready'),
+    ('wearable_sync_failed', 'Wearable Sync Failed'),
+    ('custom', 'Custom'),
+]
+
+NOTIFICATION_STATUS_CHOICES = [
+    ('pending', 'Pending'),
+    ('sent', 'Sent'),
+    ('failed', 'Failed'),
+    ('retrying', 'Retrying'),
+]
+
+
+class NotificationPreference(models.Model):
+    """Per-user opt-in/out settings for each notification channel."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notification_preference',
+    )
+    email_enabled = models.BooleanField(default=True)
+    sms_enabled = models.BooleanField(default=False)
+    push_enabled = models.BooleanField(default=False)
+    # Granular event-level opt-outs stored as JSON list of disabled event types
+    disabled_events = models.JSONField(default=list, blank=True)
+    # Quiet-hours: no notifications between these times (UTC, HH:MM format)
+    quiet_hours_start = models.TimeField(null=True, blank=True)
+    quiet_hours_end = models.TimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def is_channel_enabled(self, channel):
+        """Return True if the given channel is opted in."""
+        if channel == 'email':
+            return self.email_enabled
+        if channel == 'sms':
+            return self.sms_enabled
+        if channel == 'push':
+            return self.push_enabled
+        return False
+
+    def is_event_enabled(self, event_type):
+        """Return True if the given event type has not been opted out."""
+        return event_type not in (self.disabled_events or [])
+
+    def __str__(self):
+        return f"Notification preferences for {self.user}"
+
+
+class NotificationTemplate(models.Model):
+    """Configurable message templates per event type and channel."""
+
+    event_type = models.CharField(max_length=50, choices=NOTIFICATION_EVENT_TYPES)
+    channel = models.CharField(max_length=20, choices=NOTIFICATION_CHANNELS)
+    subject = models.CharField(max_length=200, blank=True, default='')
+    body = models.TextField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['event_type', 'channel']
+
+    def render(self, context):
+        """Render subject and body by substituting context dict values."""
+        subject = self.subject
+        body = self.body
+        for key, value in context.items():
+            placeholder = f'{{{{{key}}}}}'
+            subject = subject.replace(placeholder, str(value))
+            body = body.replace(placeholder, str(value))
+        return subject, body
+
+    def __str__(self):
+        return f"{self.get_event_type_display()} via {self.get_channel_display()}"
+
+
+class NotificationTrigger(models.Model):
+    """Configurable triggers that map app events to notification dispatch."""
+
+    SCHEDULE_CHOICES = [
+        ('immediate', 'Immediate'),
+        ('daily_digest', 'Daily Digest'),
+        ('weekly_digest', 'Weekly Digest'),
+    ]
+
+    name = models.CharField(max_length=200)
+    event_type = models.CharField(max_length=50, choices=NOTIFICATION_EVENT_TYPES)
+    channels = models.JSONField(default=list, blank=True,
+                                help_text='List of enabled channels, e.g. ["email", "sms"]')
+    schedule = models.CharField(max_length=20, choices=SCHEDULE_CHOICES, default='immediate')
+    is_active = models.BooleanField(default=True)
+    # Optional threshold for numeric triggers (e.g. alert level)
+    threshold = models.FloatField(null=True, blank=True)
+    max_retries = models.IntegerField(default=3)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def get_active_channels(self):
+        """Return the list of channels configured for this trigger."""
+        return [c for c in (self.channels or []) if c in dict(NOTIFICATION_CHANNELS)]
+
+    def __str__(self):
+        return f"{self.name} ({self.get_event_type_display()})"
+
+
+class NotificationLog(models.Model):
+    """Audit log of every notification sent (or attempted)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='notification_logs',
+    )
+    trigger = models.ForeignKey(
+        NotificationTrigger,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='logs',
+    )
+    event_type = models.CharField(max_length=50, choices=NOTIFICATION_EVENT_TYPES)
+    channel = models.CharField(max_length=20, choices=NOTIFICATION_CHANNELS)
+    recipient = models.CharField(max_length=254, blank=True, default='')
+    subject = models.CharField(max_length=200, blank=True, default='')
+    body = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=20, choices=NOTIFICATION_STATUS_CHOICES, default='pending')
+    attempt_count = models.IntegerField(default=0)
+    error_message = models.TextField(blank=True, default='')
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_event_type_display()} → {self.channel} ({self.status})"
+      
+class HabitLog(models.Model):
+    CATEGORY_CHOICES = [
+        ('exercise', 'Exercise'),
+        ('nutrition', 'Nutrition'),
+        ('sleep', 'Sleep'),
+        ('mindfulness', 'Mindfulness'),
+        ('hydration', 'Hydration'),
+        ('medication', 'Medication'),
+        ('other', 'Other'),
+    ]
+    date = models.DateField(db_index=True)
+    habit_name = models.CharField(max_length=200)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='other')
+    completed = models.BooleanField(default=False)
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        status = 'Done' if self.completed else 'Pending'
+        return f"{self.habit_name} on {self.date} [{status}]"
+
+
+class Reminder(models.Model):
+    FREQUENCY_CHOICES = [
+        ('once', 'Once'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    ]
+    title = models.CharField(max_length=200)
+    message = models.TextField(blank=True, default='')
+    due_datetime = models.DateTimeField(db_index=True)
+    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='once')
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} at {self.due_datetime}"

@@ -5,11 +5,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, PasswordResetForm
-from django.http import JsonResponse
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.utils import timezone
 
-from .models import UserProfile, SecurityLog, UserSession, PrivacyPreference
+from .models import UserProfile, SecurityLog, UserSession, PrivacyPreference, AuditLog
 from .forms import RegistrationForm, UserProfileForm, PrivacyPreferenceForm, AccountDeleteForm
 
 
@@ -143,6 +142,12 @@ def profile_view(request):
             request.user.email = form.cleaned_data['email']
             request.user.save()
             _log_security_event(request.user, 'profile_updated', request)
+            AuditLog.objects.create(
+                user=request.user,
+                action='profile_updated',
+                details='User updated their profile.',
+                ip_address=_get_client_ip(request),
+            )
             messages.success(request, 'Profile updated successfully.')
             return redirect('profile')
     else:

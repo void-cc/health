@@ -9,7 +9,7 @@ from tracker.models import (
     SleepLog, MacronutrientLog, FastingLog, MetabolicLog,
     HealthGoal, CriticalAlert, WearableDevice, WearableSyncLog,
     HealthReport, PredictiveBiomarker, BiologicalAgeCalculation,
-    IntegrationConfig, BodyComposition,
+    IntegrationConfig, BodyComposition, HabitLog, Reminder,
 )
 from datetime import date, datetime, timedelta
 from django.utils import timezone
@@ -1695,8 +1695,40 @@ class Phase4ProfileTests(TestCase):
         response = self.client.get(reverse('profile'))
         self.assertEqual(response.status_code, 302)
 
+    def test_profile_health_fields_saved(self):
+        response = self.client.post(reverse('profile'), {
+            'first_name': 'Test',
+            'last_name': 'User',
+            'email': 'test@example.com',
+            'theme_preference': 'system',
+            'allergies': 'Penicillin\nPeanuts',
+            'medications': 'Metformin 500mg',
+            'chronic_conditions': 'Type 2 Diabetes',
+        })
+        self.assertEqual(response.status_code, 302)
+        profile = UserProfile.objects.get(user=self.user)
+        self.assertIn('Penicillin', profile.allergies)
+        self.assertEqual(profile.medications, 'Metformin 500mg')
+        self.assertEqual(profile.chronic_conditions, 'Type 2 Diabetes')
 
-class Phase4PasswordChangeTests(TestCase):
+    def test_profile_update_creates_audit_log(self):
+        from tracker.models import AuditLog
+        self.client.post(reverse('profile'), {
+            'first_name': 'Test',
+            'last_name': 'User',
+            'email': 'test@example.com',
+            'theme_preference': 'system',
+        })
+        self.assertTrue(AuditLog.objects.filter(user=self.user, action='profile_updated').exists())
+
+    def test_profile_page_shows_health_section(self):
+        response = self.client.get(reverse('profile'))
+        self.assertContains(response, 'Health Information')
+        self.assertContains(response, 'name="allergies"')
+        self.assertContains(response, 'name="medications"')
+        self.assertContains(response, 'name="chronic_conditions"')
+
+
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
@@ -5128,6 +5160,8 @@ class DashboardWidgetTests(TestCase):
 
 class I18nTests(TestCase):
     """Tests for internationalization (i18n) support."""
+class NotificationSystemTests(TestCase):
+    """Tests for the notification system models, service, and views."""
 
     def setUp(self):
         self.client = Client()
@@ -5205,3 +5239,449 @@ class I18nTests(TestCase):
         self.assertTrue(len(settings.LOCALE_PATHS) > 0)
         for path in settings.LOCALE_PATHS:
             self.assertTrue(os.path.isdir(path), f"LOCALE_PATHS entry {path} does not exist")
+            username='notif_user', password='testpass123', email='notif@example.com'
+        )
+        self.client.login(username='notif_user', password='testpass123')
+
+    # ---- Model tests ----
+
+    def test_notification_preference_created_on_demand(self):
+        from tracker.models import NotificationPreference
+        pref, created = NotificationPreference.objects.get_or_create(user=self.user)
+        self.assertTrue(created)
+        self.assertTrue(pref.email_enabled)
+        self.assertFalse(pref.sms_enabled)
+        self.assertFalse(pref.push_enabled)
+
+    def test_notification_preference_str(self):
+        from tracker.models import NotificationPreference
+        pref = NotificationPreference.objects.create(user=self.user)
+        self.assertIn('notif_user', str(pref))
+
+    def test_is_channel_enabled(self):
+        from tracker.models import NotificationPreference
+        pref = NotificationPreference.objects.create(
+            user=self.user, email_enabled=True, sms_enabled=False, push_enabled=False
+        )
+        self.assertTrue(pref.is_channel_enabled('email'))
+        self.assertFalse(pref.is_channel_enabled('sms'))
+        self.assertFalse(pref.is_channel_enabled('push'))
+
+    def test_is_event_enabled_and_disabled(self):
+        from tracker.models import NotificationPreference
+        pref = NotificationPreference.objects.create(
+            user=self.user, disabled_events=['weekly_summary']
+        )
+        self.assertFalse(pref.is_event_enabled('weekly_summary'))
+        self.assertTrue(pref.is_event_enabled('critical_alert'))
+
+    def test_notification_template_render(self):
+        from tracker.models import NotificationTemplate
+        tmpl = NotificationTemplate.objects.create(
+            event_type='critical_alert',
+            channel='email',
+            subject='Alert: {{metric_name}}',
+            body='Value {{metric_value}} exceeded threshold.',
+        )
+        subject, body = tmpl.render({'metric_name': 'Glucose', 'metric_value': '200'})
+        self.assertEqual(subject, 'Alert: Glucose')
+        self.assertIn('200', body)
+
+    def test_notification_template_str(self):
+        from tracker.models import NotificationTemplate
+        tmpl = NotificationTemplate.objects.create(
+            event_type='critical_alert', channel='email', body='test'
+        )
+        self.assertIn('Critical Alert', str(tmpl))
+        self.assertIn('Email', str(tmpl))
+
+    def test_notification_template_unique_together(self):
+        from tracker.models import NotificationTemplate
+        from django.db import IntegrityError
+        NotificationTemplate.objects.create(
+            event_type='medication_due', channel='email', body='first'
+        )
+        with self.assertRaises(IntegrityError):
+            NotificationTemplate.objects.create(
+                event_type='medication_due', channel='email', body='second'
+            )
+
+    def test_notification_trigger_get_active_channels(self):
+        from tracker.models import NotificationTrigger
+        trigger = NotificationTrigger.objects.create(
+            name='Test Trigger',
+            event_type='critical_alert',
+            channels=['email', 'sms', 'invalid'],
+        )
+        active = trigger.get_active_channels()
+        self.assertIn('email', active)
+        self.assertIn('sms', active)
+        self.assertNotIn('invalid', active)
+
+    def test_notification_trigger_str(self):
+        from tracker.models import NotificationTrigger
+        trigger = NotificationTrigger.objects.create(
+            name='Daily Check', event_type='weekly_summary', channels=['email']
+        )
+        self.assertIn('Daily Check', str(trigger))
+
+    def test_notification_log_str(self):
+        from tracker.models import NotificationLog
+        log = NotificationLog.objects.create(
+            event_type='critical_alert', channel='email',
+            recipient='a@b.com', status='sent'
+        )
+        self.assertIn('email', str(log))
+        self.assertIn('sent', str(log))
+
+    # ---- Service tests ----
+
+    def test_send_notification_email_success(self):
+        from tracker.notifications import send_notification
+        from tracker.models import NotificationLog
+        from django.test import override_settings
+
+        with override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend'):
+            logs = send_notification(
+                event_type='critical_alert',
+                context={'subject': 'Test Alert', 'body': 'Body text'},
+                user=self.user,
+                channels=['email'],
+            )
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(logs[0].status, 'sent')
+        self.assertEqual(logs[0].channel, 'email')
+
+    def test_send_notification_respects_opt_out_channel(self):
+        from tracker.models import NotificationPreference
+        from tracker.notifications import send_notification
+
+        NotificationPreference.objects.create(
+            user=self.user, email_enabled=False
+        )
+        logs = send_notification(
+            event_type='critical_alert',
+            context={'body': 'test'},
+            user=self.user,
+            channels=['email'],
+        )
+        self.assertEqual(logs, [])
+
+    def test_send_notification_respects_opt_out_event(self):
+        from tracker.models import NotificationPreference
+        from tracker.notifications import send_notification
+
+        NotificationPreference.objects.create(
+            user=self.user, email_enabled=True,
+            disabled_events=['critical_alert']
+        )
+        logs = send_notification(
+            event_type='critical_alert',
+            context={'body': 'test'},
+            user=self.user,
+            channels=['email'],
+        )
+        self.assertEqual(logs, [])
+
+    def test_send_notification_uses_template(self):
+        from tracker.models import NotificationTemplate, NotificationLog
+        from tracker.notifications import send_notification
+        from django.test import override_settings
+
+        NotificationTemplate.objects.create(
+            event_type='critical_alert',
+            channel='email',
+            subject='Alert: {{metric_name}}',
+            body='Value exceeded.',
+        )
+        with override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend'):
+            logs = send_notification(
+                event_type='critical_alert',
+                context={'metric_name': 'BP'},
+                user=self.user,
+                channels=['email'],
+            )
+        self.assertEqual(logs[0].subject, 'Alert: BP')
+
+    def test_send_notification_failure_records_error(self):
+        from tracker.notifications import send_notification
+        from django.test import override_settings
+
+        with override_settings(EMAIL_BACKEND='django.core.mail.backends.dummy.EmailBackend'):
+            # Patch to force failure
+            import tracker.notifications as ns
+            original = ns._deliver_email
+            def _failing_email(log):
+                raise Exception("SMTP failure")
+            ns._deliver_email = _failing_email
+            ns._CHANNEL_BACKENDS['email'] = _failing_email
+            try:
+                logs = send_notification(
+                    event_type='critical_alert',
+                    context={'body': 'test'},
+                    user=self.user,
+                    channels=['email'],
+                )
+            finally:
+                ns._deliver_email = original
+                ns._CHANNEL_BACKENDS['email'] = original
+
+        self.assertEqual(logs[0].status, 'failed')
+        self.assertIn('SMTP failure', logs[0].error_message)
+
+    def test_send_notification_no_backend_for_channel(self):
+        from tracker.models import NotificationPreference
+        from tracker.notifications import send_notification, _CHANNEL_BACKENDS
+
+        # Enable push so preference check doesn't filter it out
+        NotificationPreference.objects.create(user=self.user, push_enabled=True)
+
+        # Use a channel that has no backend
+        original = _CHANNEL_BACKENDS.pop('push', None)
+        try:
+            logs = send_notification(
+                event_type='critical_alert',
+                context={'body': 'test'},
+                user=self.user,
+                channels=['push'],
+            )
+        finally:
+            if original is not None:
+                _CHANNEL_BACKENDS['push'] = original
+
+        self.assertEqual(logs[0].status, 'failed')
+        self.assertIn("No backend", logs[0].error_message)
+
+    # ---- View tests ----
+
+    def test_notification_preference_page_loads(self):
+        url = reverse('notification_preference')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Notification Preferences')
+
+    def test_notification_preference_save(self):
+        from tracker.models import NotificationPreference
+        url = reverse('notification_preference')
+        response = self.client.post(url, {
+            'email_enabled': 'on',
+            'disabled_events': ['weekly_summary'],
+        })
+        self.assertRedirects(response, url)
+        pref = NotificationPreference.objects.get(user=self.user)
+        self.assertTrue(pref.email_enabled)
+        self.assertFalse(pref.sms_enabled)
+        self.assertIn('weekly_summary', pref.disabled_events)
+
+    def test_notification_template_list_page(self):
+        response = self.client.get(reverse('notification_template_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Notification Templates')
+
+    def test_notification_template_add(self):
+        from tracker.models import NotificationTemplate
+        url = reverse('notification_template_add')
+        response = self.client.post(url, {
+            'event_type': 'critical_alert',
+            'channel': 'email',
+            'subject': 'Test Subject',
+            'body': 'Test body {{metric_name}}',
+            'is_active': 'on',
+        })
+        self.assertRedirects(response, reverse('notification_template_list'))
+        self.assertTrue(NotificationTemplate.objects.filter(event_type='critical_alert', channel='email').exists())
+
+    def test_notification_template_delete(self):
+        from tracker.models import NotificationTemplate
+        tmpl = NotificationTemplate.objects.create(
+            event_type='medication_due', channel='email', body='hello'
+        )
+        url = reverse('notification_template_delete', kwargs={'pk': tmpl.id})
+        response = self.client.post(url)
+        self.assertRedirects(response, reverse('notification_template_list'))
+        self.assertFalse(NotificationTemplate.objects.filter(id=tmpl.id).exists())
+
+    def test_notification_trigger_list_page(self):
+        response = self.client.get(reverse('notification_trigger_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Notification Triggers')
+
+    def test_notification_trigger_add(self):
+        from tracker.models import NotificationTrigger
+        url = reverse('notification_trigger_add')
+        response = self.client.post(url, {
+            'name': 'My Trigger',
+            'event_type': 'critical_alert',
+            'schedule': 'immediate',
+            'is_active': 'on',
+            'max_retries': '3',
+        })
+        self.assertRedirects(response, reverse('notification_trigger_list'))
+        self.assertTrue(NotificationTrigger.objects.filter(name='My Trigger').exists())
+
+    def test_notification_trigger_set_channels(self):
+        from tracker.models import NotificationTrigger
+        trigger = NotificationTrigger.objects.create(
+            name='Trigger', event_type='critical_alert', channels=[]
+        )
+        url = reverse('notification_trigger_set_channels', kwargs={'pk': trigger.id})
+        response = self.client.post(url, {'channels': ['email', 'sms']})
+        self.assertRedirects(response, reverse('notification_trigger_list'))
+        trigger.refresh_from_db()
+        self.assertIn('email', trigger.channels)
+        self.assertIn('sms', trigger.channels)
+
+    def test_notification_log_list_page(self):
+        response = self.client.get(reverse('notification_log_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Notification Log')
+
+    def test_notification_log_filter_by_status(self):
+        from tracker.models import NotificationLog
+        NotificationLog.objects.create(
+            event_type='critical_alert', channel='email',
+            recipient='a@b.com', status='sent'
+        )
+        NotificationLog.objects.create(
+            event_type='critical_alert', channel='email',
+            recipient='b@b.com', status='failed'
+        )
+        url = reverse('notification_log_list') + '?status=sent'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'a@b.com')
+        self.assertNotContains(response, 'b@b.com')
+
+    def test_notification_pages_require_login(self):
+        self.client.logout()
+        for url_name in [
+            'notification_preference',
+            'notification_template_list',
+            'notification_trigger_list',
+            'notification_log_list',
+        ]:
+            response = self.client.get(reverse(url_name))
+            self.assertEqual(response.status_code, 302,
+                             msg=f'{url_name} should redirect anonymous users')
+            self.assertIn('/accounts/login/', response.url,
+                          msg=f'{url_name} should redirect to login')
+class HabitLogTests(TestCase):
+    """Tests for HabitLog model and CRUD views."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='habituser', password='testpass123', email='habit@example.com')
+        self.client.login(username='habituser', password='testpass123')
+        self.habit = HabitLog.objects.create(
+            date=date(2026, 3, 1),
+            habit_name='Morning Run',
+            category='exercise',
+            completed=True,
+            notes='Felt great',
+        )
+
+    def test_habit_str(self):
+        self.assertIn('Morning Run', str(self.habit))
+        self.assertIn('Done', str(self.habit))
+
+    def test_habit_list_view(self):
+        response = self.client.get(reverse('habit_log_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Morning Run')
+
+    def test_habit_add_view_get(self):
+        response = self.client.get(reverse('habit_log_add'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_habit_add_view_post(self):
+        response = self.client.post(reverse('habit_log_add'), {
+            'date': '2026-03-02',
+            'habit_name': 'Meditation',
+            'category': 'mindfulness',
+            'completed': 'on',
+            'notes': '',
+        })
+        self.assertRedirects(response, reverse('habit_log_list'))
+        self.assertTrue(HabitLog.objects.filter(habit_name='Meditation').exists())
+
+    def test_habit_edit_view_post(self):
+        response = self.client.post(reverse('habit_log_edit', args=[self.habit.pk]), {
+            'date': '2026-03-01',
+            'habit_name': 'Evening Run',
+            'category': 'exercise',
+            'notes': '',
+        })
+        self.assertRedirects(response, reverse('habit_log_list'))
+        self.habit.refresh_from_db()
+        self.assertEqual(self.habit.habit_name, 'Evening Run')
+
+    def test_habit_delete_view(self):
+        response = self.client.post(reverse('habit_log_delete', args=[self.habit.pk]))
+        self.assertRedirects(response, reverse('habit_log_list'))
+        self.assertFalse(HabitLog.objects.filter(pk=self.habit.pk).exists())
+
+    def test_habit_list_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('habit_log_list'))
+        self.assertEqual(response.status_code, 302)
+
+
+class ReminderTests(TestCase):
+    """Tests for Reminder model and CRUD views."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='reminderuser', password='testpass123', email='reminder@example.com')
+        self.client.login(username='reminderuser', password='testpass123')
+        self.reminder = Reminder.objects.create(
+            title='Take Vitamin D',
+            message='Take with food',
+            due_datetime=datetime(2026, 3, 5, 8, 0, tzinfo=timezone.get_current_timezone()),
+            frequency='daily',
+            active=True,
+        )
+
+    def test_reminder_str(self):
+        self.assertIn('Take Vitamin D', str(self.reminder))
+
+    def test_reminder_list_view(self):
+        response = self.client.get(reverse('reminder_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Take Vitamin D')
+
+    def test_reminder_add_view_get(self):
+        response = self.client.get(reverse('reminder_add'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_reminder_add_view_post(self):
+        response = self.client.post(reverse('reminder_add'), {
+            'title': 'Blood Pressure Check',
+            'message': 'Morning reading',
+            'due_datetime': '2026-03-06T09:00',
+            'frequency': 'weekly',
+            'active': 'on',
+        })
+        self.assertRedirects(response, reverse('reminder_list'))
+        self.assertTrue(Reminder.objects.filter(title='Blood Pressure Check').exists())
+
+    def test_reminder_edit_view_post(self):
+        response = self.client.post(reverse('reminder_edit', args=[self.reminder.pk]), {
+            'title': 'Take Vitamin D3',
+            'message': 'Take with food',
+            'due_datetime': '2026-03-05T08:00',
+            'frequency': 'daily',
+            'active': 'on',
+        })
+        self.assertRedirects(response, reverse('reminder_list'))
+        self.reminder.refresh_from_db()
+        self.assertEqual(self.reminder.title, 'Take Vitamin D3')
+
+    def test_reminder_delete_view(self):
+        response = self.client.post(reverse('reminder_delete', args=[self.reminder.pk]))
+        self.assertRedirects(response, reverse('reminder_list'))
+        self.assertFalse(Reminder.objects.filter(pk=self.reminder.pk).exists())
+
+    def test_reminder_list_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('reminder_list'))
+        self.assertEqual(response.status_code, 302)

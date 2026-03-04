@@ -2,11 +2,10 @@
 Base OAuth2 integration client for wearable health platforms.
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from urllib.parse import urlencode
 
 import requests
-from django.conf import settings
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)

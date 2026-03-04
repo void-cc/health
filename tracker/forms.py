@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm
+from django.contrib.auth.forms import UserCreationForm
 from .models import UserProfile, PrivacyPreference
 
 
@@ -29,6 +29,7 @@ class UserProfileForm(forms.ModelForm):
         fields = [
             'date_of_birth', 'biological_sex', 'height_cm',
             'genetic_baseline_info', 'avatar', 'theme_preference',
+            'allergies', 'medications', 'chronic_conditions',
         ]
         widgets = {
             'date_of_birth': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -36,6 +37,9 @@ class UserProfileForm(forms.ModelForm):
             'height_cm': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'placeholder': 'Height in cm'}),
             'genetic_baseline_info': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'theme_preference': forms.Select(attrs={'class': 'form-control'}),
+            'allergies': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'e.g. Penicillin, Peanuts'}),
+            'medications': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'e.g. Metformin 500mg daily'}),
+            'chronic_conditions': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'e.g. Type 2 Diabetes, Hypertension'}),
         }
 
     def __init__(self, *args, **kwargs):

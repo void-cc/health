@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Notification Trigger</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="name" class="form-label">Name</label>
+      <input type="text" class="form-control" name="name" id="name"
+             value="{% if editing and entry.name %}{{ entry.name }}{% endif %}">
+    </div>
+    <div class="mb-3">
+      <label for="event_type" class="form-label">Event Type</label>
+      <select class="form-select" name="event_type" id="event_type">
+        {% for value, label in fields.1.choices %}
+        <option value="{{ value }}" {% if editing and entry.event_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="schedule" class="form-label">Schedule</label>
+      <select class="form-select" name="schedule" id="schedule">
+        {% for value, label in fields.2.choices %}
+        <option value="{{ value }}" {% if editing and entry.schedule == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" name="is_active" id="is_active"
+             {% if editing and entry.is_active %}checked{% elif not editing %}checked{% endif %}>
+      <label class="form-check-label" for="is_active">Active</label>
+    </div>
+    <div class="mb-3">
+      <label for="threshold" class="form-label">Threshold (optional)</label>
+      <input type="number" step="any" class="form-control" name="threshold" id="threshold"
+             value="{% if editing and entry.threshold is not None %}{{ entry.threshold }}{% endif %}">
+    </div>
+    <div class="mb-3">
+      <label for="max_retries" class="form-label">Max Retries</label>
+      <input type="number" class="form-control" name="max_retries" id="max_retries"
+             value="{% if editing %}{{ entry.max_retries }}{% else %}3{% endif %}">
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'notification_trigger_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

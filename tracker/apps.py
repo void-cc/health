@@ -40,5 +40,5 @@ class TrackerConfig(AppConfig):
                                 normal_max=normal_max,
                                 category=category
                             )
-        except Exception as e:
+        except Exception:
             pass
