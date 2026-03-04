@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load i18n %}
 {% block content %}
 <div class="container my-5">
   <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} User Profile</h2>
@@ -16,13 +17,22 @@
         <option value="practitioner" {% if editing and entry.role == 'practitioner' %}selected{% endif %}>Medical Practitioner</option>
       </select>
     </div>
+    <div class="mb-3">
+      <label for="language" class="form-label">{% trans "Language" %}:</label>
+      <select class="form-select" name="language" id="language">
+        <option value="en" {% if editing and entry.language == 'en' %}selected{% endif %}>{% trans "English" %}</option>
+        <option value="fr" {% if editing and entry.language == 'fr' %}selected{% endif %}>{% trans "French" %}</option>
+        <option value="de" {% if editing and entry.language == 'de' %}selected{% endif %}>{% trans "German" %}</option>
+        <option value="es" {% if editing and entry.language == 'es' %}selected{% endif %}>{% trans "Spanish" %}</option>
+      </select>
+    </div>
     <div class="mb-3 form-check">
       <input type="checkbox" class="form-check-input" name="is_active" id="is_active" {% if editing and entry.is_active %}checked{% elif not editing %}checked{% endif %}>
       <label for="is_active" class="form-check-label">Active</label>
     </div>
     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
       <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
-      <a href="{% url 'user_profile_list' %}" class="btn btn-secondary">Cancel</a>
+      <a href="{% url 'user_profile_list' %}" class="btn btn-secondary">{% trans "Cancel" %}</a>
     </div>
   </form>
 </div>

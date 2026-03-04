@@ -56,6 +56,7 @@ SITE_ID = 1
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -64,6 +65,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "tracker.middleware.SessionActivityMiddleware",
+    "tracker.middleware.LanguagePreferenceMiddleware",
 ]
 
 ROOT_URLCONF = "health_tracker.urls"
@@ -76,6 +78,7 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "django.template.context_processors.i18n",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "tracker.context_processors.sidebar_nav",
@@ -126,7 +129,24 @@ TIME_ZONE = "UTC"
 
 USE_I18N = True
 
+USE_L10N = True
+
 USE_TZ = True
+
+# Supported languages for i18n
+from django.utils.translation import gettext_lazy as _
+
+LANGUAGES = [
+    ("en", _("English")),
+    ("fr", _("French")),
+    ("de", _("German")),
+    ("es", _("Spanish")),
+]
+
+# Path to locale files
+LOCALE_PATHS = [
+    BASE_DIR / "locale",
+]
 
 
 # Static files (CSS, JavaScript, Images)

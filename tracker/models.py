@@ -346,6 +346,12 @@ class UserProfile(models.Model):
         ('user', 'Standard User'),
         ('practitioner', 'Medical Practitioner'),
     ]
+    LANGUAGE_CHOICES = [
+        ('en', 'English'),
+        ('fr', 'French'),
+        ('de', 'German'),
+        ('es', 'Spanish'),
+    ]
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     date_of_birth = models.DateField(null=True, blank=True)
     biological_sex = models.CharField(max_length=20, choices=BIOLOGICAL_SEX_CHOICES, blank=True, default='')
@@ -353,6 +359,7 @@ class UserProfile(models.Model):
     genetic_baseline_info = models.TextField(blank=True, default='')
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     theme_preference = models.CharField(max_length=20, choices=THEME_CHOICES, default='system')
+    language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, default='en')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
     allergies = models.TextField(blank=True, default='', help_text='List known allergies, one per line.')
     medications = models.TextField(blank=True, default='', help_text='Current medications, one per line.')

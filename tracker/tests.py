@@ -5158,12 +5158,87 @@ class DashboardWidgetTests(TestCase):
         self.assertContains(response, 'No vitals recorded')
 
 
+class I18nTests(TestCase):
+    """Tests for internationalization (i18n) support."""
 class NotificationSystemTests(TestCase):
     """Tests for the notification system models, service, and views."""
 
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
+            username='i18nuser', password='testpass123', email='i18n@example.com'
+        )
+        self.client.login(username='i18nuser', password='testpass123')
+
+    def test_userprofile_language_field_default(self):
+        """UserProfile should default to English."""
+        from tracker.models import UserProfile
+        profile, _ = UserProfile.objects.get_or_create(user=self.user)
+        self.assertEqual(profile.language, 'en')
+
+    def test_userprofile_language_choices(self):
+        """UserProfile.LANGUAGE_CHOICES should include supported languages."""
+        from tracker.models import UserProfile
+        codes = [code for code, _ in UserProfile.LANGUAGE_CHOICES]
+        self.assertIn('en', codes)
+        self.assertIn('fr', codes)
+        self.assertIn('de', codes)
+        self.assertIn('es', codes)
+
+    def test_set_language_view_accessible(self):
+        """Django's set_language view should return a redirect on valid POST."""
+        response = self.client.post(
+            reverse('set_language'),
+            {'language': 'fr', 'next': '/'},
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_language_preference_middleware_activates_language(self):
+        """LanguagePreferenceMiddleware activates the user's profile language."""
+        from tracker.models import UserProfile
+        from django.utils import translation
+        profile, _ = UserProfile.objects.get_or_create(user=self.user)
+        profile.language = 'fr'
+        profile.save()
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        # Verify the activated language is French
+        activated = translation.get_language()
+        self.assertEqual(activated, 'fr')
+
+    def test_language_preference_middleware_falls_back_to_english(self):
+        """Profile with language='en' renders English content."""
+        from tracker.models import UserProfile
+        profile, _ = UserProfile.objects.get_or_create(user=self.user)
+        profile.language = 'en'
+        profile.save()
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Health Tracker')
+
+    def test_base_template_contains_language_switcher(self):
+        """The base template should render a language switcher."""
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'language-switcher')
+        self.assertContains(response, '/i18n/set-language/')
+
+    def test_settings_languages_configured(self):
+        """LANGUAGES setting should contain all supported locales."""
+        from django.conf import settings
+        lang_codes = [code for code, _ in settings.LANGUAGES]
+        self.assertIn('en', lang_codes)
+        self.assertIn('fr', lang_codes)
+        self.assertIn('de', lang_codes)
+        self.assertIn('es', lang_codes)
+
+    def test_locale_paths_configured(self):
+        """LOCALE_PATHS setting should point to an existing directory."""
+        from django.conf import settings
+        import os
+        self.assertTrue(len(settings.LOCALE_PATHS) > 0)
+        for path in settings.LOCALE_PATHS:
+            self.assertTrue(os.path.isdir(path), f"LOCALE_PATHS entry {path} does not exist")
             username='notif_user', password='testpass123', email='notif@example.com'
         )
         self.client.login(username='notif_user', password='testpass123')
