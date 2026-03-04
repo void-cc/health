@@ -9,12 +9,12 @@ pdfplumber
 thefuzz
 python-Levenshtein
 
-# Phase 4: Authentication & Profiles
+# Authentication & Profiles
 django-allauth[socialaccount]
 django-otp
 qrcode
 Pillow
 
-# Phase 5: Wearable Integrations
+# Wearable Integrations
 requests
 requests-oauthlib
