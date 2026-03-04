@@ -62,7 +62,7 @@ def require_role(*roles):
                 return redirect_to_login(request.get_full_path())
             try:
                 role = request.user.profile.role
-            except Exception:
+            except (AttributeError, UserProfile.DoesNotExist):
                 role = None
             if role not in roles:
                 return HttpResponseForbidden('Access denied.')

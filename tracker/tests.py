@@ -2567,6 +2567,9 @@ class Phase5To12StatusCodeTests(TestCase):
 
     # ---
     def test_wearable_device_list(self):
+        self.assertEqual(self.client.get(reverse('wearable_device_list')).status_code, 200)
+
+    def test_wearable_device_add(self):
         self.assertEqual(self.client.get(reverse('wearable_device_add')).status_code, 200)
 
     def test_sync_log_list(self):
