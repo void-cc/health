@@ -966,16 +966,20 @@ def import_data(request):
                                 if normal_max is None and test_info.normal_max is not None:
                                     normal_max = test_info.normal_max
 
-                            BloodTest.objects.create(
-                                test_name=name,
-                                value=value,
-                                unit=final_unit,
-                                date=date,
-                                normal_min=normal_min,
-                                normal_max=normal_max,
-                                category=category
-                            )
-                            imported_tests += 1
+                            try:
+                                BloodTest.objects.create(
+                                    test_name=name,
+                                    value=value,
+                                    unit=final_unit,
+                                    date=date,
+                                    normal_min=normal_min,
+                                    normal_max=normal_max,
+                                    category=category
+                                )
+                                imported_tests += 1
+                            except Exception as e:
+                                print(f"Error creating blood test row: {e}")
+                                skipped_rows += 1
 
                         elif row_type == 'Vitals':
                             value_str = row.get('Value', '')
@@ -1011,14 +1015,18 @@ def import_data(request):
                                         pass
 
                             if weight is not None or heart_rate is not None or (systolic_bp is not None and diastolic_bp is not None):
-                                VitalSign.objects.create(
-                                    date=date,
-                                    weight=weight,
-                                    heart_rate=heart_rate,
-                                    systolic_bp=systolic_bp,
-                                    diastolic_bp=diastolic_bp
-                                )
-                                imported_vitals += 1
+                                try:
+                                    VitalSign.objects.create(
+                                        date=date,
+                                        weight=weight,
+                                        heart_rate=heart_rate,
+                                        systolic_bp=systolic_bp,
+                                        diastolic_bp=diastolic_bp
+                                    )
+                                    imported_vitals += 1
+                                except Exception as e:
+                                    print(f"Error creating vital sign row: {e}")
+                                    skipped_rows += 1
                             else:
                                 skipped_rows += 1
 
