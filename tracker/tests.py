@@ -4768,3 +4768,77 @@ class MacroListEnhancedTests(TestCase):
     def test_macro_list_renders_chart(self):
         response = self.client.get(reverse('macro_list'))
         self.assertContains(response, 'macroTrendChart')
+
+
+class DashboardWidgetTests(TestCase):
+    """Tests for all 7 dashboard widget types being rendered on the index page."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        self.blood_test = BloodTest.objects.create(
+            test_name="Glucose", value=90.0, unit="mg/dL",
+            date=date(2026, 1, 15), normal_min=70.0, normal_max=100.0,
+            category="Metabolic"
+        )
+        self.vital = VitalSign.objects.create(
+            date=date(2026, 1, 15), weight=70.5, heart_rate=72,
+            systolic_bp=120, diastolic_bp=80, spo2=98.0, bbt=36.5
+        )
+
+    def test_index_context_contains_chart_data(self):
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('charts_data', response.context)
+        self.assertIn('weight_data', response.context)
+        self.assertIn('hr_data', response.context)
+        self.assertIn('sys_bp_data', response.context)
+        self.assertIn('dia_bp_data', response.context)
+        self.assertIn('latest_tests', response.context)
+        self.assertIn('boxplots_data', response.context)
+        self.assertIn('recent_vitals', response.context)
+
+    def test_vital_signs_widget_rendered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Vital Signs')
+        self.assertContains(response, '70.5')
+
+    def test_blood_charts_widget_rendered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Blood Test Trends')
+        self.assertContains(response, 'dash-blood-chart-')
+
+    def test_vitals_charts_widget_rendered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Vital Signs Trends')
+        self.assertContains(response, 'dash-weight-chart')
+
+    def test_comparative_bars_widget_rendered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Compare to Normal Range')
+        self.assertContains(response, 'dash-comp-chart-')
+
+    def test_boxplots_widget_rendered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Distribution Analysis')
+        self.assertContains(response, 'dash-box-chart-')
+
+    def test_widget_visibility_toggle(self):
+        # First, load the page so widgets are created
+        self.client.get(reverse('index'))
+        widgets = DashboardWidget.objects.all()
+        for w in widgets:
+            if w.widget_type == 'boxplots':
+                w.visible = False
+                w.save()
+        response = self.client.get(reverse('index'))
+        self.assertNotContains(response, 'Distribution Analysis')
+
+    def test_empty_dashboard_shows_empty_states(self):
+        BloodTest.objects.all().delete()
+        VitalSign.objects.all().delete()
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No blood tests yet')
+        self.assertContains(response, 'No vitals recorded')

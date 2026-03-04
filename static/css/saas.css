@@ -1546,6 +1546,71 @@
   cursor: grabbing;
 }
 
+/* ── Dashboard Widget Sections ──────────────────────────────────────────── */
+
+.widget-section {
+  margin-bottom: var(--space-6);
+}
+
+.dashboard-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .dashboard-chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vitals-table-wrapper {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.vitals-table-wrapper .table {
+  margin-bottom: 0;
+  font-size: var(--font-size-md);
+}
+
+.vitals-table-wrapper .table th {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom-width: 1px;
+  padding: var(--space-3) var(--space-4);
+  white-space: nowrap;
+}
+
+.vitals-table-wrapper .table td {
+  padding: var(--space-3) var(--space-4);
+  vertical-align: middle;
+  color: var(--text-primary);
+}
+
+.empty-state-sm {
+  padding: var(--space-8) var(--space-4);
+}
+
+.empty-state-sm .empty-state-icon {
+  font-size: 1.5rem;
+  width: 48px;
+  height: 48px;
+}
+
+.empty-state-sm .empty-state-title {
+  font-size: 0.9375rem;
+}
+
+.empty-state-sm .empty-state-description {
+  font-size: 0.8125rem;
+}
+
 /* ── Modal Refinements ───────────────────────────────────────────────────── */
 
 .modal-content {
