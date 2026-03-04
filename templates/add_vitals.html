@@ -1,54 +1,73 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container my-5">
-  <h2 class="mb-4 text-center">Add Vital Signs</h2>
-  <form method="POST">
+
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Add Vital Signs</h1>
+    <p class="page-header-subtitle">Record your daily vital measurements</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'vitals' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Back</span>
+    </a>
+  </div>
+</div>
+
+<div class="form-card">
+  <form method="POST" class="validated-form">
     {% csrf_token %}
-    <div class="mb-3">
-      <label for="date" class="form-label">Date:</label>
+
+    <div class="form-group-row">
+      <label for="date" class="form-label">
+        Date <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> required</span>
+      </label>
       <input type="date" class="form-control" name="date" id="date" value="{{ date }}" required />
     </div>
 
-    <div class="mb-3">
-      <label for="weight" class="form-label">Weight (kg):</label>
-      <input type="number" step="0.1" class="form-control" name="weight" id="weight" placeholder="e.g. 70.5" />
+    <div class="form-group-row">
+      <label for="weight" class="form-label">Weight <span class="text-muted">(kg)</span></label>
+      <input type="number" step="0.1" class="form-control" name="weight" id="weight" placeholder="70.5" />
     </div>
 
-    <div class="mb-3">
-      <label for="heart_rate" class="form-label">Heart Rate (bpm):</label>
-      <input type="number" class="form-control" name="heart_rate" id="heart_rate" placeholder="e.g. 72" />
+    <div class="form-group-row">
+      <label for="heart_rate" class="form-label">Heart Rate <span class="text-muted">(bpm)</span></label>
+      <input type="number" class="form-control" name="heart_rate" id="heart_rate" placeholder="72" />
     </div>
 
-    <div class="row">
-      <div class="col-md-6 mb-3">
-        <label for="systolic_bp" class="form-label">Systolic BP (mmHg):</label>
-        <input type="number" class="form-control" name="systolic_bp" id="systolic_bp" placeholder="e.g. 120" />
+    <div class="row g-3">
+      <div class="col-md-6 form-group-row">
+        <label for="systolic_bp" class="form-label">Systolic BP <span class="text-muted">(mmHg)</span></label>
+        <input type="number" class="form-control" name="systolic_bp" id="systolic_bp" placeholder="120" />
       </div>
-      <div class="col-md-6 mb-3">
-        <label for="diastolic_bp" class="form-label">Diastolic BP (mmHg):</label>
-        <input type="number" class="form-control" name="diastolic_bp" id="diastolic_bp" placeholder="e.g. 80" />
+      <div class="col-md-6 form-group-row">
+        <label for="diastolic_bp" class="form-label">Diastolic BP <span class="text-muted">(mmHg)</span></label>
+        <input type="number" class="form-control" name="diastolic_bp" id="diastolic_bp" placeholder="80" />
       </div>
     </div>
 
-    <div class="mb-3">
-      <label for="bbt" class="form-label">Basal Body Temperature (°C):</label>
-      <input type="number" step="0.01" class="form-control" name="bbt" id="bbt" placeholder="e.g. 36.6" />
+    <div class="form-group-row">
+      <label for="bbt" class="form-label">Basal Body Temperature <span class="text-muted">(°C)</span></label>
+      <input type="number" step="0.01" class="form-control" name="bbt" id="bbt" placeholder="36.6" />
     </div>
 
-    <div class="mb-3">
-      <label for="spo2" class="form-label">Blood Oxygen Saturation - SpO2 (%):</label>
-      <input type="number" step="0.1" class="form-control" name="spo2" id="spo2" placeholder="e.g. 98" />
+    <div class="form-group-row">
+      <label for="spo2" class="form-label">SpO2 — Blood Oxygen Saturation <span class="text-muted">(%)</span></label>
+      <input type="number" step="0.1" class="form-control" name="spo2" id="spo2" placeholder="98" />
     </div>
 
-    <div class="mb-3">
-      <label for="respiratory_rate" class="form-label">Respiratory Rate (breaths/min):</label>
-      <input type="number" class="form-control" name="respiratory_rate" id="respiratory_rate" placeholder="e.g. 16" />
+    <div class="form-group-row">
+      <label for="respiratory_rate" class="form-label">Respiratory Rate <span class="text-muted">(breaths/min)</span></label>
+      <input type="number" class="form-control" name="respiratory_rate" id="respiratory_rate" placeholder="16" />
     </div>
 
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-      <button type="submit" class="btn btn-primary me-md-2">Save Vitals</button>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-check me-1" aria-hidden="true"></i> Save Vitals
+      </button>
       <a href="{% url 'vitals' %}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
 </div>
+
 {% endblock %}

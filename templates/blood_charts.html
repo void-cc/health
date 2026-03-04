@@ -1,15 +1,246 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Blood Test Charts</h2>
+
+<div class="page-header">
   <div>
-    <button class="btn btn-outline-dark me-2" onclick="exportChartsPDF()">
-      <i class="fas fa-file-pdf"></i> Export PDF
+    <h1 class="page-header-title">Blood Test Charts</h1>
+    <p class="page-header-subtitle">Trend analysis for your blood markers</p>
+  </div>
+  <div class="page-header-actions">
+    <button class="toolbar-btn" onclick="exportChartsPDF()">
+      <i class="fas fa-download" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Export PDF</span>
     </button>
-    <a href="{% url 'index' %}" class="btn btn-secondary">Back to Dashboard</a>
+    <a href="{% url 'index' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Dashboard</span>
+    </a>
   </div>
 </div>
+
+{% if charts_data %}
+  <!-- Filters toolbar -->
+  <div class="chart-filters-bar mb-5">
+    <div class="d-flex flex-wrap align-items-end gap-3">
+      <div>
+        <label for="startDate" class="form-label">From</label>
+        <input type="date" id="startDate" class="form-control form-control-sm" style="width:160px;">
+      </div>
+      <div>
+        <label for="endDate" class="form-label">To</label>
+        <input type="date" id="endDate" class="form-control form-control-sm" style="width:160px;">
+      </div>
+      <div class="d-flex gap-2">
+        <button id="applyDateFilter" class="toolbar-btn toolbar-btn-primary">Apply</button>
+        <button id="resetDateFilter" class="toolbar-btn">Reset</button>
+      </div>
+      <div class="d-flex gap-3 ms-auto">
+        <div class="form-check form-check-inline mb-0">
+          <input class="form-check-input" type="checkbox" id="toggleMovingAvg">
+          <label class="form-check-label small" for="toggleMovingAvg">Moving Avg</label>
+        </div>
+        <div class="form-check form-check-inline mb-0">
+          <input class="form-check-input" type="checkbox" id="toggleAnomaly" checked>
+          <label class="form-check-label small" for="toggleAnomaly">Anomaly Detection</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="charts-container">
+    {% for test_name, test_info in charts_data.items %}
+    <div class="chart-section mb-6">
+      <div class="chart-section-header mb-3">
+        <div>
+          <h2 class="results-section-title">{{ test_name }} <span class="text-muted fw-normal" style="font-size:0.875rem;">({{ test_info.unit }})</span></h2>
+          {% if test_info.normal_min is not None and test_info.normal_max is not None %}
+            <p class="text-muted small mb-0">Normal range: {{ test_info.normal_min }}–{{ test_info.normal_max }} {{ test_info.unit }}</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card" style="padding: var(--space-4);">
+        <div style="position: relative; height: 280px; width: 100%;">
+          <canvas id="chart-{{ forloop.counter }}"></canvas>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon"><i class="fas fa-chart-line"></i></div>
+    <div class="empty-state-title">No data to chart</div>
+    <div class="empty-state-description">Add blood test results to see trend charts here.</div>
+    <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
+      <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Blood Test
+    </a>
+  </div>
+{% endif %}
+
+<!-- Moment.js is required for time axes in Chart.js 2.9.4 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<script>
+  var allChartsData = {};
+  var chartInstances = {};
+
+  var chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      xAxes: [{
+        type: 'time',
+        time: { parser: 'YYYY-MM-DD', tooltipFormat: 'll', unit: 'day' },
+        scaleLabel: { display: true, labelString: 'Date' }
+      }],
+      yAxes: [{ ticks: { beginAtZero: false } }]
+    }
+  };
+
+  function computeMovingAverage(data, window) {
+    if (data.length < window) window = data.length;
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+      var start = Math.max(0, i - window + 1);
+      var sum = 0;
+      for (var j = start; j <= i; j++) { sum += data[j].y; }
+      result.push({ x: data[i].x, y: parseFloat((sum / (i - start + 1)).toFixed(2)) });
+    }
+    return result;
+  }
+
+  function detectAnomalies(data, normalMin, normalMax) {
+    var anomalyIndices = [];
+    if (normalMin !== null && normalMax !== null) {
+      for (var i = 0; i < data.length; i++) {
+        if (data[i].y < normalMin || data[i].y > normalMax) anomalyIndices.push(i);
+      }
+    } else if (data.length >= 3) {
+      var mean = 0;
+      for (var k = 0; k < data.length; k++) mean += data[k].y;
+      mean /= data.length;
+      var variance = 0;
+      for (var m = 0; m < data.length; m++) variance += Math.pow(data[m].y - mean, 2);
+      var stddev = Math.sqrt(variance / data.length);
+      for (var n = 0; n < data.length; n++) {
+        if (Math.abs(data[n].y - mean) > 2 * stddev) anomalyIndices.push(n);
+      }
+    }
+    return anomalyIndices;
+  }
+
+  function buildPointStyles(data, anomalyIndices, showAnomaly) {
+    var colors = [], radii = [];
+    for (var i = 0; i < data.length; i++) {
+      if (showAnomaly && anomalyIndices.indexOf(i) !== -1) {
+        colors.push('rgba(220, 38, 38, 1)'); radii.push(7);
+      } else {
+        colors.push('rgba(37, 99, 235, 1)'); radii.push(4);
+      }
+    }
+    return { colors: colors, radii: radii };
+  }
+
+  function filterByDate(data, startDate, endDate) {
+    return data.filter(function(d) {
+      if (startDate && d.x < startDate) return false;
+      if (endDate && d.x > endDate) return false;
+      return true;
+    });
+  }
+
+  function renderAllCharts() {
+    var startDate = document.getElementById('startDate').value;
+    var endDate = document.getElementById('endDate').value;
+    var showMA = document.getElementById('toggleMovingAvg').checked;
+    var showAnomaly = document.getElementById('toggleAnomaly').checked;
+
+    var keys = Object.keys(allChartsData);
+    for (var idx = 0; idx < keys.length; idx++) {
+      var info = allChartsData[keys[idx]];
+      var chartId = idx + 1;
+      var filtered = filterByDate(info.data, startDate, endDate);
+      var anomalyIndices = detectAnomalies(filtered, info.normalMin, info.normalMax);
+      var styles = buildPointStyles(filtered, anomalyIndices, showAnomaly);
+
+      var datasets = [{
+        label: keys[idx],
+        data: filtered,
+        backgroundColor: 'rgba(37, 99, 235, 0.08)',
+        borderColor: 'rgba(37, 99, 235, 1)',
+        borderWidth: 2,
+        fill: false,
+        pointRadius: styles.radii,
+        pointBackgroundColor: styles.colors,
+        pointBorderColor: styles.colors,
+        pointHoverRadius: 6
+      }];
+
+      if (showMA && filtered.length >= 2) {
+        var maData = computeMovingAverage(filtered, Math.min(5, filtered.length));
+        datasets.push({
+          label: keys[idx] + ' (Moving Avg)',
+          data: maData,
+          borderColor: 'rgba(13, 148, 136, 1)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          fill: false,
+          pointRadius: 0,
+          pointHoverRadius: 0
+        });
+      }
+
+      if (chartInstances[chartId]) { chartInstances[chartId].destroy(); }
+      var ctx = document.getElementById('chart-' + chartId).getContext('2d');
+      chartInstances[chartId] = new Chart(ctx, { type: 'line', data: { datasets: datasets }, options: chartOptions });
+    }
+  }
+
+  {% for test_name, test_info in charts_data.items %}
+  allChartsData['{{ test_name }}'] = {
+    data: {{ test_info.data|tojson }},
+    normalMin: {% if test_info.normal_min is not None %}{{ test_info.normal_min }}{% else %}null{% endif %},
+    normalMax: {% if test_info.normal_max is not None %}{{ test_info.normal_max }}{% else %}null{% endif %}
+  };
+  {% endfor %}
+
+  document.getElementById('applyDateFilter').addEventListener('click', renderAllCharts);
+  document.getElementById('resetDateFilter').addEventListener('click', function() {
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    renderAllCharts();
+  });
+  document.getElementById('toggleMovingAvg').addEventListener('change', renderAllCharts);
+  document.getElementById('toggleAnomaly').addEventListener('change', renderAllCharts);
+  renderAllCharts();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+function exportChartsPDF() {
+  var element = document.getElementById('charts-container');
+  if (!element) return;
+  html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
+    var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+    var imgWidth = 210;
+    var imgHeight = canvas.height * imgWidth / canvas.width;
+    var pageHeight = 297;
+    var position = 0;
+    var imgData = canvas.toDataURL('image/png');
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    var heightLeft = imgHeight - pageHeight;
+    while (heightLeft > 0) {
+      position = position - pageHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    pdf.save('blood_test_charts.pdf');
+  });
+}
+</script>
+{% endblock %}
 
 {% if charts_data %}
   <!-- Date Range Selector -->

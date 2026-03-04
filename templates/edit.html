@@ -1,45 +1,47 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2 class="mb-4">Edit Blood Test</h2>
-<form method="POST">
-  {% csrf_token %}
-  <div class="form-group">
-    <label for="test_name">Test Name:</label>
-    <input
-      type="text"
-      class="form-control"
-      name="test_name"
-      id="test_name"
-      value="{{ test.test_name }}"
-      readonly
-    />
-  </div>
 
-  <div class="form-group">
-    <label for="value">Value ({{ test.unit }}):</label>
-    <input
-      type="text"
-      class="form-control"
-      name="value"
-      id="value"
-      value="{{ test.value }}"
-      required
-    />
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Edit Blood Test</h1>
   </div>
-
-  <div class="form-group">
-    <label for="date">Date:</label>
-    <input
-      type="date"
-      class="form-control"
-      name="date"
-      id="date"
-      value="{{ test.date|date:"Y-m-d" }}"
-      required
-    />
+  <div class="page-header-actions">
+    <a href="{% url 'index' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Dashboard</span>
+    </a>
   </div>
+</div>
 
-  <button type="submit" class="btn btn-primary">Update Test</button>
-  <a href="{% url 'index' %}" class="btn btn-secondary">Cancel</a>
-</form>
+<div class="form-card">
+  <form method="POST" class="validated-form">
+    {% csrf_token %}
+
+    <div class="form-group-row">
+      <label for="test_name" class="form-label">Test Name</label>
+      <input type="text" class="form-control" name="test_name" id="test_name" value="{{ test.test_name }}" readonly />
+    </div>
+
+    <div class="form-group-row">
+      <label for="value" class="form-label">
+        Value <span class="text-muted">({{ test.unit }})</span>
+        <span class="text-danger" aria-hidden="true"> *</span><span class="visually-hidden"> required</span>
+      </label>
+      <input type="number" step="any" class="form-control" name="value" id="value" value="{{ test.value }}" required />
+    </div>
+
+    <div class="form-group-row">
+      <label for="date" class="form-label">
+        Date <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> required</span>
+      </label>
+      <input type="date" class="form-control" name="date" id="date" value="{{ test.date|date:"Y-m-d" }}" required />
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Update Test</button>
+      <a href="{% url 'index' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
 {% endblock %}

@@ -1,54 +1,72 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container my-5">
-  <h2 class="mb-4 text-center">Edit Vital Signs</h2>
-  <form method="POST">
+
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Edit Vital Signs</h1>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'vitals' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Back</span>
+    </a>
+  </div>
+</div>
+
+<div class="form-card">
+  <form method="POST" class="validated-form">
     {% csrf_token %}
-    <div class="mb-3">
-      <label for="date" class="form-label">Date:</label>
+
+    <div class="form-group-row">
+      <label for="date" class="form-label">
+        Date <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> required</span>
+      </label>
       <input type="date" class="form-control" name="date" id="date" value="{{ vital.date|date:"Y-m-d" }}" required />
     </div>
 
-    <div class="mb-3">
-      <label for="weight" class="form-label">Weight (kg):</label>
+    <div class="form-group-row">
+      <label for="weight" class="form-label">Weight <span class="text-muted">(kg)</span></label>
       <input type="number" step="0.1" class="form-control" name="weight" id="weight" value="{% if vital.weight is not None %}{{ vital.weight }}{% endif %}" />
     </div>
 
-    <div class="mb-3">
-      <label for="heart_rate" class="form-label">Heart Rate (bpm):</label>
+    <div class="form-group-row">
+      <label for="heart_rate" class="form-label">Heart Rate <span class="text-muted">(bpm)</span></label>
       <input type="number" class="form-control" name="heart_rate" id="heart_rate" value="{% if vital.heart_rate is not None %}{{ vital.heart_rate }}{% endif %}" />
     </div>
 
-    <div class="row">
-      <div class="col-md-6 mb-3">
-        <label for="systolic_bp" class="form-label">Systolic BP (mmHg):</label>
+    <div class="row g-3">
+      <div class="col-md-6 form-group-row">
+        <label for="systolic_bp" class="form-label">Systolic BP <span class="text-muted">(mmHg)</span></label>
         <input type="number" class="form-control" name="systolic_bp" id="systolic_bp" value="{% if vital.systolic_bp is not None %}{{ vital.systolic_bp }}{% endif %}" />
       </div>
-      <div class="col-md-6 mb-3">
-        <label for="diastolic_bp" class="form-label">Diastolic BP (mmHg):</label>
+      <div class="col-md-6 form-group-row">
+        <label for="diastolic_bp" class="form-label">Diastolic BP <span class="text-muted">(mmHg)</span></label>
         <input type="number" class="form-control" name="diastolic_bp" id="diastolic_bp" value="{% if vital.diastolic_bp is not None %}{{ vital.diastolic_bp }}{% endif %}" />
       </div>
     </div>
 
-    <div class="mb-3">
-      <label for="bbt" class="form-label">Basal Body Temperature (°C):</label>
+    <div class="form-group-row">
+      <label for="bbt" class="form-label">Basal Body Temperature <span class="text-muted">(°C)</span></label>
       <input type="number" step="0.01" class="form-control" name="bbt" id="bbt" value="{% if vital.bbt is not None %}{{ vital.bbt }}{% endif %}" />
     </div>
 
-    <div class="mb-3">
-      <label for="spo2" class="form-label">Blood Oxygen Saturation - SpO2 (%):</label>
+    <div class="form-group-row">
+      <label for="spo2" class="form-label">SpO2 — Blood Oxygen Saturation <span class="text-muted">(%)</span></label>
       <input type="number" step="0.1" class="form-control" name="spo2" id="spo2" value="{% if vital.spo2 is not None %}{{ vital.spo2 }}{% endif %}" />
     </div>
 
-    <div class="mb-3">
-      <label for="respiratory_rate" class="form-label">Respiratory Rate (breaths/min):</label>
+    <div class="form-group-row">
+      <label for="respiratory_rate" class="form-label">Respiratory Rate <span class="text-muted">(breaths/min)</span></label>
       <input type="number" class="form-control" name="respiratory_rate" id="respiratory_rate" value="{% if vital.respiratory_rate is not None %}{{ vital.respiratory_rate }}{% endif %}" />
     </div>
 
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-      <button type="submit" class="btn btn-primary me-md-2">Update Vitals</button>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-check me-1" aria-hidden="true"></i> Update Vitals
+      </button>
       <a href="{% url 'vitals' %}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
 </div>
+
 {% endblock %}

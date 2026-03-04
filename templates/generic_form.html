@@ -1,21 +1,35 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="container my-4 form-container">
-  <h2 class="mb-4">{% if editing %}Edit{% else %}Add{% endif %} {{ page_title }}</h2>
-  <form method="POST">
+
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">{% if editing %}Edit{% else %}Add{% endif %} {{ page_title }}</h1>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url list_url_name %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Back</span>
+    </a>
+  </div>
+</div>
+
+<div class="form-card">
+  <form method="POST" class="validated-form">
     {% csrf_token %}
 
     {% for f in fields %}
-      <div class="mb-3">
-        <label for="{{ f.name }}" class="form-label">{{ f.label }}{% if f.required %} <span class="text-danger">*</span>{% endif %}:</label>
+      <div class="form-group-row">
+        <label for="{{ f.name }}" class="form-label">
+          {{ f.label }}{% if f.required %} <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> required</span>{% endif %}
+        </label>
 
         {% if f.widget == 'textarea' %}
           <textarea class="form-control" name="{{ f.name }}" id="{{ f.name }}" rows="3" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %}>{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% endif %}</textarea>
 
         {% elif f.widget == 'select' or f.choices %}
-          <select class="form-control" name="{{ f.name }}" id="{{ f.name }}" {% if f.required %}required{% endif %}>
-            <option value="">-- Select --</option>
+          <select class="form-select" name="{{ f.name }}" id="{{ f.name }}" {% if f.required %}required{% endif %}>
+            <option value="">— Select —</option>
             {% for choice_val, choice_label in f.choices %}
               <option value="{{ choice_val }}" {% if editing %}{% with val=entry|get_field:f.name %}{% if val == choice_val %}selected{% endif %}{% endwith %}{% endif %}>{{ choice_label }}</option>
             {% endfor %}
@@ -24,10 +38,11 @@
         {% elif f.type == 'bool' %}
           <div class="form-check">
             <input type="checkbox" class="form-check-input" name="{{ f.name }}" id="{{ f.name }}" {% if editing %}{% with val=entry|get_field:f.name %}{% if val %}checked{% endif %}{% endwith %}{% endif %} />
+            <label class="form-check-label visually-hidden" for="{{ f.name }}">{{ f.label }}</label>
           </div>
 
         {% elif f.type == 'float' or f.type == 'int' %}
-          <input type="number" {% if f.step %}step="{{ f.step }}"{% elif f.type == 'float' %}step="0.1"{% endif %} class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% elif f.type == 'date' %}{{ date }}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
+          <input type="number" {% if f.step %}step="{{ f.step }}"{% elif f.type == 'float' %}step="0.1"{% endif %} class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
 
         {% elif f.type == 'time' %}
           <input type="time" class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
@@ -44,10 +59,13 @@
       </div>
     {% endfor %}
 
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        {% if editing %}Update{% else %}Save{% endif %}
+      </button>
       <a href="{% url list_url_name %}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
 </div>
+
 {% endblock %}

@@ -1,84 +1,65 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="container my-5">
-  <h2 class="mb-4 text-center">Add Multiple Blood Tests</h2>
-  <form method="POST" id="add-tests-form">
+
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Add Blood Tests</h1>
+    <p class="page-header-subtitle">Record multiple blood test results at once</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'index' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Dashboard</span>
+    </a>
+  </div>
+</div>
+
+<div class="form-card">
+  <form method="POST" id="add-tests-form" class="validated-form">
     {% csrf_token %}
-    <div class="mb-3">
-      <label for="date" class="form-label">Date:</label>
-      <input
-        type="date"
-        class="form-control"
-        name="date"
-        id="date"
-        value="{{ date }}"
-        required
-      />
+
+    <div class="form-group-row">
+      <label for="date" class="form-label">
+        Date <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> required</span>
+      </label>
+      <input type="date" class="form-control" name="date" id="date" value="{{ date }}" required />
     </div>
 
-    <div class="mb-3">
-      <label for="test_names" class="form-label">Select Blood Tests:</label>
-      <select
-        class="form-select"
-        name="test_names"
-        id="test_names"
-        multiple
-        required
-      >
+    <div class="form-group-row">
+      <label for="test_names" class="form-label">
+        Blood Tests <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> required</span>
+      </label>
+      <select class="form-select" name="test_names" id="test_names" multiple required>
         {% for test in test_info %}
         <option value="{{ test }}">{{ test }}</option>
         {% endfor %}
       </select>
+      <div class="form-text">Select one or more tests to record. Value fields will appear below.</div>
     </div>
 
-    <!-- Placeholder for dynamic input fields -->
+    <!-- Dynamic value input fields -->
     <div id="test-input-fields"></div>
 
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-      <button type="submit" class="btn btn-primary me-md-2">Add Tests</button>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-check me-1" aria-hidden="true"></i> Save Tests
+      </button>
       <a href="{% url 'index' %}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
 </div>
 
-<!-- Include Select2 CSS -->
-<link
-  href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css"
-  rel="stylesheet"
-/>
-
-<!-- Include Select2 Bootstrap 5 Theme -->
-<link
-  href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
-  rel="stylesheet"
-/>
-
-<!-- Include jQuery (required for Select2) -->
-<script
-  src="https://code.jquery.com/jquery-3.6.0.min.js"
-  integrity="sha256-/xUj+3OJ6jJkiC3WhQlt0iqEGLx6nqNvTTvKYATW8RM="
-  crossorigin="anonymous"
-></script>
-
-<!-- Include Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
-
-<!-- Initialize Select2 and handle dynamic fields -->
 <script type="text/javascript">
   $(document).ready(function () {
-    // Initialize Select2
     const selectTestNames = $('#test_names');
     selectTestNames.select2({
-      theme: 'bootstrap-5',
       placeholder: 'Select blood tests',
       allowClear: true,
     });
 
-    // Store test information in a JavaScript variable
     const testInfo = {{ test_info | tojson | safe }};
 
-    // Function to generate input fields
     function generateInputFields(selectedTests) {
       let inputFields = '';
       selectedTests.forEach(function (testName) {
@@ -87,34 +68,32 @@
         const normalMax = testInfo[testName]['normal_max'];
         let placeholder = '';
         if (normalMin !== null && normalMax !== null) {
-          placeholder =
-            'Normal range: ' + normalMin + ' - ' + normalMax + ' ' + unit;
+          placeholder = 'Normal: ' + normalMin + '–' + normalMax + ' ' + unit;
         }
         inputFields += `
-          <div class="mb-3">
-            <label for="test_${testName}" class="form-label">${testName} (${unit}):</label>
-            <input type="text" class="form-control" name="values[${testName}]" id="test_${testName}" placeholder="${placeholder}" required>
+          <div class="form-group-row">
+            <label for="test_${testName}" class="form-label">${testName} <span class="text-muted">(${unit})</span></label>
+            <input type="number" step="any" class="form-control" name="values[${testName}]" id="test_${testName}" placeholder="${placeholder}" required />
           </div>
         `;
       });
       $('#test-input-fields').html(inputFields);
     }
 
-    // Event listener for changes in selected tests
     selectTestNames.on('change', function () {
       const selectedTests = $(this).val();
-      if (selectedTests) {
+      if (selectedTests && selectedTests.length) {
         generateInputFields(selectedTests);
       } else {
         $('#test-input-fields').html('');
       }
     });
 
-    // Generate input fields if tests are pre-selected
     const preSelectedTests = selectTestNames.val();
-    if (preSelectedTests) {
+    if (preSelectedTests && preSelectedTests.length) {
       generateInputFields(preSelectedTests);
     }
   });
 </script>
+
 {% endblock %}
