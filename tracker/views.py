@@ -29,6 +29,9 @@ from .models import (
     # Integration Sub-tasks
     IntegrationConfig, IntegrationSubTask,
     INTEGRATION_CATEGORIES, INTEGRATION_FEATURE_TYPES,
+    # Notification System
+    NotificationPreference, NotificationTemplate, NotificationTrigger,
+    NotificationLog, NOTIFICATION_CHANNELS, NOTIFICATION_EVENT_TYPES,
     HabitLog, Reminder,
 )
 from .generic_crud import make_crud_views
@@ -4552,6 +4555,113 @@ integration_subtask_add = _integration_subtask['add']
 integration_subtask_edit = _integration_subtask['edit']
 integration_subtask_delete = _integration_subtask['delete']
 
+
+# ===== Notification System =====
+
+
+@login_required
+def notification_preference_view(request):
+    """Display and update the current user's notification preferences."""
+    pref, _ = NotificationPreference.objects.get_or_create(user=request.user)
+    if request.method == 'POST':
+        pref.email_enabled = request.POST.get('email_enabled') == 'on'
+        pref.sms_enabled = request.POST.get('sms_enabled') == 'on'
+        pref.push_enabled = request.POST.get('push_enabled') == 'on'
+        disabled = request.POST.getlist('disabled_events')
+        pref.disabled_events = disabled
+        quiet_start = request.POST.get('quiet_hours_start', '').strip() or None
+        quiet_end = request.POST.get('quiet_hours_end', '').strip() or None
+        pref.quiet_hours_start = quiet_start
+        pref.quiet_hours_end = quiet_end
+        pref.save()
+        messages.success(request, 'Notification preferences saved.')
+        return redirect('notification_preference')
+    return render(request, 'notification_preference.html', {
+        'pref': pref,
+        'event_types': NOTIFICATION_EVENT_TYPES,
+    })
+
+
+_notification_template_crud = make_crud_views(
+    model_class=NotificationTemplate,
+    display_name='Notification Template',
+    fields=[
+        {'name': 'event_type', 'type': 'str', 'choices': NOTIFICATION_EVENT_TYPES, 'label': 'Event Type'},
+        {'name': 'channel', 'type': 'str', 'choices': NOTIFICATION_CHANNELS, 'label': 'Channel'},
+        {'name': 'subject', 'type': 'str', 'label': 'Subject'},
+        {'name': 'body', 'type': 'str', 'widget': 'textarea', 'label': 'Body'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+    ],
+    list_url_name='notification_template_list',
+    add_url_name='notification_template_add',
+    edit_url_name='notification_template_edit',
+    order_by='-created_at',
+    list_template='notification_template_list.html',
+    form_template='notification_template_form.html',
+)
+notification_template_list = _notification_template_crud['list']
+notification_template_add = _notification_template_crud['add']
+notification_template_edit = _notification_template_crud['edit']
+notification_template_delete = _notification_template_crud['delete']
+
+
+_notification_trigger_crud = make_crud_views(
+    model_class=NotificationTrigger,
+    display_name='Notification Trigger',
+    fields=[
+        {'name': 'name', 'type': 'str', 'label': 'Name'},
+        {'name': 'event_type', 'type': 'str', 'choices': NOTIFICATION_EVENT_TYPES, 'label': 'Event Type'},
+        {'name': 'schedule', 'type': 'str', 'choices': NotificationTrigger.SCHEDULE_CHOICES, 'label': 'Schedule'},
+        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
+        {'name': 'threshold', 'type': 'float', 'label': 'Threshold'},
+        {'name': 'max_retries', 'type': 'int', 'default': 3, 'label': 'Max Retries'},
+    ],
+    list_url_name='notification_trigger_list',
+    add_url_name='notification_trigger_add',
+    edit_url_name='notification_trigger_edit',
+    order_by='-created_at',
+    list_template='notification_trigger_list.html',
+    form_template='notification_trigger_form.html',
+)
+notification_trigger_list = _notification_trigger_crud['list']
+notification_trigger_add = _notification_trigger_crud['add']
+notification_trigger_edit = _notification_trigger_crud['edit']
+notification_trigger_delete = _notification_trigger_crud['delete']
+
+
+@login_required
+def notification_trigger_set_channels(request, pk):
+    """Update the channels list for a trigger (channels are multi-value)."""
+    trigger = get_object_or_404(NotificationTrigger, id=pk)
+    if request.method == 'POST':
+        channels = request.POST.getlist('channels')
+        valid = [c for c in channels if c in dict(NOTIFICATION_CHANNELS)]
+        trigger.channels = valid
+        trigger.save(update_fields=['channels'])
+        messages.success(request, 'Trigger channels updated.')
+    return redirect('notification_trigger_list')
+
+
+@login_required
+def notification_log_list(request):
+    """Display the notification delivery log (read-only)."""
+    logs = NotificationLog.objects.select_related('user', 'trigger').order_by('-created_at')
+    # Optional filters
+    status_filter = request.GET.get('status', '')
+    channel_filter = request.GET.get('channel', '')
+    if status_filter:
+        logs = logs.filter(status=status_filter)
+    if channel_filter:
+        logs = logs.filter(channel=channel_filter)
+    paginator = Paginator(logs, 25)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(request, 'notification_log_list.html', {
+        'page_obj': page_obj,
+        'channels': NOTIFICATION_CHANNELS,
+        'status_filter': status_filter,
+        'channel_filter': channel_filter,
+    })
+  
 # ===== Habit Log =====
 _habit_log = make_crud_views(
     model_class=HabitLog,

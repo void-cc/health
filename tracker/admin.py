@@ -3,6 +3,8 @@ from .models import (
     SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
     ClinicalTrialMatch, HabitLog, Reminder,
+    NotificationPreference, NotificationTemplate, NotificationTrigger,
+    NotificationLog,
 )
 
 
@@ -66,6 +68,34 @@ class ClinicalTrialMatchAdmin(admin.ModelAdmin):
     search_fields = ('trial_id', 'trial_title', 'condition')
 
 
+@admin.register(NotificationPreference)
+class NotificationPreferenceAdmin(admin.ModelAdmin):
+    list_display = ('user', 'email_enabled', 'sms_enabled', 'push_enabled', 'updated_at')
+    list_filter = ('email_enabled', 'sms_enabled', 'push_enabled')
+    search_fields = ('user__username', 'user__email')
+
+
+@admin.register(NotificationTemplate)
+class NotificationTemplateAdmin(admin.ModelAdmin):
+    list_display = ('event_type', 'channel', 'subject', 'is_active', 'updated_at')
+    list_filter = ('event_type', 'channel', 'is_active')
+    search_fields = ('subject', 'body')
+
+
+@admin.register(NotificationTrigger)
+class NotificationTriggerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'event_type', 'schedule', 'is_active', 'max_retries', 'created_at')
+    list_filter = ('event_type', 'schedule', 'is_active')
+    search_fields = ('name',)
+
+
+@admin.register(NotificationLog)
+class NotificationLogAdmin(admin.ModelAdmin):
+    list_display = ('event_type', 'channel', 'recipient', 'status', 'attempt_count', 'sent_at', 'created_at')
+    list_filter = ('event_type', 'channel', 'status')
+    search_fields = ('recipient', 'subject')
+    readonly_fields = ('created_at',)
+    
 @admin.register(HabitLog)
 class HabitLogAdmin(admin.ModelAdmin):
     list_display = ('date', 'habit_name', 'category', 'completed')
