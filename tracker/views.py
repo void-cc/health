@@ -3372,7 +3372,6 @@ _body_composition = make_crud_views(
     add_url_name='body_composition_add',
     edit_url_name='body_composition_edit',
 )
-body_composition_list = _body_composition['list']
 body_composition_add = _body_composition['add']
 body_composition_edit = _body_composition['edit']
 body_composition_delete = _body_composition['delete']
@@ -3391,7 +3390,6 @@ _hydration = make_crud_views(
     add_url_name='hydration_add',
     edit_url_name='hydration_edit',
 )
-hydration_list = _hydration['list']
 hydration_add = _hydration['add']
 hydration_edit = _hydration['edit']
 hydration_delete = _hydration['delete']
@@ -3578,7 +3576,6 @@ _sleep = make_crud_views(
     add_url_name='sleep_add',
     edit_url_name='sleep_edit',
 )
-sleep_list = _sleep['list']
 sleep_add = _sleep['add']
 sleep_edit = _sleep['edit']
 sleep_delete = _sleep['delete']
@@ -3642,7 +3639,6 @@ _macro = make_crud_views(
     add_url_name='macro_add',
     edit_url_name='macro_edit',
 )
-macro_list = _macro['list']
 macro_add = _macro['add']
 macro_edit = _macro['edit']
 macro_delete = _macro['delete']
@@ -3755,7 +3751,6 @@ _medication = make_crud_views(
     edit_url_name='medication_schedule_edit',
     order_by='-start_date',
 )
-medication_schedule_list = _medication['list']
 medication_schedule_add = _medication['add']
 medication_schedule_edit = _medication['edit']
 medication_schedule_delete = _medication['delete']
@@ -3779,7 +3774,6 @@ _health_goal = make_crud_views(
     edit_url_name='health_goal_edit',
     order_by='-start_date',
 )
-health_goal_list = _health_goal['list']
 health_goal_add = _health_goal['add']
 health_goal_edit = _health_goal['edit']
 health_goal_delete = _health_goal['delete']
@@ -3883,9 +3877,41 @@ _secure_viewing_link = make_crud_views(
     order_by='-created_at',
 )
 secure_viewing_link_list = _secure_viewing_link['list']
-secure_viewing_link_add = _secure_viewing_link['add']
-secure_viewing_link_edit = _secure_viewing_link['edit']
 secure_viewing_link_delete = _secure_viewing_link['delete']
+
+def secure_viewing_link_add(request):
+    if request.method == 'POST':
+        try:
+            expires_str = request.POST.get('expires_at', '').strip()
+            expires_dt = datetime.strptime(expires_str, '%Y-%m-%dT%H:%M') if expires_str else None
+            SecureViewingLink.objects.create(
+                token=SecureViewingLink.generate_token(),
+                data_types=request.POST.get('data_types', ''),
+                expires_at=expires_dt,
+                is_active=request.POST.get('is_active') == 'on',
+            )
+            messages.success(request, 'Secure viewing link created!')
+            return redirect('secure_viewing_link_list')
+        except Exception:
+            messages.error(request, 'Error creating secure viewing link.')
+            return redirect('secure_viewing_link_add')
+    return render(request, 'secure_viewing_link_form.html', {'editing': False})
+
+def secure_viewing_link_edit(request, pk):
+    entry = get_object_or_404(SecureViewingLink, id=pk)
+    if request.method == 'POST':
+        try:
+            expires_str = request.POST.get('expires_at', '').strip()
+            entry.data_types = request.POST.get('data_types', '')
+            entry.expires_at = datetime.strptime(expires_str, '%Y-%m-%dT%H:%M') if expires_str else entry.expires_at
+            entry.is_active = request.POST.get('is_active') == 'on'
+            entry.save()
+            messages.success(request, 'Secure viewing link updated!')
+            return redirect('secure_viewing_link_list')
+        except Exception:
+            messages.error(request, 'Error updating secure viewing link.')
+            return redirect('secure_viewing_link_edit', pk=pk)
+    return render(request, 'secure_viewing_link_form.html', {'entry': entry, 'editing': True})
 
 # ===== Practitioner Access =====
 _practitioner_access = make_crud_views(
@@ -3905,8 +3931,26 @@ _practitioner_access = make_crud_views(
 )
 practitioner_access_list = _practitioner_access['list']
 practitioner_access_add = _practitioner_access['add']
-practitioner_access_edit = _practitioner_access['edit']
 practitioner_access_delete = _practitioner_access['delete']
+
+def practitioner_access_edit(request, pk):
+    entry = get_object_or_404(PractitionerAccess, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.practitioner_name = request.POST.get('practitioner_name', '')
+            entry.practitioner_email = request.POST.get('practitioner_email', '')
+            entry.specialty = request.POST.get('specialty', '')
+            new_status = request.POST.get('access_status', entry.access_status)
+            if new_status == 'approved' and entry.access_status != 'approved':
+                entry.granted_at = timezone.now()
+            entry.access_status = new_status
+            entry.save()
+            messages.success(request, 'Practitioner access updated!')
+            return redirect('practitioner_access_list')
+        except Exception:
+            messages.error(request, 'Error updating practitioner access.')
+            return redirect('practitioner_access_edit', pk=pk)
+    return render(request, 'practitioner_access_form.html', {'entry': entry, 'editing': True})
 
 # ===== Intake Summaries =====
 _intake_summary = make_crud_views(
@@ -3944,9 +3988,24 @@ _data_export = make_crud_views(
     order_by='-requested_at',
 )
 data_export_list = _data_export['list']
-data_export_add = _data_export['add']
 data_export_edit = _data_export['edit']
 data_export_delete = _data_export['delete']
+
+def data_export_add(request):
+    if request.method == 'POST':
+        try:
+            export_format = request.POST.get('export_format', 'json')
+            DataExportRequest.objects.create(
+                export_format=export_format,
+                status='completed',
+                completed_at=timezone.now(),
+            )
+            messages.success(request, 'Data export created!')
+            return redirect('data_export_list')
+        except Exception:
+            messages.error(request, 'Error creating data export.')
+            return redirect('data_export_add')
+    return render(request, 'data_export_form.html', {'editing': False})
 
 # ===== Stakeholder Emails =====
 _stakeholder_email = make_crud_views(
@@ -3981,9 +4040,6 @@ _user_profile = make_crud_views(
     order_by='-created_at',
 )
 user_profile_list = _user_profile['list']
-user_profile_add = _user_profile['add']
-user_profile_edit = _user_profile['edit']
-user_profile_delete = _user_profile['delete']
 
 # ===== Family Accounts =====
 _family_account = make_crud_views(
