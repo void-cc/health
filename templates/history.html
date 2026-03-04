@@ -14,6 +14,77 @@
   </div>
 </div>
 
+<!-- Filters -->
+<form method="get" action="{% url 'history' %}" class="mb-4" id="history-filter-form">
+  <div class="card">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-sm-6 col-md-3">
+          <label for="filter-search" class="form-label">Search name</label>
+          <input type="text" id="filter-search" name="search" class="form-control form-control-sm"
+                 placeholder="e.g. Glucose" value="{{ filters.search }}">
+        </div>
+        <div class="col-12 col-sm-6 col-md-2">
+          <label for="filter-type" class="form-label">Type</label>
+          <select id="filter-type" name="type" class="form-select form-select-sm">
+            <option value="" {% if not filters.type %}selected{% endif %}>All types</option>
+            <option value="Blood Test" {% if filters.type == 'Blood Test' %}selected{% endif %}>Blood Test</option>
+            <option value="Vitals" {% if filters.type == 'Vitals' %}selected{% endif %}>Vitals</option>
+          </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-2">
+          <label for="filter-status" class="form-label">Status</label>
+          <select id="filter-status" name="status" class="form-select form-select-sm">
+            <option value="" {% if not filters.status %}selected{% endif %}>All statuses</option>
+            <option value="Normal" {% if filters.status == 'Normal' %}selected{% endif %}>Normal</option>
+            <option value="Out of Range" {% if filters.status == 'Out of Range' %}selected{% endif %}>Out of Range</option>
+            <option value="N/A" {% if filters.status == 'N/A' %}selected{% endif %}>N/A</option>
+          </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-2">
+          <label for="filter-date-from" class="form-label">From</label>
+          <input type="date" id="filter-date-from" name="date_from" class="form-control form-control-sm"
+                 value="{{ filters.date_from }}">
+        </div>
+        <div class="col-12 col-sm-6 col-md-2">
+          <label for="filter-date-to" class="form-label">To</label>
+          <input type="date" id="filter-date-to" name="date_to" class="form-control form-control-sm"
+                 value="{{ filters.date_to }}">
+        </div>
+        <div class="col-12 col-sm-6 col-md-1 d-flex gap-2">
+          <button type="submit" class="toolbar-btn toolbar-btn-primary w-100" id="applyFilter">
+            <i class="fas fa-filter" aria-hidden="true"></i>
+            <span class="d-none d-sm-inline">Apply</span>
+          </button>
+          <a href="{% url 'history' %}" class="toolbar-btn w-100" id="resetFilter" title="Clear filters">
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </a>
+        </div>
+      </div>
+      {% if filters.type or filters.status or filters.date_from or filters.date_to or filters.search %}
+      <div class="mt-2 d-flex flex-wrap gap-2" id="active-filters">
+        <span class="text-muted small me-1">Active filters:</span>
+        {% if filters.search %}
+          <span class="badge bg-secondary">Search: {{ filters.search }}</span>
+        {% endif %}
+        {% if filters.type %}
+          <span class="badge bg-secondary">Type: {{ filters.type }}</span>
+        {% endif %}
+        {% if filters.status %}
+          <span class="badge bg-secondary">Status: {{ filters.status }}</span>
+        {% endif %}
+        {% if filters.date_from %}
+          <span class="badge bg-secondary">From: {{ filters.date_from }}</span>
+        {% endif %}
+        {% if filters.date_to %}
+          <span class="badge bg-secondary">To: {{ filters.date_to }}</span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</form>
+
 {% if history %}
 <div class="table-responsive">
   <table class="table table-hover align-middle">
@@ -62,11 +133,19 @@
 {% else %}
 <div class="empty-state">
   <div class="empty-state-icon"><i class="fas fa-history"></i></div>
+  {% if filters.type or filters.status or filters.date_from or filters.date_to or filters.search %}
+  <div class="empty-state-title">No results match your filters</div>
+  <div class="empty-state-description">Try adjusting or clearing your filters.</div>
+  <a href="{% url 'history' %}" class="toolbar-btn">
+    <i class="fas fa-times me-1" aria-hidden="true"></i> Clear Filters
+  </a>
+  {% else %}
   <div class="empty-state-title">No history yet</div>
   <div class="empty-state-description">Start recording blood tests and vitals to build your medical history.</div>
   <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
     <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Blood Test
   </a>
+  {% endif %}
 </div>
 {% endif %}
 

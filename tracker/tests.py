@@ -124,6 +124,81 @@ class ViewWithDataTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '2026-01-15')
 
+    def test_history_filter_form_present(self):
+        response = self.client.get(reverse('history'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'filter-search')
+        self.assertContains(response, 'filter-type')
+        self.assertContains(response, 'filter-status')
+        self.assertContains(response, 'filter-date-from')
+        self.assertContains(response, 'filter-date-to')
+
+    def test_history_filter_by_type_blood_test(self):
+        response = self.client.get(reverse('history'), {'type': 'Blood Test'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hemoglobin')
+        self.assertNotContains(response, 'Vital Signs')
+
+    def test_history_filter_by_type_vitals(self):
+        response = self.client.get(reverse('history'), {'type': 'Vitals'})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Hemoglobin')
+        self.assertContains(response, 'Vital Signs')
+
+    def test_history_filter_by_status_normal(self):
+        response = self.client.get(reverse('history'), {'status': 'Normal'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'badge-success')
+        self.assertNotContains(response, 'badge-danger')
+
+    def test_history_filter_by_status_out_of_range(self):
+        # Create a blood test that is out of range
+        BloodTest.objects.create(
+            test_name='Glucose', value=200.0, unit='mg/dL',
+            date=date(2026, 1, 20), normal_min=70.0, normal_max=100.0,
+        )
+        response = self.client.get(reverse('history'), {'status': 'Out of Range'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Glucose')
+        self.assertNotContains(response, 'Hemoglobin')
+
+    def test_history_filter_by_date_from(self):
+        BloodTest.objects.create(
+            test_name='Cholesterol', value=180.0, unit='mg/dL',
+            date=date(2025, 6, 1), normal_min=0.0, normal_max=200.0,
+        )
+        response = self.client.get(reverse('history'), {'date_from': '2026-01-01'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hemoglobin')
+        self.assertNotContains(response, 'Cholesterol')
+
+    def test_history_filter_by_date_to(self):
+        BloodTest.objects.create(
+            test_name='Cholesterol', value=180.0, unit='mg/dL',
+            date=date(2025, 6, 1), normal_min=0.0, normal_max=200.0,
+        )
+        response = self.client.get(reverse('history'), {'date_to': '2025-12-31'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Cholesterol')
+        self.assertNotContains(response, 'Hemoglobin')
+
+    def test_history_filter_by_search(self):
+        response = self.client.get(reverse('history'), {'search': 'Hemo'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hemoglobin')
+
+    def test_history_filter_search_no_match(self):
+        response = self.client.get(reverse('history'), {'search': 'Xyznonexistent'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No results match your filters')
+
+    def test_history_active_filter_badges(self):
+        response = self.client.get(reverse('history'), {'type': 'Blood Test', 'status': 'Normal'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Active filters:')
+        self.assertContains(response, 'Type: Blood Test')
+        self.assertContains(response, 'Status: Normal')
+
     def test_vitals_with_data(self):
         response = self.client.get(reverse('vitals'))
         self.assertEqual(response.status_code, 200)
