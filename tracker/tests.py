@@ -6130,7 +6130,6 @@ class InteractionDashboardViewTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(username='dashuser', password='testpass123')
-        self.client.login(username='dashuser', password='dashpass')
         self.client.login(username='dashuser', password='testpass123')
 
     def test_dashboard_requires_login(self):

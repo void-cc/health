@@ -121,12 +121,13 @@ def get_rxcui(drug_name):
     rxcui = data.get('idGroup', {}).get('rxnormId') or []
     rxcui = rxcui[0] if rxcui else ''
     if rxcui:
-        MedicationConcept.objects.update_or_create(
-            name__iexact=drug_name,
-            defaults={'name': drug_name, 'rxcui': rxcui, 'source': 'rxnorm'},
-        ) if not concept else concept.__class__.objects.filter(
-            pk=concept.pk
-        ).update(rxcui=rxcui)
+        if concept:
+            concept.__class__.objects.filter(pk=concept.pk).update(rxcui=rxcui)
+        else:
+            MedicationConcept.objects.update_or_create(
+                name=drug_name,
+                defaults={'rxcui': rxcui, 'source': 'rxnorm'},
+            )
     return rxcui
 
 
@@ -250,11 +251,9 @@ def run_interaction_check_for_user(user, new_medication_name):
     for idata in raw:
         obj, _ = PharmacologicalInteraction.objects.get_or_create(
             user=user,
-            medication_a__iexact=idata['medication_a'],
-            medication_b__iexact=idata['medication_b'],
+            medication_a=idata['medication_a'],
+            medication_b=idata['medication_b'],
             defaults={
-                'medication_a': idata['medication_a'],
-                'medication_b': idata['medication_b'],
                 'severity': idata['severity'],
                 'description': idata['description'],
                 'source': idata['source'],
