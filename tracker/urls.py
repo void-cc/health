@@ -390,4 +390,8 @@ urlpatterns = [
     path('reminders/add/', views.reminder_add, name='reminder_add'),
     path('reminders/edit/<int:pk>/', views.reminder_edit, name='reminder_edit'),
     path('reminders/delete/<int:pk>/', views.reminder_delete, name='reminder_delete'),
+
+    # Phase 4 – Timeline & Labs Dashboard
+    path('timeline/', views.timeline, name='timeline'),
+    path('labs/', views.labs_dashboard, name='labs_dashboard'),
 ]

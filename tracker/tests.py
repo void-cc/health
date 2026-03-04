@@ -2024,7 +2024,8 @@ class Phase4SidebarTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
-            username='testuser', password='testpass123', email='test@example.com'
+            username='testuser', password='testpass123', email='test@example.com',
+            is_staff=True,
         )
         self.client.login(username='testuser', password='testpass123')
 
@@ -2044,7 +2045,8 @@ class DynamicSidebarTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
-            username='testuser', password='testpass123', email='test@example.com'
+            username='testuser', password='testpass123', email='test@example.com',
+            is_staff=True,
         )
         self.client.login(username='testuser', password='testpass123')
 
@@ -7052,3 +7054,249 @@ class MeasurementReviewWorkflowTests(TestCase):
         response = self.client.post(reverse('staff_delete_measurement', args=[m.pk]))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Measurement.objects.filter(pk=m.pk).count(), 0)
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 – Analytics services, Timeline & Labs Dashboard tests
+# ---------------------------------------------------------------------------
+
+
+class AnalyticsServicesTests(TestCase):
+    """Unit tests for tracker.services.analytics.labs."""
+
+    def test_compute_delta_basic(self):
+        from tracker.services.analytics.labs import compute_delta
+        result = compute_delta(118, 100)
+        self.assertEqual(result['direction'], 'up')
+        self.assertEqual(result['abs'], 18)
+        self.assertEqual(result['pct'], 18.0)
+
+    def test_compute_delta_down(self):
+        from tracker.services.analytics.labs import compute_delta
+        result = compute_delta(90, 100)
+        self.assertEqual(result['direction'], 'down')
+        self.assertEqual(result['abs'], -10)
+        self.assertEqual(result['pct'], -10.0)
+
+    def test_compute_delta_none(self):
+        from tracker.services.analytics.labs import compute_delta
+        self.assertIsNone(compute_delta(100, None))
+        self.assertIsNone(compute_delta(None, 100))
+
+    def test_compute_delta_flat(self):
+        from tracker.services.analytics.labs import compute_delta
+        result = compute_delta(100, 100)
+        self.assertEqual(result['direction'], 'flat')
+        self.assertEqual(result['abs'], 0)
+
+    def test_is_out_of_range(self):
+        from tracker.services.analytics.labs import is_out_of_range
+        self.assertTrue(is_out_of_range(200, 70, 100))
+        self.assertTrue(is_out_of_range(50, 70, 100))
+        self.assertFalse(is_out_of_range(85, 70, 100))
+        self.assertIsNone(is_out_of_range(85, None, None))
+
+    def test_range_flag(self):
+        from tracker.services.analytics.labs import range_flag
+        self.assertEqual(range_flag(200, 70, 100), 'high')
+        self.assertEqual(range_flag(50, 70, 100), 'low')
+        self.assertEqual(range_flag(85, 70, 100), 'normal')
+        self.assertIsNone(range_flag(85, None, None))
+
+    def test_rolling_average(self):
+        from tracker.services.analytics.labs import compute_rolling_average
+        self.assertEqual(compute_rolling_average([10, 20, 30], window=3), 20.0)
+        self.assertIsNone(compute_rolling_average([10, 20], window=3))
+        self.assertEqual(compute_rolling_average([5, 10, 15, 20], window=3), 15.0)
+
+    def test_compute_derived_ratios_cholesterol(self):
+        from tracker.services.analytics.labs import compute_derived_ratios
+        ratios = compute_derived_ratios({
+            'Total Cholesterol': 200, 'HDL': 50, 'LDL': 130,
+        })
+        names = [r['name'] for r in ratios]
+        self.assertIn('Total Cholesterol / HDL', names)
+        self.assertIn('LDL / HDL', names)
+        chol_ratio = next(r for r in ratios if r['name'] == 'Total Cholesterol / HDL')
+        self.assertEqual(chol_ratio['value'], 4.0)
+        self.assertEqual(chol_ratio['interpretation'], 'optimal')
+
+    def test_compute_derived_ratios_empty(self):
+        from tracker.services.analytics.labs import compute_derived_ratios
+        self.assertEqual(compute_derived_ratios({}), [])
+
+    def test_build_lab_insights(self):
+        from tracker.services.analytics.labs import build_lab_insights
+        user = User.objects.create_user(username='insight_user', password='testpass123')
+        BloodTest.objects.create(
+            user=user, test_name='Glucose', value=110, unit='mg/dL',
+            date=date(2026, 1, 20), normal_min=70, normal_max=100,
+        )
+        BloodTest.objects.create(
+            user=user, test_name='Glucose', value=95, unit='mg/dL',
+            date=date(2026, 1, 10), normal_min=70, normal_max=100,
+        )
+        qs = BloodTest.objects.filter(user=user).order_by('-date')
+        insights = build_lab_insights(qs)
+        self.assertEqual(len(insights), 1)
+        ins = insights[0]
+        self.assertEqual(ins['test_name'], 'Glucose')
+        self.assertEqual(ins['flag'], 'high')
+        self.assertIsNotNone(ins['delta'])
+        self.assertEqual(ins['delta']['direction'], 'up')
+
+
+class TimelineViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='timeline_user', password='testpass123',
+            email='timeline@example.com',
+        )
+        self.client.login(username='timeline_user', password='testpass123')
+
+    def test_timeline_page_loads(self):
+        response = self.client.get(reverse('timeline'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_timeline_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('timeline'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_timeline_shows_events(self):
+        BloodTest.objects.create(
+            user=self.user, test_name='Hemoglobin', value=15.0, unit='g/dL',
+            date=date(2026, 1, 15), normal_min=13.8, normal_max=17.2,
+        )
+        VitalSign.objects.create(
+            user=self.user, date=date(2026, 1, 16),
+            heart_rate=72, systolic_bp=120, diastolic_bp=80,
+        )
+        response = self.client.get(reverse('timeline'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hemoglobin')
+        self.assertContains(response, 'Vital Signs')
+
+    def test_timeline_shows_insight_card_for_out_of_range(self):
+        BloodTest.objects.create(
+            user=self.user, test_name='Glucose', value=200, unit='mg/dL',
+            date=date(2026, 1, 20), normal_min=70, normal_max=100,
+        )
+        response = self.client.get(reverse('timeline'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'above normal range')
+
+    def test_timeline_empty(self):
+        response = self.client.get(reverse('timeline'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No health events recorded yet')
+
+
+class LabsDashboardViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='labs_user', password='testpass123',
+            email='labs@example.com',
+        )
+        self.client.login(username='labs_user', password='testpass123')
+
+    def test_labs_page_loads(self):
+        response = self.client.get(reverse('labs_dashboard'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_labs_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('labs_dashboard'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_labs_shows_biomarker_data(self):
+        BloodTest.objects.create(
+            user=self.user, test_name='Hemoglobin', value=15.0, unit='g/dL',
+            date=date(2026, 1, 15), normal_min=13.8, normal_max=17.2,
+            category='Blood Count',
+        )
+        response = self.client.get(reverse('labs_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hemoglobin')
+        self.assertContains(response, '15.0')
+        self.assertContains(response, 'Normal')
+
+    def test_labs_shows_out_of_range(self):
+        BloodTest.objects.create(
+            user=self.user, test_name='Glucose', value=200, unit='mg/dL',
+            date=date(2026, 1, 20), normal_min=70, normal_max=100,
+            category='Metabolic',
+        )
+        response = self.client.get(reverse('labs_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'High')
+
+    def test_labs_shows_delta(self):
+        BloodTest.objects.create(
+            user=self.user, test_name='LDL', value=130, unit='mg/dL',
+            date=date(2026, 1, 10), normal_min=0, normal_max=100,
+            category='Lipids',
+        )
+        BloodTest.objects.create(
+            user=self.user, test_name='LDL', value=150, unit='mg/dL',
+            date=date(2026, 1, 20), normal_min=0, normal_max=100,
+            category='Lipids',
+        )
+        response = self.client.get(reverse('labs_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '↑')
+        self.assertContains(response, '15.4%')
+
+    def test_labs_shows_derived_ratios(self):
+        BloodTest.objects.create(
+            user=self.user, test_name='Total Cholesterol', value=200,
+            unit='mg/dL', date=date(2026, 1, 15),
+        )
+        BloodTest.objects.create(
+            user=self.user, test_name='HDL', value=50,
+            unit='mg/dL', date=date(2026, 1, 15),
+        )
+        response = self.client.get(reverse('labs_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Total Cholesterol / HDL')
+        self.assertContains(response, '4.0')
+
+    def test_labs_empty(self):
+        response = self.client.get(reverse('labs_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No lab results recorded yet')
+
+
+class NavigationStaffOnlyTests(TestCase):
+    """Verify that the Administration section (with History and Add Test)
+    is hidden from non-staff users and visible to staff users."""
+
+    def test_non_staff_no_administration(self):
+        user = User.objects.create_user(username='nav_user', password='testpass123')
+        self.client = Client()
+        self.client.login(username='nav_user', password='testpass123')
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        # The Administration heading should not appear
+        self.assertNotContains(response, '>Administration<')
+
+    def test_staff_sees_administration(self):
+        staff = User.objects.create_user(
+            username='nav_staff', password='testpass123', is_staff=True,
+        )
+        self.client = Client()
+        self.client.login(username='nav_staff', password='testpass123')
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Administration')
+
+    def test_timeline_in_overview_nav(self):
+        user = User.objects.create_user(username='nav_user2', password='testpass123')
+        self.client = Client()
+        self.client.login(username='nav_user2', password='testpass123')
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Timeline')
+        self.assertContains(response, 'Labs')
