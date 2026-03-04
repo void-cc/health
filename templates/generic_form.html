@@ -26,6 +26,7 @@
 
         {% if f.widget == 'textarea' %}
           <textarea class="form-control" name="{{ f.name }}" id="{{ f.name }}" rows="3" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %}>{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% endif %}</textarea>
+          <div class="invalid-feedback"></div>
 
         {% elif f.widget == 'select' or f.choices %}
           <select class="form-select" name="{{ f.name }}" id="{{ f.name }}" {% if f.required %}required{% endif %}>
@@ -34,27 +35,33 @@
               <option value="{{ choice_val }}" {% if editing %}{% with val=entry|get_field:f.name %}{% if val == choice_val %}selected{% endif %}{% endwith %}{% endif %}>{{ choice_label }}</option>
             {% endfor %}
           </select>
+          <div class="invalid-feedback"></div>
 
         {% elif f.type == 'bool' %}
           <div class="form-check">
             <input type="checkbox" class="form-check-input" name="{{ f.name }}" id="{{ f.name }}" {% if editing %}{% with val=entry|get_field:f.name %}{% if val %}checked{% endif %}{% endwith %}{% endif %} />
-            <label class="form-check-label visually-hidden" for="{{ f.name }}">{{ f.label }}</label>
+            <label class="form-check-label" for="{{ f.name }}">{{ f.label }}</label>
           </div>
 
         {% elif f.type == 'float' or f.type == 'int' %}
           <input type="number" {% if f.step %}step="{{ f.step }}"{% elif f.type == 'float' %}step="0.1"{% endif %} class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
+          <div class="invalid-feedback"></div>
 
         {% elif f.type == 'time' %}
           <input type="time" class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
+          <div class="invalid-feedback"></div>
 
         {% elif f.type == 'datetime' %}
           <input type="datetime-local" class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val|date:'Y-m-d\TH:i' }}{% endif %}{% endwith %}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
+          <div class="invalid-feedback"></div>
 
         {% elif f.type == 'date' %}
           <input type="date" class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val|date:'Y-m-d' }}{% endif %}{% endwith %}{% else %}{{ date }}{% endif %}" {% if f.required %}required{% endif %} />
+          <div class="invalid-feedback"></div>
 
         {% else %}
           <input type="text" class="form-control" name="{{ f.name }}" id="{{ f.name }}" value="{% if editing %}{% with val=entry|get_field:f.name %}{% if val is not None %}{{ val }}{% endif %}{% endwith %}{% endif %}" {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %} {% if f.required %}required{% endif %} />
+          <div class="invalid-feedback"></div>
         {% endif %}
       </div>
     {% endfor %}

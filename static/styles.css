@@ -21,12 +21,13 @@ body {
 .footer {
   background-color: var(--bg-primary, #ffffff);
   color: var(--text-muted, #6b7280);
-  padding: var(--space-4, 1rem) 0;
+  padding: var(--space-4, 1rem) var(--space-4, 1rem);
   width: 100%;
   margin-top: auto;
   font-size: var(--font-size-base, 0.8125rem);
   letter-spacing: 0.01em;
   border-top: 1px solid var(--border-color, #e5e7eb);
+  text-align: center;
 }
 
 /* ---- Tables ---- */
@@ -116,6 +117,12 @@ body {
   transform: none;
 }
 
+.btn:focus-visible {
+  outline: 3px solid var(--color-primary, #2563eb);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
 .btn-outline-secondary {
   color: var(--text-secondary, #4b5563);
   border-color: var(--border-color, #e5e7eb);
@@ -163,6 +170,31 @@ main h5 {
   border: 1px solid transparent;
   box-shadow: none;
   font-size: 0.875rem;
+}
+
+/* Improve contrast for info alerts to meet WCAG AA */
+.alert-info {
+  background-color: var(--color-info-light, #eff6ff);
+  color: #1e40af;
+  border-color: rgba(30, 64, 175, 0.2);
+}
+
+.alert-success {
+  background-color: var(--color-success-light, #f0fdf4);
+  color: #15803d;
+  border-color: rgba(21, 128, 61, 0.2);
+}
+
+.alert-warning {
+  background-color: var(--color-warning-light, #fffbeb);
+  color: #b45309;
+  border-color: rgba(180, 83, 9, 0.2);
+}
+
+.alert-danger {
+  background-color: var(--color-error-light, #fef2f2);
+  color: #b91c1c;
+  border-color: rgba(185, 28, 28, 0.2);
 }
 
 /* ---- Badges ---- */
@@ -549,8 +581,73 @@ main h5 {
 }
 
 /* ---- Empty state refinement ---- */
-.alert-info {
-  background-color: var(--color-info-light, #eff6ff);
-  color: var(--color-info, #2563eb);
-  border-color: rgba(37, 99, 235, 0.2);
+
+/* ---- Dark mode alert overrides ---- */
+[data-theme="dark"] .alert-info {
+  background-color: rgba(37, 99, 235, 0.15);
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.2);
+}
+
+[data-theme="dark"] .alert-success {
+  background-color: rgba(22, 163, 74, 0.15);
+  color: #86efac;
+  border-color: rgba(134, 239, 172, 0.2);
+}
+
+[data-theme="dark"] .alert-warning {
+  background-color: rgba(217, 119, 6, 0.15);
+  color: #fcd34d;
+  border-color: rgba(252, 211, 77, 0.2);
+}
+
+[data-theme="dark"] .alert-danger {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #fca5a5;
+  border-color: rgba(252, 165, 165, 0.2);
+}
+
+/* ---- Consistent btn-secondary (Save/Cancel) ---- */
+.btn-secondary {
+  background-color: var(--bg-tertiary, #f3f4f6);
+  border-color: var(--border-color, #e5e7eb);
+  color: var(--text-secondary, #4b5563);
+}
+
+.btn-secondary:hover {
+  background-color: var(--gray-200, #e5e7eb);
+  border-color: var(--gray-300, #d1d5db);
+  color: var(--text-primary, #111827);
+}
+
+.btn-secondary:focus-visible {
+  outline: 3px solid var(--color-primary, #2563eb);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .btn-secondary {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* ---- Accessible form check styles ---- */
+.form-check-input:focus {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--color-primary, #2563eb);
+}
+
+/* ---- Responsive table improvements ---- */
+@media (max-width: 768px) {
+  .table th,
+  .table td {
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    font-size: 0.8125rem;
+  }
 }

@@ -147,27 +147,30 @@
 </div>
 
 <script>
+  var _themeColors = (typeof getChartThemeColors === 'function') ? getChartThemeColors() : {};
+  var gridColor = _themeColors.gridColor || 'rgba(0,0,0,0.05)';
+  var fontColor = _themeColors.fontColor || '#6b7280';
+
   Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
   Chart.defaults.global.defaultFontSize = 11;
-  Chart.defaults.global.defaultFontColor = '#6b7280';
+  Chart.defaults.global.defaultFontColor = fontColor;
 
-  var gridColor = 'rgba(0,0,0,0.05)';
   var chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     layout: { padding: { top: 8, right: 8, bottom: 0, left: 0 } },
     legend: { display: false },
     scales: {
-      xAxes: [{ type: 'time', time: { parser: 'YYYY-MM-DD', tooltipFormat: 'MMM D, YYYY', unit: 'day' }, scaleLabel: { display: false }, gridLines: { color: gridColor, drawBorder: false }, ticks: { padding: 8, autoSkipPadding: 16 } }],
-      yAxes: [{ ticks: { beginAtZero: false, padding: 12 }, gridLines: { color: gridColor, drawBorder: false } }]
+      xAxes: [{ type: 'time', time: { parser: 'YYYY-MM-DD', tooltipFormat: 'MMM D, YYYY', unit: 'day' }, scaleLabel: { display: false }, gridLines: { color: gridColor, drawBorder: false }, ticks: { padding: 8, autoSkipPadding: 16, fontColor: fontColor, maxRotation: 45, minRotation: 0 } }],
+      yAxes: [{ ticks: { beginAtZero: false, padding: 12, fontColor: fontColor }, gridLines: { color: gridColor, drawBorder: false } }]
     },
     tooltips: {
-      backgroundColor: 'rgba(17,24,39,0.92)',
+      backgroundColor: _themeColors.tooltipBg || 'rgba(17,24,39,0.92)',
       titleFontSize: 11,
-      titleFontColor: '#9ca3af',
+      titleFontColor: _themeColors.tooltipTitleColor || '#9ca3af',
       bodyFontSize: 13,
       bodyFontStyle: '600',
-      bodyFontColor: '#f9fafb',
+      bodyFontColor: _themeColors.tooltipBodyColor || '#f9fafb',
       cornerRadius: 6,
       xPadding: 12,
       yPadding: 10,
