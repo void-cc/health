@@ -13,7 +13,7 @@ from tracker.models import (
     IntegrationConfig, BodyComposition, HabitLog, Reminder,
     MeasurementType, SourceDocument, Measurement,
 )
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 from django.utils import timezone
 import json
 
@@ -4336,6 +4336,255 @@ class FastingLogAutoCalcTests(TestCase):
         self.assertEqual(log.goal_progress_percent, 75.0)
 
 
+class SleepConsistencyScoreTests(TestCase):
+    """Tests for the automated sleep consistency score feature."""
+
+    def test_consistency_score_insufficient_data(self):
+        """Should return None with fewer than 3 entries."""
+        SleepLog.objects.create(
+            date=date(2026, 1, 1), bedtime=time(23, 0), wake_time=time(7, 0),
+            total_sleep_minutes=480,
+        )
+        self.assertIsNone(SleepLog.sleep_consistency_score())
+
+    def test_consistency_score_perfect(self):
+        """Identical sleep/wake times should score near 100."""
+        from datetime import timedelta
+        for i in range(5):
+            SleepLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                bedtime=time(23, 0), wake_time=time(7, 0),
+                total_sleep_minutes=480,
+            )
+        score = SleepLog.sleep_consistency_score()
+        self.assertIsNotNone(score)
+        self.assertGreaterEqual(score, 95)
+
+    def test_consistency_score_variable(self):
+        """Highly variable sleep times should score lower."""
+        from datetime import timedelta
+        times = [(22, 0), (1, 0), (23, 30), (0, 30), (21, 0)]
+        for i, (h, m) in enumerate(times):
+            SleepLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                bedtime=time(h, m), wake_time=time(7, 0),
+                total_sleep_minutes=420,
+            )
+        score = SleepLog.sleep_consistency_score()
+        self.assertIsNotNone(score)
+        self.assertLess(score, 95)
+
+
+class SleepDebtTests(TestCase):
+    """Tests for the automated sleep debt calculation."""
+
+    def test_sleep_debt_no_data(self):
+        """Should return None with no entries."""
+        self.assertIsNone(SleepLog.sleep_debt_hours())
+
+    def test_sleep_debt_surplus(self):
+        """Sleeping more than target should result in negative debt (surplus)."""
+        from datetime import timedelta
+        for i in range(7):
+            SleepLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                total_sleep_minutes=540,  # 9 hours
+            )
+        debt = SleepLog.sleep_debt_hours(target_hours=8.0, num_days=7)
+        self.assertIsNotNone(debt)
+        self.assertLess(debt, 0)  # Surplus
+
+    def test_sleep_debt_deficit(self):
+        """Sleeping less than target should result in positive debt."""
+        from datetime import timedelta
+        for i in range(7):
+            SleepLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                total_sleep_minutes=360,  # 6 hours
+            )
+        debt = SleepLog.sleep_debt_hours(target_hours=8.0, num_days=7)
+        self.assertIsNotNone(debt)
+        self.assertGreater(debt, 0)  # Debt
+
+
+class SleepWeeklySummaryTests(TestCase):
+    """Tests for automated weekly sleep summary."""
+
+    def test_weekly_summary_empty(self):
+        """Should return zeros when no data."""
+        summary = SleepLog.weekly_summary()
+        self.assertEqual(summary['total_entries'], 0)
+        self.assertIsNone(summary['avg_duration'])
+
+    def test_weekly_summary_with_data(self):
+        """Should aggregate recent entries."""
+        today = date.today()
+        SleepLog.objects.create(
+            date=today, total_sleep_minutes=480, sleep_quality_score=80,
+            deep_sleep_minutes=96, rem_minutes=120,
+        )
+        summary = SleepLog.weekly_summary()
+        self.assertGreaterEqual(summary['total_entries'], 1)
+
+
+class NutritionScoreTests(TestCase):
+    """Tests for the automated daily nutrition score."""
+
+    def test_nutrition_score_balanced(self):
+        """A well-balanced day should score high."""
+        log = MacronutrientLog(
+            date=date.today(),
+            protein_grams=120, carbohydrate_grams=250, fat_grams=65,
+            calories=2000, fiber_grams=30,
+        )
+        score = log.nutrition_score
+        self.assertGreater(score, 50)
+
+    def test_nutrition_score_empty(self):
+        """No data should score zero."""
+        log = MacronutrientLog(date=date.today())
+        self.assertEqual(log.nutrition_score, 0.0)
+
+    def test_nutrition_score_partial(self):
+        """Partial data should still produce a score."""
+        log = MacronutrientLog(
+            date=date.today(), protein_grams=100, calories=1800,
+        )
+        score = log.nutrition_score
+        self.assertGreater(score, 0)
+
+
+class CalorieTrendTests(TestCase):
+    """Tests for the automated calorie trend analysis."""
+
+    def test_calorie_trend_insufficient_data(self):
+        """Should return None with fewer than 4 entries."""
+        MacronutrientLog.objects.create(date=date.today(), calories=2000)
+        self.assertIsNone(MacronutrientLog.calorie_trend())
+
+    def test_calorie_trend_stable(self):
+        """Similar calorie values should result in 'stable'."""
+        from datetime import timedelta
+        for i in range(8):
+            MacronutrientLog.objects.create(
+                date=date(2026, 1, 1) + timedelta(days=i),
+                calories=2000,
+            )
+        trend = MacronutrientLog.calorie_trend(num_days=8)
+        self.assertEqual(trend, 'stable')
+
+
+class MacroWeeklySummaryTests(TestCase):
+    """Tests for automated weekly nutrition summary."""
+
+    def test_weekly_summary_empty(self):
+        """Should return zeros when no data."""
+        summary = MacronutrientLog.weekly_summary()
+        self.assertEqual(summary['total_entries'], 0)
+
+
+class SleepDashboardViewTests(TestCase):
+    """Tests for the sleep dashboard view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com',
+            is_staff=True,
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_sleep_dashboard_status_code(self):
+        response = self.client.get(reverse('sleep_dashboard'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_sleep_dashboard_context(self):
+        response = self.client.get(reverse('sleep_dashboard'))
+        self.assertIn('sleep_stats', response.context)
+        self.assertIn('consistency_score', response.context)
+        self.assertIn('sleep_debt', response.context)
+        self.assertIn('weekly_summary', response.context)
+        self.assertIn('arch_data', response.context)
+        self.assertIn('chart_dates', response.context)
+
+    def test_sleep_dashboard_period_filter(self):
+        response = self.client.get(reverse('sleep_dashboard'), {'period': '7'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['period'], '7')
+
+    def test_sleep_dashboard_with_data(self):
+        from datetime import timedelta
+        for i in range(5):
+            SleepLog.objects.create(
+                date=date.today() - timedelta(days=i),
+                total_sleep_minutes=420 + i * 10,
+                deep_sleep_minutes=90,
+                rem_minutes=100,
+                awake_minutes=20,
+                bedtime=time(23, 0),
+                wake_time=time(7, 0),
+            )
+        response = self.client.get(reverse('sleep_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertGreater(response.context['sleep_stats']['total_entries'], 0)
+
+    def test_sleep_dashboard_renders_template(self):
+        response = self.client.get(reverse('sleep_dashboard'))
+        self.assertContains(response, 'Sleep Analytics')
+        self.assertContains(response, 'Avg Duration')
+        self.assertContains(response, 'Consistency')
+        self.assertContains(response, 'Sleep Debt')
+
+
+class NutritionDashboardViewTests(TestCase):
+    """Tests for the nutrition dashboard view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123', email='test@example.com',
+            is_staff=True,
+        )
+        self.client.login(username='testuser', password='testpass123')
+
+    def test_nutrition_dashboard_status_code(self):
+        response = self.client.get(reverse('nutrition_dashboard'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_nutrition_dashboard_context(self):
+        response = self.client.get(reverse('nutrition_dashboard'))
+        self.assertIn('macro_stats', response.context)
+        self.assertIn('calorie_trend', response.context)
+        self.assertIn('weekly_nutrition', response.context)
+        self.assertIn('macro_doughnut', response.context)
+        self.assertIn('fasting_stats', response.context)
+        self.assertIn('hydration_stats', response.context)
+
+    def test_nutrition_dashboard_period_filter(self):
+        response = self.client.get(reverse('nutrition_dashboard'), {'period': '7'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['period'], '7')
+
+    def test_nutrition_dashboard_with_data(self):
+        from datetime import timedelta
+        for i in range(5):
+            MacronutrientLog.objects.create(
+                date=date.today() - timedelta(days=i),
+                protein_grams=120, carbohydrate_grams=200,
+                fat_grams=60, fiber_grams=25,
+            )
+        response = self.client.get(reverse('nutrition_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertGreater(response.context['macro_stats']['total_entries'], 0)
+
+    def test_nutrition_dashboard_renders_template(self):
+        response = self.client.get(reverse('nutrition_dashboard'))
+        self.assertContains(response, 'Nutrition Analytics')
+        self.assertContains(response, 'Avg Calories')
+        self.assertContains(response, 'Avg Protein')
+        self.assertContains(response, 'Fasting')
+
+
 class MetabolicLogHomaIRTests(TestCase):
     def test_homa_ir_calculation(self):
         """HOMA-IR should be calculated from blood glucose and insulin."""
@@ -4721,7 +4970,7 @@ class SleepListEnhancedTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com', is_staff=True)
         self.client.login(username='testuser', password='testpass123')
         for i in range(25):
             SleepLog.objects.create(
@@ -4789,7 +5038,7 @@ class HydrationListEnhancedTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com', is_staff=True)
         self.client.login(username='testuser', password='testpass123')
         for i in range(25):
             HydrationLog.objects.create(
@@ -4834,7 +5083,7 @@ class BodyCompositionListEnhancedTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com', is_staff=True)
         self.client.login(username='testuser', password='testpass123')
         for i in range(5):
             BodyComposition.objects.create(
@@ -4877,7 +5126,7 @@ class MedicationScheduleListEnhancedTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com', is_staff=True)
         self.client.login(username='testuser', password='testpass123')
         MedicationSchedule.objects.create(
             medication_name='Aspirin', dosage='100mg', frequency='Daily',
@@ -4925,7 +5174,7 @@ class HealthGoalListEnhancedTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com', is_staff=True)
         self.client.login(username='testuser', password='testpass123')
         HealthGoal.objects.create(
             title='Lose Weight', target_value=70, current_value=65,
@@ -4977,7 +5226,7 @@ class MacroListEnhancedTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com', is_staff=True)
         self.client.login(username='testuser', password='testpass123')
         for i in range(25):
             MacronutrientLog.objects.create(

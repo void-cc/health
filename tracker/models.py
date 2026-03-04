@@ -627,6 +627,76 @@ class SleepLog(models.Model):
             return 'declining'
         return 'stable'
 
+    @classmethod
+    def sleep_consistency_score(cls, num_days=14):
+        """Calculate how consistent sleep/wake times are over recent entries (0-100).
+
+        Lower standard deviation in bedtime and wake time = higher consistency.
+        A perfectly consistent schedule scores 100; high variance scores lower.
+        """
+        import math
+        recent = list(cls.objects.filter(
+            bedtime__isnull=False, wake_time__isnull=False,
+        ).order_by('-date')[:num_days])
+        if len(recent) < 3:
+            return None
+
+        def time_to_minutes(t):
+            mins = t.hour * 60 + t.minute
+            if mins < 360:  # Before 6 AM = next-day
+                mins += 1440
+            return mins
+
+        bed_mins = [time_to_minutes(r.bedtime) for r in recent]
+        wake_mins = [time_to_minutes(r.wake_time) for r in recent]
+
+        def std_dev(values):
+            mean = sum(values) / len(values)
+            variance = sum((v - mean) ** 2 for v in values) / len(values)
+            return math.sqrt(variance)
+
+        bed_std = std_dev(bed_mins)
+        wake_std = std_dev(wake_mins)
+        # Average std in minutes; 0 min std = 100, 120+ min std = 0
+        avg_std = (bed_std + wake_std) / 2
+        score = max(0, 100 - (avg_std / 120) * 100)
+        return round(score, 1)
+
+    @classmethod
+    def sleep_debt_hours(cls, target_hours=8.0, num_days=7):
+        """Calculate accumulated sleep debt over recent days.
+
+        Returns the total hours of sleep deficit compared to target.
+        Positive value means debt; negative means surplus.
+        """
+        recent = list(cls.objects.filter(
+            total_sleep_minutes__isnull=False,
+        ).order_by('-date')[:num_days])
+        if not recent:
+            return None
+        target_total = target_hours * len(recent)
+        actual_total = sum(r.total_sleep_minutes for r in recent) / 60.0
+        debt = target_total - actual_total
+        return round(debt, 1)
+
+    @classmethod
+    def weekly_summary(cls):
+        """Return a summary dict of the last 7 days of sleep data."""
+        from datetime import timedelta
+        from django.db.models import Avg, Count, Min, Max
+        cutoff = timezone.now().date() - timedelta(days=7)
+        qs = cls.objects.filter(date__gte=cutoff)
+        stats = qs.aggregate(
+            avg_duration=Avg('total_sleep_minutes'),
+            avg_quality=Avg('sleep_quality_score'),
+            avg_deep=Avg('deep_sleep_minutes'),
+            avg_rem=Avg('rem_minutes'),
+            total_entries=Count('id'),
+            min_duration=Min('total_sleep_minutes'),
+            max_duration=Max('total_sleep_minutes'),
+        )
+        return stats
+
     def save(self, *args, **kwargs):
         # Auto-calculate sleep quality score if not explicitly provided
         if self.sleep_quality_score is None:
@@ -741,6 +811,89 @@ class MacronutrientLog(models.Model):
             'carb_pct': round(c_cal / total * 100, 1),
             'fat_pct': round(f_cal / total * 100, 1),
         }
+
+    @classmethod
+    def weekly_summary(cls):
+        """Return a summary dict of the last 7 days of nutrition data."""
+        from datetime import timedelta
+        from django.db.models import Avg, Sum, Count, Min, Max
+        cutoff = timezone.now().date() - timedelta(days=7)
+        qs = cls.objects.filter(date__gte=cutoff)
+        stats = qs.aggregate(
+            avg_calories=Avg('calories'),
+            avg_protein=Avg('protein_grams'),
+            avg_carbs=Avg('carbohydrate_grams'),
+            avg_fat=Avg('fat_grams'),
+            avg_fiber=Avg('fiber_grams'),
+            total_entries=Count('id'),
+            total_calories=Sum('calories'),
+            min_calories=Min('calories'),
+            max_calories=Max('calories'),
+        )
+        return stats
+
+    @classmethod
+    def calorie_trend(cls, num_days=14):
+        """Analyze calorie trend over recent entries.
+
+        Returns 'increasing', 'decreasing', or 'stable' based on
+        comparison of recent half vs older half averages.
+        """
+        recent = list(cls.objects.filter(
+            calories__isnull=False,
+        ).order_by('-date')[:num_days])
+        if len(recent) < 4:
+            return None
+        mid = len(recent) // 2
+        recent_half = recent[:mid]
+        older_half = recent[mid:]
+        recent_avg = sum(r.calories for r in recent_half) / len(recent_half)
+        older_avg = sum(r.calories for r in older_half) / len(older_half)
+        diff = recent_avg - older_avg
+        if diff > 50:
+            return 'increasing'
+        elif diff < -50:
+            return 'decreasing'
+        return 'stable'
+
+    @property
+    def nutrition_score(self):
+        """Score 0-100 for this day's nutrition based on balance and adequacy.
+
+        Factors:
+        - Calorie adequacy (40%): How close to 2000 kcal target
+        - Protein adequacy (25%): >= 50g target
+        - Fiber adequacy (15%): >= 25g target
+        - Macro balance (20%): How close to 30/40/30 protein/carb/fat split
+        """
+        score = 0.0
+        cals = self.calories or self.calculated_calories
+        if cals and cals > 0:
+            # Calorie adequacy: 2000 target, penalize deviation
+            cal_ratio = min(cals, 2000) / 2000 if cals <= 2000 else 2000 / cals
+            score += cal_ratio * 40.0
+
+        protein = self.protein_grams or 0
+        if protein > 0:
+            protein_score = min(protein / 50.0, 1.0)
+            score += protein_score * 25.0
+
+        fiber = self.fiber_grams or 0
+        if fiber > 0:
+            fiber_score = min(fiber / 25.0, 1.0)
+            score += fiber_score * 15.0
+
+        ratios = self.macro_ratios
+        if ratios:
+            # Ideal: 30% protein, 40% carbs, 30% fat
+            p_diff = abs(ratios['protein_pct'] - 30)
+            c_diff = abs(ratios['carb_pct'] - 40)
+            f_diff = abs(ratios['fat_pct'] - 30)
+            avg_diff = (p_diff + c_diff + f_diff) / 3
+            balance_score = max(0, 1 - avg_diff / 30)
+            score += balance_score * 20.0
+
+        return round(score, 1)
 
     def save(self, *args, **kwargs):
         # Auto-calculate calories from macros if not explicitly provided
