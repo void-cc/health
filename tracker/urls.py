@@ -344,4 +344,16 @@ urlpatterns = [
 
     # Interoperability Dashboard
     path('phase11/', views.phase11_dashboard, name='phase11_dashboard'),
+
+    # Habit Log
+    path('habits/', views.habit_log_list, name='habit_log_list'),
+    path('habits/add/', views.habit_log_add, name='habit_log_add'),
+    path('habits/edit/<int:pk>/', views.habit_log_edit, name='habit_log_edit'),
+    path('habits/delete/<int:pk>/', views.habit_log_delete, name='habit_log_delete'),
+
+    # Reminders
+    path('reminders/', views.reminder_list, name='reminder_list'),
+    path('reminders/add/', views.reminder_add, name='reminder_add'),
+    path('reminders/edit/<int:pk>/', views.reminder_edit, name='reminder_edit'),
+    path('reminders/delete/<int:pk>/', views.reminder_delete, name='reminder_delete'),
 ]

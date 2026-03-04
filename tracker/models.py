@@ -1670,3 +1670,43 @@ class IntegrationSubTask(models.Model):
 
     def __str__(self):
         return f"Area {self.phase} Sub-task {self.sub_task_number}: {self.title}"
+
+
+class HabitLog(models.Model):
+    CATEGORY_CHOICES = [
+        ('exercise', 'Exercise'),
+        ('nutrition', 'Nutrition'),
+        ('sleep', 'Sleep'),
+        ('mindfulness', 'Mindfulness'),
+        ('hydration', 'Hydration'),
+        ('medication', 'Medication'),
+        ('other', 'Other'),
+    ]
+    date = models.DateField(db_index=True)
+    habit_name = models.CharField(max_length=200)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='other')
+    completed = models.BooleanField(default=False)
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        status = 'Done' if self.completed else 'Pending'
+        return f"{self.habit_name} on {self.date} [{status}]"
+
+
+class Reminder(models.Model):
+    FREQUENCY_CHOICES = [
+        ('once', 'Once'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    ]
+    title = models.CharField(max_length=200)
+    message = models.TextField(blank=True, default='')
+    due_datetime = models.DateTimeField(db_index=True)
+    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='once')
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} at {self.due_datetime}"

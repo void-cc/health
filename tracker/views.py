@@ -29,6 +29,7 @@ from .models import (
     # Integration Sub-tasks
     IntegrationConfig, IntegrationSubTask,
     INTEGRATION_CATEGORIES, INTEGRATION_FEATURE_TYPES,
+    HabitLog, Reminder,
 )
 from .generic_crud import make_crud_views
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -4550,3 +4551,45 @@ integration_subtask_list = _integration_subtask['list']
 integration_subtask_add = _integration_subtask['add']
 integration_subtask_edit = _integration_subtask['edit']
 integration_subtask_delete = _integration_subtask['delete']
+
+# ===== Habit Log =====
+_habit_log = make_crud_views(
+    model_class=HabitLog,
+    display_name='Habit Log',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'habit_name', 'type': 'str', 'required': True, 'label': 'Habit Name'},
+        {'name': 'category', 'type': 'str', 'choices': HabitLog.CATEGORY_CHOICES, 'default': 'other', 'label': 'Category'},
+        {'name': 'completed', 'type': 'bool', 'label': 'Completed'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea', 'label': 'Notes'},
+    ],
+    list_url_name='habit_log_list',
+    add_url_name='habit_log_add',
+    edit_url_name='habit_log_edit',
+    order_by='-date',
+)
+habit_log_list = _habit_log['list']
+habit_log_add = _habit_log['add']
+habit_log_edit = _habit_log['edit']
+habit_log_delete = _habit_log['delete']
+
+# ===== Reminders =====
+_reminder = make_crud_views(
+    model_class=Reminder,
+    display_name='Reminder',
+    fields=[
+        {'name': 'title', 'type': 'str', 'required': True, 'label': 'Title'},
+        {'name': 'message', 'type': 'str', 'widget': 'textarea', 'label': 'Message'},
+        {'name': 'due_datetime', 'type': 'datetime', 'required': True, 'label': 'Due Date & Time'},
+        {'name': 'frequency', 'type': 'str', 'choices': Reminder.FREQUENCY_CHOICES, 'default': 'once', 'label': 'Frequency'},
+        {'name': 'active', 'type': 'bool', 'label': 'Active'},
+    ],
+    list_url_name='reminder_list',
+    add_url_name='reminder_add',
+    edit_url_name='reminder_edit',
+    order_by='due_datetime',
+)
+reminder_list = _reminder['list']
+reminder_add = _reminder['add']
+reminder_edit = _reminder['edit']
+reminder_delete = _reminder['delete']

@@ -9,7 +9,7 @@ from tracker.models import (
     SleepLog, MacronutrientLog, FastingLog, MetabolicLog,
     HealthGoal, CriticalAlert, WearableDevice, WearableSyncLog,
     HealthReport, PredictiveBiomarker, BiologicalAgeCalculation,
-    IntegrationConfig, BodyComposition,
+    IntegrationConfig, BodyComposition, HabitLog, Reminder,
 )
 from datetime import date, datetime, timedelta
 from django.utils import timezone
@@ -5124,3 +5124,125 @@ class DashboardWidgetTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'No blood tests yet')
         self.assertContains(response, 'No vitals recorded')
+
+
+class HabitLogTests(TestCase):
+    """Tests for HabitLog model and CRUD views."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='habituser', password='testpass123', email='habit@example.com')
+        self.client.login(username='habituser', password='testpass123')
+        self.habit = HabitLog.objects.create(
+            date=date(2026, 3, 1),
+            habit_name='Morning Run',
+            category='exercise',
+            completed=True,
+            notes='Felt great',
+        )
+
+    def test_habit_str(self):
+        self.assertIn('Morning Run', str(self.habit))
+        self.assertIn('Done', str(self.habit))
+
+    def test_habit_list_view(self):
+        response = self.client.get(reverse('habit_log_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Morning Run')
+
+    def test_habit_add_view_get(self):
+        response = self.client.get(reverse('habit_log_add'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_habit_add_view_post(self):
+        response = self.client.post(reverse('habit_log_add'), {
+            'date': '2026-03-02',
+            'habit_name': 'Meditation',
+            'category': 'mindfulness',
+            'completed': 'on',
+            'notes': '',
+        })
+        self.assertRedirects(response, reverse('habit_log_list'))
+        self.assertTrue(HabitLog.objects.filter(habit_name='Meditation').exists())
+
+    def test_habit_edit_view_post(self):
+        response = self.client.post(reverse('habit_log_edit', args=[self.habit.pk]), {
+            'date': '2026-03-01',
+            'habit_name': 'Evening Run',
+            'category': 'exercise',
+            'notes': '',
+        })
+        self.assertRedirects(response, reverse('habit_log_list'))
+        self.habit.refresh_from_db()
+        self.assertEqual(self.habit.habit_name, 'Evening Run')
+
+    def test_habit_delete_view(self):
+        response = self.client.post(reverse('habit_log_delete', args=[self.habit.pk]))
+        self.assertRedirects(response, reverse('habit_log_list'))
+        self.assertFalse(HabitLog.objects.filter(pk=self.habit.pk).exists())
+
+    def test_habit_list_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('habit_log_list'))
+        self.assertEqual(response.status_code, 302)
+
+
+class ReminderTests(TestCase):
+    """Tests for Reminder model and CRUD views."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='reminderuser', password='testpass123', email='reminder@example.com')
+        self.client.login(username='reminderuser', password='testpass123')
+        self.reminder = Reminder.objects.create(
+            title='Take Vitamin D',
+            message='Take with food',
+            due_datetime=datetime(2026, 3, 5, 8, 0, tzinfo=timezone.get_current_timezone()),
+            frequency='daily',
+            active=True,
+        )
+
+    def test_reminder_str(self):
+        self.assertIn('Take Vitamin D', str(self.reminder))
+
+    def test_reminder_list_view(self):
+        response = self.client.get(reverse('reminder_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Take Vitamin D')
+
+    def test_reminder_add_view_get(self):
+        response = self.client.get(reverse('reminder_add'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_reminder_add_view_post(self):
+        response = self.client.post(reverse('reminder_add'), {
+            'title': 'Blood Pressure Check',
+            'message': 'Morning reading',
+            'due_datetime': '2026-03-06T09:00',
+            'frequency': 'weekly',
+            'active': 'on',
+        })
+        self.assertRedirects(response, reverse('reminder_list'))
+        self.assertTrue(Reminder.objects.filter(title='Blood Pressure Check').exists())
+
+    def test_reminder_edit_view_post(self):
+        response = self.client.post(reverse('reminder_edit', args=[self.reminder.pk]), {
+            'title': 'Take Vitamin D3',
+            'message': 'Take with food',
+            'due_datetime': '2026-03-05T08:00',
+            'frequency': 'daily',
+            'active': 'on',
+        })
+        self.assertRedirects(response, reverse('reminder_list'))
+        self.reminder.refresh_from_db()
+        self.assertEqual(self.reminder.title, 'Take Vitamin D3')
+
+    def test_reminder_delete_view(self):
+        response = self.client.post(reverse('reminder_delete', args=[self.reminder.pk]))
+        self.assertRedirects(response, reverse('reminder_list'))
+        self.assertFalse(Reminder.objects.filter(pk=self.reminder.pk).exists())
+
+    def test_reminder_list_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('reminder_list'))
+        self.assertEqual(response.status_code, 302)

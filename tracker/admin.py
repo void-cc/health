@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
-    ClinicalTrialMatch,
+    ClinicalTrialMatch, HabitLog, Reminder,
 )
 
 
@@ -64,3 +64,17 @@ class ClinicalTrialMatchAdmin(admin.ModelAdmin):
     list_display = ('trial_id', 'trial_title', 'condition', 'match_score', 'status', 'found_at')
     list_filter = ('status', 'condition')
     search_fields = ('trial_id', 'trial_title', 'condition')
+
+
+@admin.register(HabitLog)
+class HabitLogAdmin(admin.ModelAdmin):
+    list_display = ('date', 'habit_name', 'category', 'completed')
+    list_filter = ('date', 'category', 'completed')
+    search_fields = ('habit_name', 'notes')
+
+
+@admin.register(Reminder)
+class ReminderAdmin(admin.ModelAdmin):
+    list_display = ('title', 'due_datetime', 'frequency', 'active')
+    list_filter = ('frequency', 'active')
+    search_fields = ('title', 'message')
