@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container my-4">
-  <h2 class="mb-4">Phase 11: Interoperability Dashboard (IHE_XDM, HL7, FHIR)</h2>
+  <h2 class="mb-4">Interoperability Dashboard</h2>
 
   <!-- Summary Cards -->
   <div class="row mb-4">
@@ -164,7 +164,7 @@
   </div>
   {% else %}
   <div class="alert alert-info">
-    <p>No Phase 11 interoperability sub-tasks found{% if category_filter or feature_type_filter or status_filter %} matching the selected filters{% endif %}.</p>
+    <p>No interoperability sub-tasks found{% if category_filter or feature_type_filter or status_filter %} matching the selected filters{% endif %}.</p>
   </div>
   {% endif %}
 </div>

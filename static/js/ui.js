@@ -1,5 +1,4 @@
-/**
- * Phase 3 UI/UX Features for Health Tracker
+ * UI/UX Features for Health Tracker
  * Vanilla JS — no external dependencies
  */
 (function () {
@@ -322,6 +321,20 @@
           overlay = null;
         }
       }
+    });
+
+    // Collapsible sidebar category groups
+    document.querySelectorAll('.sidebar-collapse-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var parent = btn.closest('.sidebar-category--collapsible');
+        if (!parent) return;
+        var bodyEl = parent.querySelector('.sidebar-collapse-body');
+        var isExpanded = parent.classList.toggle('sidebar-category--expanded');
+        btn.setAttribute('aria-expanded', String(isExpanded));
+        if (bodyEl) {
+          bodyEl.classList.toggle('sidebar-collapse-body--open', isExpanded);
+        }
+      });
     });
   }
 
@@ -854,16 +867,3 @@
     }
   }
 })();
-
-// Collapsible sidebar categories
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.sidebar-collapse-toggle').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var parent = btn.closest('.sidebar-category--collapsible');
-      var body = parent.querySelector('.sidebar-collapse-body');
-      var expanded = parent.classList.toggle('sidebar-category--expanded');
-      body.classList.toggle('sidebar-collapse-body--open', expanded);
-      btn.setAttribute('aria-expanded', String(expanded));
-    });
-  });
-});

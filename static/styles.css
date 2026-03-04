@@ -229,7 +229,7 @@ main h4 {
   opacity: 1;
 }
 
-/* ---- Phase 3: Main content area with sidebar ---- */
+/* ---- Main content area with sidebar ---- */
 .main-content {
   margin-left: 260px;
   min-height: 100vh;
@@ -274,7 +274,7 @@ main h4 {
   display: block;
 }
 
-/* ---- Phase 3: Top navbar styling ---- */
+/* ---- Top navbar styling ---- */
 .top-navbar {
   display: flex;
   align-items: center;

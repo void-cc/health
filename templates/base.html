@@ -23,9 +23,10 @@
 
   <!-- Custom CSS -->
   <link rel="stylesheet" href="{% static 'styles.css' %}" />
-  <!-- Phase 3 CSS -->
-  <link rel="stylesheet" href="{% static 'css/phase3.css' %}" />
-  <!-- Phase 4 Auth CSS -->
+  <!-- CSS -->
+  <link rel="stylesheet" href="{% static 'css/ui.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/saas.css' %}" />
+  <!-- Auth CSS -->
   <link rel="stylesheet" href="{% static 'css/auth.css' %}" />
 
   <!-- jQuery -->
@@ -41,7 +42,7 @@
   <!-- Skip to Content (Accessibility) -->
   <a href="#main-content" class="skip-to-content">Skip to main content</a>
 
-  <!-- Sidebar Navigation (Phase 3) -->
+  <!-- Sidebar Navigation  -->
   <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
   <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="sidebar-header">
@@ -55,7 +56,7 @@
     </div>
 
     <div class="sidebar-body">
-      <!-- Global Search (Phase 3) -->
+      <!-- Global Search  -->
       <div class="sidebar-search" role="search">
         <div class="global-search">
           <div class="global-search-input-wrapper">
@@ -112,15 +113,15 @@
         <span class="top-navbar-title d-none d-md-inline">Health Tracker</span>
       </div>
       <div class="top-navbar-right">
-        <!-- Quick Entry Button (Phase 3) -->
+        <!-- Quick Entry Button  -->
         <button class="btn btn-sm btn-outline-success me-2" id="quick-entry-btn" aria-label="Quick vital sign entry" data-medical-tooltip="Quickly record your daily vital signs with one click" data-tooltip-title="Quick Entry">
           <i class="fas fa-bolt" aria-hidden="true"></i> <span class="d-none d-sm-inline">Quick Entry</span>
         </button>
-        <!-- Voice Input Button (Phase 3) -->
+        <!-- Voice Input Button  -->
         <button class="btn btn-sm btn-outline-info me-2 voice-input-btn" id="voice-global-btn" aria-label="Voice search" data-medical-tooltip="Use voice recognition to search or enter data hands-free" data-tooltip-title="Voice Input">
           <i class="fas fa-microphone" aria-hidden="true"></i>
         </button>
-        <!-- Dark Mode Toggle (Phase 3) -->
+        <!-- Dark Mode Toggle  -->
         <button class="btn btn-sm btn-outline-secondary me-2" id="dark-mode-toggle" aria-label="Toggle dark mode" data-medical-tooltip="Switch between light and dark themes for comfortable viewing" data-tooltip-title="Dark Mode">
           <i class="fas fa-moon" aria-hidden="true"></i>
         </button>
@@ -152,7 +153,7 @@
     </footer>
   </div>
 
-  <!-- Quick Entry Modal (Phase 3) -->
+  <!-- Quick Entry Modal  -->
   <div class="modal fade" id="quickEntryModal" tabindex="-1" aria-labelledby="quickEntryModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -231,7 +232,7 @@
     </div>
   </div>
 
-  <!-- Color Palette Modal (Phase 3) -->
+  <!-- Color Palette Modal  -->
   <div class="modal fade" id="colorPaletteModal" tabindex="-1" aria-labelledby="colorPaletteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -251,7 +252,7 @@
     </div>
   </div>
 
-  <!-- Phase 3 JavaScript -->
-  <script src="{% static 'js/phase3.js' %}"></script>
+  <!-- JavaScript -->
+  <script src="{% static 'js/ui.js' %}"></script>
 </body>
 </html>
