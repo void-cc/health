@@ -386,6 +386,260 @@
 </div>
 {% endif %}
 
+{% if widget.widget_type == 'vital_signs' %}
+<!-- Vital Signs Overview -->
+<div class="widget-section">
+  <div class="section-header-bar">
+    <h2 class="results-section-title">Vital Signs</h2>
+    <div class="section-header-actions">
+      <a href="{% url 'vitals_charts' %}" class="toolbar-btn toolbar-btn-sm">
+        <i class="fas fa-chart-area"></i>
+        <span class="d-none d-md-inline">Charts</span>
+      </a>
+      <a href="{% url 'vitals' %}" class="toolbar-btn toolbar-btn-sm">
+        <i class="fas fa-list"></i>
+        <span class="d-none d-md-inline">All Vitals</span>
+      </a>
+    </div>
+  </div>
+  {% if recent_vitals %}
+  <div class="vitals-table-wrapper">
+    <table class="table table-sm table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Weight</th>
+          <th>HR</th>
+          <th>BP</th>
+          <th>SpO2</th>
+          <th>BBT</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in recent_vitals %}
+        <tr>
+          <td class="text-nowrap">{{ v.date|date:"M j" }}</td>
+          <td>{% if v.weight %}{{ v.weight }}<span class="vital-row-unit">kg</span>{% else %}—{% endif %}</td>
+          <td>{% if v.heart_rate %}{{ v.heart_rate }}<span class="vital-row-unit">bpm</span>{% else %}—{% endif %}</td>
+          <td>{% if v.systolic_bp and v.diastolic_bp %}{{ v.systolic_bp }}/{{ v.diastolic_bp }}{% else %}—{% endif %}</td>
+          <td>{% if v.spo2 %}{{ v.spo2 }}<span class="vital-row-unit">%</span>{% else %}—{% endif %}</td>
+          <td>{% if v.bbt %}{{ v.bbt }}<span class="vital-row-unit">°C</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state empty-state-sm">
+    <div class="empty-state-icon"><i class="fas fa-heartbeat"></i></div>
+    <div class="empty-state-title">No vitals recorded</div>
+    <div class="empty-state-description">Start recording your daily vital signs.</div>
+    <a href="{% url 'add_vitals' %}" class="toolbar-btn toolbar-btn-primary toolbar-btn-sm">
+      <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Vitals
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if widget.widget_type == 'blood_charts' %}
+<!-- Blood Test Trend Charts -->
+<div class="widget-section">
+  <div class="section-header-bar">
+    <h2 class="results-section-title">Blood Test Trends</h2>
+    <div class="section-header-actions">
+      <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn toolbar-btn-sm">
+        <i class="fas fa-expand-alt"></i>
+        <span class="d-none d-md-inline">Full View</span>
+      </a>
+    </div>
+  </div>
+  {% if charts_data %}
+  <div class="dashboard-chart-grid">
+    {% for test_name, test_info in charts_data.items %}
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h3 class="chart-card-title">{{ test_name }} <span class="fw-normal text-muted" style="font-size:0.75rem;">({{ test_info.unit }})</span></h3>
+          {% if test_info.normal_min is not None and test_info.normal_max is not None %}
+          <p class="chart-card-subtitle">Range: {{ test_info.normal_min }}–{{ test_info.normal_max }}</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:200px;">
+          <canvas id="dash-blood-chart-{{ forloop.counter }}"></canvas>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state empty-state-sm">
+    <div class="empty-state-icon"><i class="fas fa-chart-line"></i></div>
+    <div class="empty-state-title">No chart data</div>
+    <div class="empty-state-description">Add blood test results to see trend charts.</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if widget.widget_type == 'vitals_charts' %}
+<!-- Vital Signs Trend Charts -->
+<div class="widget-section">
+  <div class="section-header-bar">
+    <h2 class="results-section-title">Vital Signs Trends</h2>
+    <div class="section-header-actions">
+      <a href="{% url 'vitals_charts' %}" class="toolbar-btn toolbar-btn-sm">
+        <i class="fas fa-expand-alt"></i>
+        <span class="d-none d-md-inline">Full View</span>
+      </a>
+    </div>
+  </div>
+  {% if weight_data or hr_data or sys_bp_data %}
+  <div class="dashboard-chart-grid">
+    {% if weight_data %}
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h3 class="chart-card-title">Weight <span class="fw-normal text-muted" style="font-size:0.75rem;">(kg)</span></h3>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:200px;">
+          <canvas id="dash-weight-chart"></canvas>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% if hr_data %}
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h3 class="chart-card-title">Heart Rate <span class="fw-normal text-muted" style="font-size:0.75rem;">(bpm)</span></h3>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:200px;">
+          <canvas id="dash-hr-chart"></canvas>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% if sys_bp_data %}
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h3 class="chart-card-title">Blood Pressure <span class="fw-normal text-muted" style="font-size:0.75rem;">(mmHg)</span></h3>
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:200px;">
+          <canvas id="dash-bp-chart"></canvas>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="empty-state empty-state-sm">
+    <div class="empty-state-icon"><i class="fas fa-chart-area"></i></div>
+    <div class="empty-state-title">No vitals data</div>
+    <div class="empty-state-description">Record vital signs to see trend charts.</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if widget.widget_type == 'comparative_bars' %}
+<!-- Comparative Bar Charts -->
+<div class="widget-section">
+  <div class="section-header-bar">
+    <h2 class="results-section-title">Compare to Normal Range</h2>
+    <div class="section-header-actions">
+      <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn toolbar-btn-sm">
+        <i class="fas fa-expand-alt"></i>
+        <span class="d-none d-md-inline">Full View</span>
+      </a>
+    </div>
+  </div>
+  {% if latest_tests %}
+  <div class="dashboard-chart-grid">
+    {% for test_name, test in latest_tests.items %}
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h3 class="chart-card-title">{{ test_name }} <span class="fw-normal text-muted" style="font-size:0.75rem;">({{ test.unit }})</span></h3>
+          <p class="chart-card-subtitle">{{ test.date|date:"M j, Y" }}</p>
+        </div>
+        <div>
+          {% if test.normal_min <= test.value and test.value <= test.normal_max %}
+            <span class="status-badge badge-success">Normal</span>
+          {% else %}
+            <span class="status-badge badge-danger">Out of Range</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:160px;">
+          <canvas id="dash-comp-chart-{{ forloop.counter }}"></canvas>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state empty-state-sm">
+    <div class="empty-state-icon"><i class="fas fa-chart-bar"></i></div>
+    <div class="empty-state-title">No comparison data</div>
+    <div class="empty-state-description">Add blood tests with reference ranges to compare.</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if widget.widget_type == 'boxplots' %}
+<!-- Box Plots -->
+<div class="widget-section">
+  <div class="section-header-bar">
+    <h2 class="results-section-title">Distribution Analysis</h2>
+    <div class="section-header-actions">
+      <a href="{% url 'blood_tests_boxplots' %}" class="toolbar-btn toolbar-btn-sm">
+        <i class="fas fa-expand-alt"></i>
+        <span class="d-none d-md-inline">Full View</span>
+      </a>
+    </div>
+  </div>
+  {% if boxplots_data %}
+  <div class="dashboard-chart-grid">
+    {% for test_name, info in boxplots_data.items %}
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-header-text">
+          <h3 class="chart-card-title">{{ test_name }} <span class="fw-normal text-muted" style="font-size:0.75rem;">({{ info.unit }})</span></h3>
+          {% if info.normal_min is not None and info.normal_max is not None %}
+          <p class="chart-card-subtitle">Range: {{ info.normal_min }}–{{ info.normal_max }}</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="chart-card-body">
+        <div class="chart-canvas-wrapper" style="height:180px;">
+          <canvas id="dash-box-chart-{{ forloop.counter }}"></canvas>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state empty-state-sm">
+    <div class="empty-state-icon"><i class="fas fa-chart-bar"></i></div>
+    <div class="empty-state-title">No distribution data</div>
+    <div class="empty-state-description">Add multiple blood test results to see distribution analysis.</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 {% endif %}
 {% endfor %}
 </div>
@@ -470,6 +724,203 @@ function exportDashboardPDF() {
       applyFilters();
     });
   });
+})();
+
+/* ── Dashboard Chart Rendering ─────────────────────────────────────────── */
+(function() {
+  var chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    legend: { display: false },
+    scales: {
+      xAxes: [{ type: 'time', time: { unit: 'day', tooltipFormat: 'MMM D, YYYY' }, gridLines: { display: false } }],
+      yAxes: [{ gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { beginAtZero: false } }]
+    },
+    elements: { point: { radius: 3, hoverRadius: 5 }, line: { tension: 0.3 } }
+  };
+
+  function lineChart(canvasId, dataPoints, color, label) {
+    var el = document.getElementById(canvasId);
+    if (!el || !dataPoints || !dataPoints.length) return;
+    new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: {
+        datasets: [{
+          label: label || '',
+          data: dataPoints,
+          borderColor: color || 'rgba(37,99,235,0.85)',
+          backgroundColor: (color || 'rgba(37,99,235,0.85)').replace(/[\d.]+\)$/, '0.08)'),
+          fill: true,
+          borderWidth: 2,
+          pointBackgroundColor: '#fff',
+          pointBorderColor: color || 'rgba(37,99,235,0.85)',
+          pointBorderWidth: 1.5
+        }]
+      },
+      options: chartDefaults
+    });
+  }
+
+  /* Blood Test Trend Charts */
+  {% if charts_data %}
+  var chartsData = {
+    {% for test_name, test_info in charts_data.items %}
+    {{ test_name|tojson|safe }}: {{ test_info.data|tojson|safe }}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  };
+  var bloodColors = ['rgba(37,99,235,0.85)','rgba(124,58,237,0.85)','rgba(219,39,119,0.85)','rgba(13,148,136,0.85)','rgba(234,88,12,0.85)','rgba(22,163,74,0.85)','rgba(220,38,38,0.85)','rgba(147,51,234,0.85)'];
+  var bIdx = 0;
+  {% for test_name, test_info in charts_data.items %}
+  lineChart('dash-blood-chart-{{ forloop.counter }}', {{ test_info.data|tojson|safe }}, bloodColors[{{ forloop.counter0 }} % bloodColors.length], {{ test_name|tojson|safe }});
+  {% endfor %}
+  {% endif %}
+
+  /* Vital Signs Trend Charts */
+  {% if weight_data %}
+  lineChart('dash-weight-chart', {{ weight_data|tojson|safe }}, 'rgba(37,99,235,0.85)', 'Weight');
+  {% endif %}
+  {% if hr_data %}
+  lineChart('dash-hr-chart', {{ hr_data|tojson|safe }}, 'rgba(220,38,38,0.85)', 'Heart Rate');
+  {% endif %}
+  {% if sys_bp_data %}
+  (function() {
+    var el = document.getElementById('dash-bp-chart');
+    if (!el) return;
+    new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: 'Systolic',
+            data: {{ sys_bp_data|tojson|safe }},
+            borderColor: 'rgba(220,38,38,0.85)',
+            backgroundColor: 'rgba(220,38,38,0.08)',
+            fill: false,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: 'rgba(220,38,38,0.85)',
+            pointBorderWidth: 1.5
+          },
+          {
+            label: 'Diastolic',
+            data: {{ dia_bp_data|tojson|safe }},
+            borderColor: 'rgba(37,99,235,0.85)',
+            backgroundColor: 'rgba(37,99,235,0.08)',
+            fill: false,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: 'rgba(37,99,235,0.85)',
+            pointBorderWidth: 1.5
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        legend: { display: true, position: 'top', labels: { boxWidth: 12, fontSize: 11 } },
+        scales: {
+          xAxes: [{ type: 'time', time: { unit: 'day', tooltipFormat: 'MMM D, YYYY' }, gridLines: { display: false } }],
+          yAxes: [{ gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { beginAtZero: false } }]
+        },
+        elements: { point: { radius: 3, hoverRadius: 5 }, line: { tension: 0.3 } }
+      }
+    });
+  })();
+  {% endif %}
+
+  /* Comparative Bar Charts */
+  {% if latest_tests %}
+  {% for test_name, test in latest_tests.items %}
+  (function() {
+    var el = document.getElementById('dash-comp-chart-{{ forloop.counter }}');
+    if (!el) return;
+    var isNormal = {{ test.value }} >= {{ test.normal_min }} && {{ test.value }} <= {{ test.normal_max }};
+    var valColor = isNormal ? 'rgba(22,163,74,0.85)' : 'rgba(220,38,38,0.85)';
+    new Chart(el.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ['Min Normal', 'Your Value', 'Max Normal'],
+        datasets: [{
+          label: {{ test_name|tojson|safe }},
+          data: [{{ test.normal_min }}, {{ test.value }}, {{ test.normal_max }}],
+          backgroundColor: ['rgba(156,163,175,0.35)', valColor, 'rgba(156,163,175,0.35)'],
+          borderColor: ['rgba(156,163,175,0.5)', valColor, 'rgba(156,163,175,0.5)'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        legend: { display: false },
+        scales: {
+          yAxes: [{ gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { beginAtZero: true } }],
+          xAxes: [{ gridLines: { display: false } }]
+        }
+      }
+    });
+  })();
+  {% endfor %}
+  {% endif %}
+
+  /* Box Plot Charts (rendered as horizontal bar showing min/median/max) */
+  {% if boxplots_data %}
+  {% for test_name, info in boxplots_data.items %}
+  (function() {
+    var el = document.getElementById('dash-box-chart-{{ forloop.counter }}');
+    if (!el) return;
+    var data = {{ info.data|tojson|safe }};
+    if (!data.length) return;
+    data.sort(function(a, b) { return a - b; });
+    var n = data.length;
+    var min = data[0], max = data[n - 1];
+    var median = n % 2 === 0 ? (data[n/2 - 1] + data[n/2]) / 2 : data[Math.floor(n/2)];
+    function percentile(arr, p) {
+      var idx = (arr.length - 1) * p;
+      var lo = Math.floor(idx), hi = Math.ceil(idx);
+      if (lo === hi) return arr[lo];
+      return arr[lo] + (arr[hi] - arr[lo]) * (idx - lo);
+    }
+    var q1 = percentile(data, 0.25);
+    var q3 = percentile(data, 0.75);
+    new Chart(el.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ['Min', 'Q1', 'Median', 'Q3', 'Max'],
+        datasets: [{
+          label: {{ test_name|tojson|safe }},
+          data: [min, q1, median, q3, max],
+          backgroundColor: [
+            'rgba(156,163,175,0.3)',
+            'rgba(37,99,235,0.3)',
+            'rgba(37,99,235,0.7)',
+            'rgba(37,99,235,0.3)',
+            'rgba(156,163,175,0.3)'
+          ],
+          borderColor: [
+            'rgba(156,163,175,0.5)',
+            'rgba(37,99,235,0.6)',
+            'rgba(37,99,235,1)',
+            'rgba(37,99,235,0.6)',
+            'rgba(156,163,175,0.5)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        legend: { display: false },
+        scales: {
+          yAxes: [{ gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { beginAtZero: false } }],
+          xAxes: [{ gridLines: { display: false } }]
+        }
+      }
+    });
+  })();
+  {% endfor %}
+  {% endif %}
 })();
 </script>
 {% endblock %}

@@ -155,6 +155,50 @@ def index(request):
             pct = round((len(cat_tests) / max_count) * 100)
             cat_bar_data.append({'name': cat, 'count': len(cat_tests), 'pct': pct})
 
+    # Blood test trend chart data (for blood_charts widget)
+    charts_data = {}
+    for test in tests.order_by('date'):
+        if test.test_name not in charts_data:
+            charts_data[test.test_name] = {
+                'unit': test.unit,
+                'data': [],
+                'normal_min': test.normal_min,
+                'normal_max': test.normal_max,
+            }
+        charts_data[test.test_name]['data'].append({
+            'x': test.date.strftime('%Y-%m-%d'),
+            'y': test.value,
+        })
+
+    # Vitals chart data (for vitals_charts widget)
+    all_vitals = VitalSign.objects.all().order_by('date')
+    weight_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.weight} for v in all_vitals if v.weight is not None]
+    hr_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.heart_rate} for v in all_vitals if v.heart_rate is not None]
+    sys_bp_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.systolic_bp} for v in all_vitals if v.systolic_bp is not None]
+    dia_bp_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.diastolic_bp} for v in all_vitals if v.diastolic_bp is not None]
+
+    # Comparative bar data (for comparative_bars widget)
+    latest_tests = {}
+    for test in tests:
+        if test.test_name not in latest_tests:
+            if test.normal_min is not None and test.normal_max is not None:
+                latest_tests[test.test_name] = test
+
+    # Boxplot data (for boxplots widget)
+    boxplots_data = {}
+    for test in tests.order_by('date'):
+        if test.test_name not in boxplots_data:
+            boxplots_data[test.test_name] = {
+                'unit': test.unit,
+                'data': [],
+                'normal_min': test.normal_min,
+                'normal_max': test.normal_max,
+            }
+        boxplots_data[test.test_name]['data'].append(test.value)
+
+    # Recent vitals list (for vital_signs widget)
+    recent_vitals = list(VitalSign.objects.all().order_by('-date')[:5])
+
     context = {
         'tests': tests,
         'test_types': test_types,
@@ -171,6 +215,14 @@ def index(request):
         'hr_sparkline_points': hr_sparkline_points,
         'test_sparklines': test_sparklines,
         'cat_bar_data': cat_bar_data,
+        'charts_data': charts_data,
+        'weight_data': weight_data,
+        'hr_data': hr_data,
+        'sys_bp_data': sys_bp_data,
+        'dia_bp_data': dia_bp_data,
+        'latest_tests': latest_tests,
+        'boxplots_data': boxplots_data,
+        'recent_vitals': recent_vitals,
     }
     return render(request, 'index.html', context)
 
