@@ -2239,7 +2239,9 @@ class Phase5IntegrationViewTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='integrationuser', password='testpass123')
+        self.user = User.objects.create_user(
+            username='integrationuser', password='testpass123', is_staff=True
+        )
         self.client.login(username='integrationuser', password='testpass123')
 
     def test_wearable_device_list_shows_status(self):
@@ -2364,6 +2366,83 @@ class Phase5SyncDataTests(TestCase):
         self.assertEqual(sync_log.status, 'failed')
         self.assertIn('API unreachable', sync_log.error_message)
         self.assertIsNotNone(sync_log.completed_at)
+
+
+class Phase5StaffGatingTests(TestCase):
+    """Verify Phase 5 wearable CRUD URLs return 403 for non-staff users."""
+
+    def setUp(self):
+        self.client = Client()
+        self.regular_user = User.objects.create_user(
+            username='regularuser5', password='testpass123'
+        )
+        self.staff_user = User.objects.create_user(
+            username='staffuser5', password='testpass123', is_staff=True
+        )
+        self.device = WearableDevice.objects.create(
+            platform='fitbit', device_name='Charge 5'
+        )
+        self.wearable_urls = [
+            reverse('wearable_device_list'),
+            reverse('wearable_device_add'),
+            reverse('wearable_device_edit', kwargs={'pk': self.device.pk}),
+            reverse('wearable_device_delete', kwargs={'pk': self.device.pk}),
+            reverse('sync_log_list'),
+            reverse('wearable_connect', kwargs={'pk': self.device.pk}),
+        ]
+
+    def test_anonymous_redirected_from_wearable_pages(self):
+        """Anonymous users should be redirected to login for Phase 5 pages."""
+        for url in self.wearable_urls:
+            response = self.client.get(url)
+            self.assertEqual(
+                response.status_code, 302,
+                msg=f'{url} should redirect anonymous users'
+            )
+            self.assertIn('/accounts/login/', response.url,
+                          msg=f'{url} should redirect to login')
+
+    def test_non_staff_forbidden_from_wearable_pages(self):
+        """Authenticated non-staff users should get 403 for Phase 5 CRUD URLs."""
+        self.client.login(username='regularuser5', password='testpass123')
+        for url in self.wearable_urls:
+            response = self.client.get(url)
+            self.assertEqual(
+                response.status_code, 403,
+                msg=f'{url} should return 403 for non-staff users'
+            )
+
+    def test_staff_can_access_wearable_pages(self):
+        """Staff users should be able to access Phase 5 wearable CRUD pages."""
+        self.client.login(username='staffuser5', password='testpass123')
+        accessible_urls = [
+            reverse('wearable_device_list'),
+            reverse('wearable_device_add'),
+            reverse('wearable_device_edit', kwargs={'pk': self.device.pk}),
+            reverse('sync_log_list'),
+        ]
+        for url in accessible_urls:
+            response = self.client.get(url)
+            self.assertEqual(
+                response.status_code, 200,
+                msg=f'{url} should be accessible by staff users'
+            )
+
+    def test_non_staff_forbidden_from_wearable_sync(self):
+        """POST to wearable sync endpoint should return 403 for non-staff."""
+        self.client.login(username='regularuser5', password='testpass123')
+        response = self.client.post(
+            reverse('wearable_sync', kwargs={'pk': self.device.pk})
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_from_wearable_disconnect(self):
+        """POST to wearable disconnect endpoint should return 403 for non-staff."""
+        self.client.login(username='regularuser5', password='testpass123')
+        response = self.client.post(
+            reverse('wearable_disconnect', kwargs={'pk': self.device.pk})
+        )
+        self.assertEqual(response.status_code, 403)
 
 
 class Phase6ModelTests(TestCase):
@@ -4508,7 +4587,10 @@ class CriticalAlertAutoCheckTests(TestCase):
 class WearableSyncTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123',
+            email='test@example.com', is_staff=True,
+        )
         self.client.login(username='testuser', password='testpass123')
 
     def test_trigger_sync_creates_log(self):
@@ -4652,7 +4734,10 @@ class BiologicalAgeEstimateTests(TestCase):
 class IntegrationConfigActivateTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123',
+            email='test@example.com', is_staff=True,
+        )
         self.client.login(username='testuser', password='testpass123')
 
     def test_activate_with_config(self):

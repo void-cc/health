@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from datetime import datetime
 
 from .decorators import staff_only
@@ -49,13 +50,20 @@ def make_crud_views(
     extra_form_context=None,
     list_template='generic_list.html',
     form_template='generic_form.html',
+    require_staff=True,
 ):
     """
     Factory that generates list, add, edit, and delete views for a model.
 
     Returns a dict with keys 'list', 'add', 'edit', 'delete' containing
-    the four view functions, each wrapped with @staff_only.
+    the four view functions.  When *require_staff* is True (the default)
+    each view is guarded by ``@staff_only`` so only staff users may access
+    it.  When *require_staff* is False the views are guarded by
+    ``@login_required`` instead, making them suitable for personal health
+    data that every authenticated user should be able to access.
     """
+
+    _guard = staff_only if require_staff else login_required
 
     delete_url_name = list_url_name.rsplit('_list', 1)[0] + '_delete'
 
@@ -66,7 +74,7 @@ def make_crud_views(
         f.setdefault('required', False)
 
     # -- list view --
-    @staff_only
+    @_guard
     def list_view(request):
         entries = model_class.objects.all().order_by(order_by)
         context = {
@@ -83,7 +91,7 @@ def make_crud_views(
     has_date = any(f['name'] == 'date' for f in fields)
 
     # -- add view --
-    @staff_only
+    @_guard
     def add_view(request):
         if request.method == 'POST':
             if has_date:
@@ -117,7 +125,7 @@ def make_crud_views(
         return render(request, form_template, context)
 
     # -- edit view --
-    @staff_only
+    @_guard
     def edit_view(request, pk):
         entry = get_object_or_404(model_class, id=pk)
         if request.method == 'POST':
@@ -143,7 +151,7 @@ def make_crud_views(
         return render(request, form_template, context)
 
     # -- delete view --
-    @staff_only
+    @_guard
     def delete_view(request, pk):
         if request.method == 'POST':
             entry = get_object_or_404(model_class, id=pk)
