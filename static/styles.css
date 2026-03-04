@@ -281,7 +281,7 @@ main h5 {
   opacity: 1;
 }
 
-/* ---- Phase 3: Main content area with sidebar ---- */
+/* ---- Main content area with sidebar ---- */
 .main-content {
   margin-left: 256px;
   min-height: 100vh;
@@ -294,7 +294,7 @@ main h5 {
   margin-left: 0;
 }
 
-/* ---- Phase 3: Top navbar styling ---- */
+/* ---- Top navbar styling ---- */
 .top-navbar {
   display: flex;
   align-items: center;

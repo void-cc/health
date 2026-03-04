@@ -9,23 +9,23 @@ from .models import (
     CustomVitalDefinition, CustomVitalEntry, PainLog,
     RestingMetabolicRate, OrthostaticReading, ReproductiveHealthLog,
     SymptomJournal, MetabolicLog, KetoneLog, BODY_REGIONS,
-    # Phase 5
+    # Wearable Integrations
     WearableDevice, WearableSyncLog, WEARABLE_PLATFORMS,
-    # Phase 6
+    # Sleep & Nutrition Tracking
     SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
-    # Phase 7
+    # Multi-User Release
     UserProfile, FamilyAccount, EncryptionKey, AuditLog,
     APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
     AnonymizedDataReport, DatabaseScalingConfig, BackupConfiguration,
-    # Phase 8
+    # Advanced Analytics & AI
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
     HealthGoal, CriticalAlert,
-    # Phase 9
+    # Export, Sharing & Practitioner Access
     SecureViewingLink, PractitionerAccess, IntakeSummary,
     DataExportRequest, StakeholderEmail,
-    # Phase 10-12
+    # Integration Sub-tasks
     IntegrationConfig, IntegrationSubTask,
     INTEGRATION_CATEGORIES, INTEGRATION_FEATURE_TYPES,
 )
@@ -884,7 +884,7 @@ def export_data(request):
     return response
 
 
-# ===== Phase 2: Body Composition =====
+# ===== Body Composition =====
 
 @login_required
 def body_composition_list(request):
@@ -982,7 +982,7 @@ def body_composition_delete(request, pk):
     return redirect('body_composition_list')
 
 
-# ===== Phase 2: Hydration Tracking =====
+# ===== Hydration Tracking =====
 
 @login_required
 def hydration_list(request):
@@ -1081,7 +1081,7 @@ def hydration_delete(request, pk):
     return redirect('hydration_list')
 
 
-# ===== Phase 2: Energy and Fatigue Scoring =====
+# ===== Energy and Fatigue Scoring =====
 
 @login_required
 def energy_list(request):
@@ -1133,7 +1133,7 @@ def energy_delete(request, pk):
     return redirect('energy_list')
 
 
-# ===== Phase 2: Custom Vital Signs =====
+# ===== Custom Vital Signs =====
 
 @login_required
 def custom_vitals_list(request):
@@ -1225,7 +1225,7 @@ def custom_vital_delete_entry(request, pk):
     return redirect('custom_vitals_list')
 
 
-# ===== Phase 2: Anatomical Pain Mapping =====
+# ===== Anatomical Pain Mapping =====
 
 
 def _safe_redirect(request, default='index'):
@@ -1366,7 +1366,7 @@ def update_widgets(request):
 
 @login_required
 def global_search(request):
-    """Phase 3: Global search API endpoint for finding tests, vitals, and journal entries."""
+    """Global search API endpoint for finding tests, vitals, and journal entries."""
     q = request.GET.get('q', '').strip()
     if not q or len(q) < 2:
         return JsonResponse({'results': []})
@@ -1436,7 +1436,7 @@ def global_search(request):
     return JsonResponse({'results': results})
 
 
-# ===== Phase 5: Wearable Integrations =====
+# ===== Wearable Integrations =====
 
 def wearable_device_list(request):
     entries = WearableDevice.objects.all().order_by('-created_at')
@@ -1630,7 +1630,7 @@ def wearable_sync(request, pk):
     return redirect('wearable_device_list')
 
 
-# ===== Phase 6: Sleep & Circadian =====
+# ===== Sleep & Circadian =====
 
 @login_required
 def sleep_list(request):
@@ -1748,7 +1748,7 @@ def sleep_delete(request, pk):
     return redirect('sleep_list')
 
 
-# ===== Phase 6: Circadian Rhythm =====
+# ===== Circadian Rhythm =====
 
 @login_required
 def circadian_list(request):
@@ -1810,7 +1810,7 @@ def circadian_delete(request, pk):
     return redirect('circadian_list')
 
 
-# ===== Phase 6: Dream Journal =====
+# ===== Dream Journal =====
 
 @login_required
 def dream_list(request):
@@ -1868,7 +1868,7 @@ def dream_delete(request, pk):
     return redirect('dream_list')
 
 
-# ===== Phase 6: Macronutrient Log =====
+# ===== Macronutrient Log =====
 
 @login_required
 def macro_list(request):
@@ -1981,7 +1981,7 @@ def macro_delete(request, pk):
     return redirect('macro_list')
 
 
-# ===== Phase 6: Micronutrient Log =====
+# ===== Micronutrient Log =====
 
 @login_required
 def micro_list(request):
@@ -2041,7 +2041,7 @@ def micro_delete(request, pk):
     return redirect('micro_list')
 
 
-# ===== Phase 6: Food Entry =====
+# ===== Food Entry =====
 
 @login_required
 def food_list(request):
@@ -2117,7 +2117,7 @@ def food_delete(request, pk):
     return redirect('food_list')
 
 
-# ===== Phase 6: Fasting Log =====
+# ===== Fasting Log =====
 
 @login_required
 def fasting_list(request):
@@ -2179,7 +2179,7 @@ def fasting_delete(request, pk):
     return redirect('fasting_list')
 
 
-# ===== Phase 6: Caffeine & Alcohol Log =====
+# ===== Caffeine & Alcohol Log =====
 
 @login_required
 def caffeine_alcohol_list(request):
@@ -2239,7 +2239,7 @@ def caffeine_alcohol_delete(request, pk):
     return redirect('caffeine_alcohol_list')
 
 
-# ===== Phase 7: User Profile =====
+# ===== User Profile =====
 
 def user_profile_list(request):
     entries = UserProfile.objects.select_related('user').all().order_by('-created_at')
@@ -2287,7 +2287,7 @@ def user_profile_delete(request, pk):
     return redirect('user_profile_list')
 
 
-# ===== Phase 7: Family Account =====
+# ===== Family Account =====
 
 def family_account_list(request):
     entries = FamilyAccount.objects.all().order_by('-created_at')
@@ -2332,7 +2332,7 @@ def family_account_delete(request, pk):
     return redirect('family_account_list')
 
 
-# ===== Phase 7: Consent Log =====
+# ===== Consent Log =====
 
 def consent_log_list(request):
     entries = ConsentLog.objects.all().order_by('-accepted_at')
@@ -2377,7 +2377,7 @@ def consent_log_delete(request, pk):
     return redirect('consent_log_list')
 
 
-# ===== Phase 7: Tenant Config =====
+# ===== Tenant Config =====
 
 def tenant_config_list(request):
     entries = TenantConfig.objects.all().order_by('-created_at')
@@ -2420,7 +2420,7 @@ def tenant_config_delete(request, pk):
     return redirect('tenant_config_list')
 
 
-# ===== Phase 7: Admin Telemetry =====
+# ===== Admin Telemetry =====
 
 def admin_telemetry_list(request):
     entries = AdminTelemetry.objects.all().order_by('-recorded_at')
@@ -2463,7 +2463,7 @@ def admin_telemetry_delete(request, pk):
     return redirect('admin_telemetry_list')
 
 
-# ===== Phase 7: API Rate Limit Config =====
+# ===== API Rate Limit Config =====
 
 def api_rate_limit_list(request):
     entries = APIRateLimitConfig.objects.all().order_by('endpoint')
@@ -2512,7 +2512,7 @@ def api_rate_limit_delete(request, pk):
     return redirect('api_rate_limit_list')
 
 
-# ===== Phase 7: Encryption Keys =====
+# ===== Encryption Keys =====
 
 def encryption_key_list(request):
     entries = EncryptionKey.objects.all().order_by('-created_at')
@@ -2555,7 +2555,7 @@ def encryption_key_delete(request, pk):
     return redirect('encryption_key_list')
 
 
-# ===== Phase 7: Audit Logs =====
+# ===== Audit Logs =====
 
 def audit_log_list(request):
     entries = AuditLog.objects.all().order_by('-created_at')
@@ -2598,7 +2598,7 @@ def audit_log_delete(request, pk):
     return redirect('audit_log_list')
 
 
-# ===== Phase 7: Anonymized Data Reports =====
+# ===== Anonymized Data Reports =====
 
 def anonymized_data_list(request):
     entries = AnonymizedDataReport.objects.all().order_by('-generated_at')
@@ -2647,7 +2647,7 @@ def anonymized_data_delete(request, pk):
     return redirect('anonymized_data_list')
 
 
-# ===== Phase 7: Database Scaling Config =====
+# ===== Database Scaling Config =====
 
 def database_scaling_list(request):
     entries = DatabaseScalingConfig.objects.all().order_by('-created_at')
@@ -2696,7 +2696,7 @@ def database_scaling_delete(request, pk):
     return redirect('database_scaling_list')
 
 
-# ===== Phase 7: Backup Configuration =====
+# ===== Backup Configuration =====
 
 def backup_config_list(request):
     entries = BackupConfiguration.objects.all().order_by('-created_at')
@@ -2745,7 +2745,7 @@ def backup_config_delete(request, pk):
     return redirect('backup_config_list')
 
 
-# ===== Phase 8: Medication Schedule =====
+# ===== Medication Schedule =====
 
 def medication_schedule_list(request):
     entries = MedicationSchedule.objects.all().order_by('-start_date')
@@ -2834,7 +2834,7 @@ def medication_schedule_delete(request, pk):
     return redirect('medication_schedule_list')
 
 
-# ===== Phase 8: Health Goal =====
+# ===== Health Goal =====
 
 def health_goal_list(request):
     entries = HealthGoal.objects.all().order_by('-created_at')
@@ -2955,7 +2955,7 @@ def wearable_sync(request, pk):
     return redirect('wearable_device_list')
 
 
-# ===== Phase 6: Sleep & Circadian =====
+# ===== Sleep & Circadian =====
 
 
 def critical_alert_auto_check(request):
@@ -2968,7 +2968,7 @@ def critical_alert_auto_check(request):
     return redirect('critical_alert_list')
 
 
-# ===== Phase 8: Health Report =====
+# ===== Health Report =====
 
 
 def health_report_generate(request):
@@ -2986,7 +2986,7 @@ def health_report_generate(request):
     return redirect('health_report_list')
 
 
-# ===== Phase 8: Biological Age Calculation =====
+# ===== Biological Age Calculation =====
 
 
 def biological_age_estimate(request):
@@ -3003,7 +3003,7 @@ def biological_age_estimate(request):
     return redirect('biological_age_list')
 
 
-# ===== Phase 8: Predictive Biomarker =====
+# ===== Predictive Biomarker =====
 
 
 def predictive_biomarker_generate(request):
@@ -3022,7 +3022,7 @@ def predictive_biomarker_generate(request):
     return redirect('predictive_biomarker_list')
 
 
-# ===== Phase 9: Secure Viewing Link =====
+# ===== Secure Viewing Link =====
 
 
 def secure_link_shared_view(request, token):
@@ -3046,7 +3046,7 @@ def secure_link_shared_view(request, token):
     return render(request, 'secure_link_shared_view.html', context)
 
 
-# ===== Phase 9: Practitioner Access =====
+# ===== Practitioner Access =====
 
 
 def practitioner_portal(request):
@@ -3097,7 +3097,7 @@ def practitioner_request_access(request):
     return render(request, 'practitioner_request_access.html')
 
 
-# ===== Phase 9: Intake Summary =====
+# ===== Intake Summary =====
 
 
 def intake_summary_generate(request):
@@ -3147,7 +3147,7 @@ def intake_summary_generate(request):
     return redirect('intake_summary_list')
 
 
-# ===== Phase 9: Data Export Request =====
+# ===== Data Export Request =====
 
 def _collect_export_data():
     """Collect all health data for export."""
@@ -3206,7 +3206,7 @@ def data_export_download(request, pk):
         return response
 
 
-# ===== Phase 9: Stakeholder Email =====
+# ===== Stakeholder Email =====
 
 
 def _build_health_summary_text():
@@ -3272,7 +3272,7 @@ def stakeholder_email_send(request, pk):
     return redirect('stakeholder_email_list')
 
 
-# ===== Phase 10-12: Integration Config =====
+# ===== Integration Config =====
 
 
 def integration_config_activate(request, pk):
@@ -3296,7 +3296,7 @@ def integration_config_run(request, pk):
     return redirect('integration_config_list')
 
 
-# ===== Phase 10-12: Integration Sub-Task =====
+# ===== Integration Sub-Task =====
 
 
 def phase11_dashboard(request):

@@ -15,9 +15,9 @@
     </div>
 
     <div class="mb-3">
-      <label for="phase" class="form-label">Phase:</label>
+      <label for="phase" class="form-label">Cycle Stage:</label>
       <select class="form-select" name="phase" id="phase">
-        <option value="">-- Select phase --</option>
+        <option value="">-- Select stage --</option>
         <option value="menstrual" {% if editing and entry.phase == 'menstrual' %}selected{% endif %}>Menstrual</option>
         <option value="follicular" {% if editing and entry.phase == 'follicular' %}selected{% endif %}>Follicular</option>
         <option value="ovulation" {% if editing and entry.phase == 'ovulation' %}selected{% endif %}>Ovulation</option>
