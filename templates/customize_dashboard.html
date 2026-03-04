@@ -1,29 +1,40 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Customize Dashboard</h2>
-  <a href="{% url 'index' %}" class="btn btn-secondary">Back to Dashboard</a>
-</div>
 
-<p class="text-muted">Drag widgets to reorder them. Toggle visibility using the checkboxes. Changes are saved automatically.</p>
-
-<div id="widget-list" class="list-group">
-  {% for widget in widgets %}
-  <div class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ widget.id }}" draggable="true">
-    <div class="d-flex align-items-center">
-      <i class="fas fa-grip-vertical me-3 text-muted" style="cursor: grab;"></i>
-      <span>{{ widget.get_widget_type_display }}</span>
-    </div>
-    <div class="form-check form-switch">
-      <input class="form-check-input widget-visible" type="checkbox" {% if widget.visible %}checked{% endif %} data-id="{{ widget.id }}">
-      <label class="form-check-label">Visible</label>
-    </div>
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Customize Dashboard</h1>
+    <p class="page-header-subtitle">Reorder and toggle visibility of dashboard widgets</p>
   </div>
-  {% endfor %}
+  <div class="page-header-actions">
+    <a href="{% url 'index' %}" class="toolbar-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Dashboard</span>
+    </a>
+  </div>
 </div>
 
-<div id="save-status" class="mt-3 text-muted" style="display: none;">
-  <i class="fas fa-check-circle text-success"></i> Changes saved.
+<div class="form-card" style="max-width: 560px;">
+  <p class="text-muted small mb-4">Drag widgets to reorder them. Toggle visibility using the switches. Changes are saved automatically.</p>
+
+  <div id="widget-list" style="display: flex; flex-direction: column; gap: var(--space-2);">
+    {% for widget in widgets %}
+    <div class="widget-row d-flex justify-content-between align-items-center" data-id="{{ widget.id }}" draggable="true">
+      <div class="d-flex align-items-center gap-3">
+        <i class="fas fa-grip-vertical text-muted" style="cursor: grab; font-size: 0.875rem;" aria-hidden="true"></i>
+        <span class="fw-medium" style="font-size: 0.875rem;">{{ widget.get_widget_type_display }}</span>
+      </div>
+      <div class="form-check form-switch mb-0">
+        <input class="form-check-input widget-visible" type="checkbox" role="switch" {% if widget.visible %}checked{% endif %} data-id="{{ widget.id }}" aria-label="Toggle {{ widget.get_widget_type_display }} visibility" id="widget-toggle-{{ widget.id }}">
+        <label class="form-check-label text-muted small" for="widget-toggle-{{ widget.id }}">Visible</label>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div id="save-status" class="mt-4 small text-success" style="display: none;">
+    <i class="fas fa-check-circle me-1" aria-hidden="true"></i> Changes saved.
+  </div>
 </div>
 
 <script>
@@ -34,7 +45,7 @@
   function handleDragStart(e) {
     dragSrc = this;
     e.dataTransfer.effectAllowed = 'move';
-    this.classList.add('bg-light');
+    this.style.opacity = '0.5';
   }
   function handleDragOver(e) {
     e.preventDefault();
@@ -57,10 +68,10 @@
     return false;
   }
   function handleDragEnd() {
-    this.classList.remove('bg-light');
+    this.style.opacity = '';
   }
 
-  var items = list.querySelectorAll('.list-group-item');
+  var items = list.querySelectorAll('.widget-row');
   items.forEach(function(item) {
     item.addEventListener('dragstart', handleDragStart);
     item.addEventListener('dragover', handleDragOver);
@@ -73,7 +84,7 @@
   });
 
   function saveWidgets() {
-    var widgetItems = list.querySelectorAll('.list-group-item');
+    var widgetItems = list.querySelectorAll('.widget-row');
     var data = [];
     widgetItems.forEach(function(item, idx) {
       var wid = item.getAttribute('data-id');
@@ -95,4 +106,5 @@
   }
 })();
 </script>
+
 {% endblock %}

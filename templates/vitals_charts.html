@@ -212,6 +212,7 @@
       makeLineDataset('Diastolic BP', diaData, 'rgba(37, 99, 235, 1)', showAnomaly)
     ];
     if (showMA && sysData.length >= 2) bpDs.push({ label: 'Systolic Avg', data: computeMovingAverage(sysData, Math.min(maWindow, sysData.length)), borderColor: 'rgba(217,119,6,0.4)', borderWidth: 2, borderDash: [5,5], fill: false, pointRadius: 0, pointHoverRadius: 0 });
+    if (showMA && diaData.length >= 2) bpDs.push({ label: 'Diastolic Avg', data: computeMovingAverage(diaData, Math.min(maWindow, diaData.length)), borderColor: 'rgba(37,99,235,0.4)', borderWidth: 2, borderDash: [5,5], fill: false, pointRadius: 0, pointHoverRadius: 0 });
     renderChart('bpChart', 'bp', bpDs);
 
     var bbtData = filterByDate(rawBbtData, startDate, endDate);

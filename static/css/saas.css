@@ -869,3 +869,25 @@
   justify-content: space-between;
 }
 
+
+/* ── Widget row (dashboard customize) ────────────────────────────────────── */
+
+.widget-row {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  transition: box-shadow 0.1s ease, background-color 0.1s ease;
+}
+
+.widget-row:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.widget-row[draggable="true"] {
+  cursor: grab;
+}
+
+.widget-row[draggable="true"]:active {
+  cursor: grabbing;
+}
