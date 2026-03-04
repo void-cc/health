@@ -3918,6 +3918,26 @@ medication_schedule_add = _medication['add']
 medication_schedule_edit = _medication['edit']
 medication_schedule_delete = _medication['delete']
 
+# ===== Pharmacological Interactions =====
+_pharmacological_interaction = make_crud_views(
+    model_class=PharmacologicalInteraction,
+    display_name='Pharmacological Interaction',
+    fields=[
+        {'name': 'medication_a', 'type': 'str', 'required': True, 'label': 'Medication A'},
+        {'name': 'medication_b', 'type': 'str', 'required': True, 'label': 'Medication B'},
+        {'name': 'severity', 'type': 'str', 'choices': PharmacologicalInteraction.SEVERITY_CHOICES, 'default': 'low', 'label': 'Severity'},
+        {'name': 'description', 'type': 'str', 'widget': 'textarea', 'label': 'Description'},
+    ],
+    list_url_name='pharmacological_interaction_list',
+    add_url_name='pharmacological_interaction_add',
+    edit_url_name='pharmacological_interaction_edit',
+    order_by='-detected_at',
+)
+pharmacological_interaction_list = _pharmacological_interaction['list']
+pharmacological_interaction_add = _pharmacological_interaction['add']
+pharmacological_interaction_edit = _pharmacological_interaction['edit']
+pharmacological_interaction_delete = _pharmacological_interaction['delete']
+
 # ===== Health Goals =====
 _health_goal = make_crud_views(
     model_class=HealthGoal,

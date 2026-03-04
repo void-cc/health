@@ -245,6 +245,12 @@ urlpatterns = [
     path('medications/edit/<int:pk>/', views.medication_schedule_edit, name='medication_schedule_edit'),
     path('medications/delete/<int:pk>/', views.medication_schedule_delete, name='medication_schedule_delete'),
 
+    # Pharmacological Interactions
+    path('interactions/', views.pharmacological_interaction_list, name='pharmacological_interaction_list'),
+    path('interactions/add/', views.pharmacological_interaction_add, name='pharmacological_interaction_add'),
+    path('interactions/edit/<int:pk>/', views.pharmacological_interaction_edit, name='pharmacological_interaction_edit'),
+    path('interactions/delete/<int:pk>/', views.pharmacological_interaction_delete, name='pharmacological_interaction_delete'),
+
     # Health Goals
     path('goals/', views.health_goal_list, name='health_goal_list'),
     path('goals/add/', views.health_goal_add, name='health_goal_add'),

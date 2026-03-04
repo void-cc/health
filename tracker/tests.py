@@ -5,7 +5,7 @@ from tracker.models import (
     BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
     UserProfile, SecurityLog, UserSession, PrivacyPreference,
     SecureViewingLink, PractitionerAccess, IntakeSummary,
-    DataExportRequest, StakeholderEmail, MedicationSchedule,
+    DataExportRequest, StakeholderEmail, MedicationSchedule, PharmacologicalInteraction,
     SleepLog, MacronutrientLog, FastingLog, MetabolicLog,
     HealthGoal, CriticalAlert, WearableDevice, WearableSyncLog,
     HealthReport, PredictiveBiomarker, BiologicalAgeCalculation,
@@ -2697,6 +2697,12 @@ class Phase5To12StatusCodeTests(TestCase):
     def test_medication_schedule_add(self):
         self.assertEqual(self.client.get(reverse('medication_schedule_add')).status_code, 200)
 
+    def test_pharmacological_interaction_list(self):
+        self.assertEqual(self.client.get(reverse('pharmacological_interaction_list')).status_code, 200)
+
+    def test_pharmacological_interaction_add(self):
+        self.assertEqual(self.client.get(reverse('pharmacological_interaction_add')).status_code, 200)
+
     def test_health_goal_list(self):
         self.assertEqual(self.client.get(reverse('health_goal_list')).status_code, 200)
 
@@ -3250,6 +3256,39 @@ class Phase5To12CRUDTests(TestCase):
         response = self.client.post(reverse('medication_schedule_delete', kwargs={'pk': ms.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(MedicationSchedule.objects.count(), 0)
+
+    # ----- PharmacologicalInteraction -----
+    def test_pharmacological_interaction_add_post(self):
+        response = self.client.post(reverse('pharmacological_interaction_add'), {
+            'medication_a': 'Aspirin',
+            'medication_b': 'Warfarin',
+            'severity': 'high',
+            'description': 'Increased bleeding risk.',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PharmacologicalInteraction.objects.count(), 1)
+
+    def test_pharmacological_interaction_edit_post(self):
+        pi = PharmacologicalInteraction.objects.create(
+            medication_a='Aspirin', medication_b='Warfarin', severity='high',
+        )
+        response = self.client.post(reverse('pharmacological_interaction_edit', kwargs={'pk': pi.pk}), {
+            'medication_a': 'Aspirin',
+            'medication_b': 'Warfarin',
+            'severity': 'critical',
+            'description': 'Updated description.',
+        })
+        self.assertEqual(response.status_code, 302)
+        pi.refresh_from_db()
+        self.assertEqual(pi.severity, 'critical')
+
+    def test_pharmacological_interaction_delete_post(self):
+        pi = PharmacologicalInteraction.objects.create(
+            medication_a='Aspirin', medication_b='Warfarin', severity='low',
+        )
+        response = self.client.post(reverse('pharmacological_interaction_delete', kwargs={'pk': pi.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PharmacologicalInteraction.objects.count(), 0)
 
     # ----- HealthGoal -----
     def test_health_goal_add_post(self):
