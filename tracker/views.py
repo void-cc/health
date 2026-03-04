@@ -1119,6 +1119,7 @@ def review_import(request, doc_id):
     return render(request, 'review_import.html', {
         'doc': doc,
         'measurements': measurements,
+        'has_pending': measurements.filter(review_status='pending').exists(),
     })
 
 
