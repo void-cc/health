@@ -6,6 +6,7 @@ from .models import (
     NotificationPreference, NotificationTemplate, NotificationTrigger,
     NotificationLog,
     MedicationLog, MedicationInventory,
+    MeasurementType, SourceDocument, Measurement,
 )
 
 
@@ -125,3 +126,27 @@ class MedicationInventoryAdmin(admin.ModelAdmin):
     list_filter = ('expiration_date',)
     search_fields = ('medication_name', 'pharmacy_name', 'notes')
     raw_id_fields = ('user', 'schedule')
+
+
+@admin.register(MeasurementType)
+class MeasurementTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'default_unit', 'normal_min', 'normal_max')
+    list_filter = ('category',)
+    search_fields = ('name', 'synonyms')
+
+
+@admin.register(SourceDocument)
+class SourceDocumentAdmin(admin.ModelAdmin):
+    list_display = ('filename', 'content_type', 'status', 'uploaded_at', 'user')
+    list_filter = ('content_type', 'status')
+    search_fields = ('filename', 'raw_text')
+    raw_id_fields = ('user',)
+    readonly_fields = ('uploaded_at',)
+
+
+@admin.register(Measurement)
+class MeasurementAdmin(admin.ModelAdmin):
+    list_display = ('measurement_type', 'value', 'unit', 'observed_at', 'user', 'source_document')
+    list_filter = ('measurement_type', 'observed_at')
+    search_fields = ('raw_name', 'raw_line')
+    raw_id_fields = ('user', 'source_document')

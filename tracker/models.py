@@ -1960,3 +1960,95 @@ class Reminder(models.Model):
 
     def __str__(self):
         return f"{self.title} at {self.due_datetime}"
+
+
+# ===== Canonical Measurement Layer =====
+
+class MeasurementType(models.Model):
+    """Canonical concept for a health measurement (e.g. "Hemoglobin", "Heart Rate")."""
+    name = models.CharField(max_length=200, unique=True)
+    category = models.CharField(max_length=100, blank=True, default='')
+    default_unit = models.CharField(max_length=50, blank=True, default='')
+    synonyms = models.TextField(
+        blank=True, default='',
+        help_text='Comma-separated list of alternative names for fuzzy matching.'
+    )
+    normal_min = models.FloatField(null=True, blank=True)
+    normal_max = models.FloatField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class SourceDocument(models.Model):
+    """Represents a raw uploaded file or data source from which measurements are ingested."""
+    CONTENT_TYPE_CHOICES = [
+        ('pdf', 'PDF'),
+        ('image', 'Image'),
+        ('csv', 'CSV'),
+        ('hl7_fhir', 'HL7/FHIR'),
+        ('manual', 'Manual Entry'),
+        ('other', 'Other'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('done', 'Done'),
+        ('error', 'Error'),
+    ]
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='source_documents'
+    )
+    uploaded_at = models.DateTimeField(default=timezone.now)
+    filename = models.CharField(max_length=500, blank=True, default='')
+    raw_text = models.TextField(blank=True, default='')
+    content_type = models.CharField(
+        max_length=20, choices=CONTENT_TYPE_CHOICES, default='other'
+    )
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='pending'
+    )
+    error_message = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return f"{self.filename or 'unnamed'} ({self.get_status_display()}) uploaded at {self.uploaded_at:%Y-%m-%d %H:%M}"
+
+
+class Measurement(models.Model):
+    """A single normalised health measurement linked to a canonical MeasurementType."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='measurements'
+    )
+    measurement_type = models.ForeignKey(
+        MeasurementType, on_delete=models.PROTECT, related_name='measurements'
+    )
+    observed_at = models.DateTimeField(db_index=True)
+    value = models.FloatField()
+    unit = models.CharField(max_length=50, blank=True, default='')
+    ref_min = models.FloatField(null=True, blank=True)
+    ref_max = models.FloatField(null=True, blank=True)
+    source_document = models.ForeignKey(
+        SourceDocument, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='measurements'
+    )
+    confidence = models.FloatField(
+        null=True, blank=True,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text='Extraction confidence score between 0 and 1.'
+    )
+    raw_name = models.CharField(
+        max_length=200, blank=True, default='',
+        help_text='Original name as it appeared in the source document.'
+    )
+    raw_line = models.TextField(
+        blank=True, default='',
+        help_text='Original line/row from the source document.'
+    )
+
+    class Meta:
+        ordering = ['-observed_at']
+
+    def __str__(self):
+        return f"{self.measurement_type} = {self.value} {self.unit} at {self.observed_at:%Y-%m-%d}"
