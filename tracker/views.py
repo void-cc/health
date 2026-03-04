@@ -48,7 +48,7 @@ import io
 import json
 import re
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Q as models_Q, Avg, Count
+from django.db.models import Q as models_Q, Avg, Count, Case, When, Value, IntegerField
 from django.core.paginator import Paginator
 import functools
 
@@ -3106,6 +3106,53 @@ def medication_autocomplete(request):
     query = request.GET.get('q', '').strip()
     results = search_medication_names(query) if query else []
     return JsonResponse({'results': results})
+
+
+@login_required
+def medication_concept_detail(request, name):
+    """
+    Overview page for a single medication concept.
+
+    Fetches (and caches) comprehensive metadata from external APIs:
+    drug class, indications, side effects, warnings, dosage forms,
+    mechanism of action, synonyms, and external IDs.
+
+    Also shows the current user's schedule(s) for this medication and
+    any known interactions involving it.
+    """
+    from .rxnorm import get_medication_info
+    info = get_medication_info(name)
+
+    # User's active schedules for this medication
+    schedules = MedicationSchedule.objects.filter(
+        user=request.user,
+        medication_name__iexact=name,
+    ).order_by('-start_date')
+
+    # Interactions involving this medication, sorted by severity (critical first)
+    severity_order_expr = Case(
+        When(severity='critical', then=Value(0)),
+        When(severity='high', then=Value(1)),
+        When(severity='moderate', then=Value(2)),
+        When(severity='low', then=Value(3)),
+        default=Value(4),
+        output_field=IntegerField(),
+    )
+    interactions = (
+        PharmacologicalInteraction.objects.filter(
+            user=request.user,
+        ).filter(
+            models_Q(medication_a__iexact=name) | models_Q(medication_b__iexact=name)
+        ).annotate(
+            severity_rank=severity_order_expr
+        ).order_by('severity_rank', '-detected_at')
+    )
+
+    return render(request, 'medication_concept_detail.html', {
+        'info': info,
+        'schedules': schedules,
+        'interactions': interactions,
+    })
 
 
 @login_required

@@ -309,6 +309,298 @@ def get_rxcui(drug_name):
 
 
 # ---------------------------------------------------------------------------
+# Medication enrichment (full drug info from multiple providers)
+# ---------------------------------------------------------------------------
+
+_ENRICH_TTL = 86400  # 24 hours — only re-fetch enrichment data once per day
+
+
+def get_medication_info(name, rxcui=''):
+    """
+    Return a comprehensive dict of drug metadata for *name* / *rxcui*.
+
+    Data is fetched from RxNorm, openFDA, DailyMed, and PubChem, then
+    persisted in the local MedicationConcept record.  Subsequent calls
+    within _ENRICH_TTL reuse the cached DB record.
+
+    Returned dict schema::
+
+        {
+            'name':         str,
+            'rxcui':        str,
+            'drug_class':   str,
+            'synonyms':     list[str],
+            'indications':  str,
+            'side_effects': str,
+            'warnings':     str,
+            'dosage_forms': str,
+            'mechanism':    str,
+            'external_ids': dict,
+            'source':       str,
+            'last_enriched': str (ISO8601) | None,
+        }
+    """
+    from django.utils import timezone
+    from .models import MedicationConcept
+
+    name = name.strip()
+    if not name and not rxcui:
+        return {}
+
+    # Resolve MedicationConcept from DB
+    concept = None
+    if rxcui:
+        concept = MedicationConcept.objects.filter(rxcui=rxcui).first()
+    if concept is None and name:
+        concept = MedicationConcept.objects.filter(name__iexact=name).first()
+
+    # Return cached enrichment if still fresh
+    if concept and concept.last_enriched:
+        age = (timezone.now() - concept.last_enriched).total_seconds()
+        if age < _ENRICH_TTL:
+            return _concept_to_dict(concept)
+
+    # Ensure we have an rxcui
+    if not rxcui:
+        rxcui = get_rxcui(name)
+    if not rxcui and concept:
+        rxcui = concept.rxcui or ''
+
+    enriched = {
+        'name': name or (concept.name if concept else ''),
+        'rxcui': rxcui,
+        'drug_class': '',
+        'synonyms': [],
+        'indications': '',
+        'side_effects': '',
+        'warnings': '',
+        'dosage_forms': '',
+        'mechanism': '',
+        'external_ids': {},
+    }
+
+    _enrich_from_rxnorm(enriched)
+    _enrich_from_openfda(enriched)
+    _enrich_from_dailymed(enriched)
+    _enrich_from_pubchem(enriched)
+
+    # Persist to DB
+    now = timezone.now()
+    db_defaults = {
+        'drug_class': enriched['drug_class'],
+        'synonyms': '\n'.join(enriched['synonyms']),
+        'indications': enriched['indications'],
+        'side_effects': enriched['side_effects'],
+        'warnings': enriched['warnings'],
+        'dosage_forms': enriched['dosage_forms'],
+        'mechanism': enriched['mechanism'],
+        'external_ids': enriched['external_ids'],
+        'last_enriched': now,
+    }
+    if rxcui:
+        concept, _ = MedicationConcept.objects.update_or_create(
+            rxcui=rxcui,
+            defaults={'name': enriched['name'] or name, 'source': 'rxnorm', **db_defaults},
+        )
+    elif name:
+        concept = MedicationConcept.objects.filter(name__iexact=name).first()
+        if concept:
+            for k, v in db_defaults.items():
+                setattr(concept, k, v)
+            concept.save()
+        else:
+            concept = MedicationConcept.objects.create(
+                name=name, source='rxnorm', **db_defaults
+            )
+
+    if concept:
+        enriched['name'] = concept.name or enriched['name']
+        enriched['source'] = concept.source
+        enriched['last_enriched'] = (
+            concept.last_enriched.isoformat() if concept.last_enriched else None
+        )
+    return enriched
+
+
+def _concept_to_dict(concept):
+    """Convert a MedicationConcept ORM instance to the standard info dict."""
+    return {
+        'name': concept.name,
+        'rxcui': concept.rxcui,
+        'drug_class': concept.drug_class,
+        'synonyms': [s for s in concept.synonyms.splitlines() if s],
+        'indications': concept.indications,
+        'side_effects': concept.side_effects,
+        'warnings': concept.warnings,
+        'dosage_forms': concept.dosage_forms,
+        'mechanism': concept.mechanism,
+        'external_ids': concept.external_ids or {},
+        'source': concept.source,
+        'last_enriched': (
+            concept.last_enriched.isoformat() if concept.last_enriched else None
+        ),
+    }
+
+
+def _enrich_from_rxnorm(enriched):
+    """Fill in RxNorm-sourced fields: drug_class, synonyms, NDC codes."""
+    rxcui = enriched.get('rxcui', '')
+    if not rxcui:
+        return
+
+    # Drug class via EPC property
+    data = _get(
+        f"{RXNAV_BASE}/rxcui/{rxcui}/property.json",
+        params={'propName': 'EPC'},
+    )
+    if data:
+        props = data.get('propConceptGroup', {}).get('propConcept') or []
+        for p in props:
+            val = p.get('propValue', '')
+            if val and not enriched['drug_class']:
+                enriched['drug_class'] = val
+
+    # Related brand / ingredient names
+    data = _get(
+        f"{RXNAV_BASE}/rxcui/{rxcui}/related.json",
+        params={'tty': 'BN+IN+PIN'},
+    )
+    if data:
+        groups = data.get('relatedGroup', {}).get('conceptGroup') or []
+        for group in groups:
+            for cp in (group.get('conceptProperties') or []):
+                n = cp.get('name', '')
+                if n and n not in enriched['synonyms']:
+                    enriched['synonyms'].append(n)
+
+    # NDC codes
+    data = _get(f"{RXNAV_BASE}/rxcui/{rxcui}/ndcs.json")
+    if data:
+        ndcs = data.get('ndcGroup', {}).get('ndcList', {}).get('ndc') or []
+        if ndcs:
+            enriched['external_ids']['ndc'] = ndcs[:5]
+
+
+def _enrich_from_openfda(enriched):
+    """Fill in openFDA fields: indications, side_effects, warnings, dosage_forms, mechanism."""
+    try:
+        from django.conf import settings
+        if not getattr(settings, 'DRUG_PROVIDER_OPENFDA_ENABLED', True):
+            return
+    except Exception:
+        pass
+
+    rxcui = enriched.get('rxcui', '')
+    name = enriched.get('name', '')
+    if rxcui:
+        search_q = f'openfda.rxcui:"{rxcui}"'
+    elif name:
+        search_q = f'openfda.generic_name:"{name}"'
+    else:
+        return
+
+    data = _get(
+        "https://api.fda.gov/drug/label.json",
+        params={'search': search_q, 'limit': 1},
+    )
+    if not data and name:
+        data = _get(
+            "https://api.fda.gov/drug/label.json",
+            params={'search': f'openfda.brand_name:"{name}"', 'limit': 1},
+        )
+    if not data:
+        return
+
+    hits = data.get('results') or []
+    if not hits:
+        return
+    hit = hits[0]
+    openfda = hit.get('openfda', {})
+
+    def _first_item(key):
+        items = hit.get(key) or []
+        return items[0].strip() if items else ''
+
+    if not enriched['indications']:
+        enriched['indications'] = _first_item('indications_and_usage')
+    if not enriched['warnings']:
+        enriched['warnings'] = (
+            _first_item('warnings') or _first_item('warnings_and_cautions')
+        )
+    if not enriched['side_effects']:
+        enriched['side_effects'] = _first_item('adverse_reactions')
+    if not enriched['dosage_forms']:
+        enriched['dosage_forms'] = _first_item('dosage_forms_and_strengths')
+    if not enriched['mechanism']:
+        enriched['mechanism'] = _first_item('mechanism_of_action')
+    if not enriched['drug_class']:
+        enriched['drug_class'] = ', '.join(openfda.get('pharm_class_epc') or [])
+
+    app_nums = openfda.get('application_number') or []
+    if app_nums:
+        enriched['external_ids']['fda_application_number'] = app_nums[0]
+    spl_ids = openfda.get('spl_id') or []
+    if spl_ids:
+        enriched['external_ids']['fda_spl_id'] = spl_ids[0]
+
+
+def _enrich_from_dailymed(enriched):
+    """Supplement synonyms from DailyMed."""
+    try:
+        from django.conf import settings
+        if not getattr(settings, 'DRUG_PROVIDER_DAILYMED_ENABLED', True):
+            return
+    except Exception:
+        pass
+
+    name = enriched.get('name', '')
+    if not name:
+        return
+    data = _get(
+        "https://dailymed.nlm.nih.gov/dailymed/services/v2/drugnames.json",
+        params={'drug_name': name, 'pagesize': 5},
+    )
+    if data:
+        for item in (data.get('data') or []):
+            n = item.get('drug_name') or item.get('drugname') or ''
+            if n and n not in enriched['synonyms']:
+                enriched['synonyms'].append(n)
+
+
+def _enrich_from_pubchem(enriched):
+    """Supplement from PubChem: synonyms and CID."""
+    try:
+        from django.conf import settings
+        if not getattr(settings, 'DRUG_PROVIDER_PUBCHEM_ENABLED', True):
+            return
+    except Exception:
+        pass
+
+    name = enriched.get('name', '')
+    if not name:
+        return
+    encoded = urllib.parse.quote(name, safe='')
+    cid_data = _get(
+        f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{encoded}/cids/JSON",
+    )
+    if cid_data:
+        cids = cid_data.get('IdentifierList', {}).get('CID') or []
+        if cids:
+            enriched['external_ids']['pubchem_cid'] = cids[0]
+            syn_data = _get(
+                f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cids[0]}/synonyms/JSON",
+            )
+            if syn_data:
+                syns = (
+                    (syn_data.get('InformationList', {}).get('Information') or [{}])[0]
+                    .get('Synonym') or []
+                )
+                for s in syns[:10]:
+                    if s not in enriched['synonyms']:
+                        enriched['synonyms'].append(s)
+
+
+# ---------------------------------------------------------------------------
 # Interaction checking
 # ---------------------------------------------------------------------------
 

@@ -1250,6 +1250,15 @@ class MedicationConcept(models.Model):
     source = models.CharField(max_length=50, default='rxnorm')
     last_fetched = models.DateTimeField(auto_now=True)
 
+    # Enriched fields populated from multi-provider lookups
+    indications = models.TextField(blank=True, default='', help_text='What the drug is used for.')
+    side_effects = models.TextField(blank=True, default='', help_text='Known adverse reactions / side effects.')
+    warnings = models.TextField(blank=True, default='', help_text='Contraindications and important safety warnings.')
+    dosage_forms = models.TextField(blank=True, default='', help_text='Available dosage forms (e.g. tablet, capsule).')
+    mechanism = models.TextField(blank=True, default='', help_text='Mechanism of action.')
+    external_ids = models.JSONField(blank=True, default=dict, help_text='IDs in other databases (FDA, PubChem, etc.).')
+    last_enriched = models.DateTimeField(null=True, blank=True, help_text='When enriched data was last fetched.')
+
     def __str__(self):
         return f"{self.name} (RXCUI: {self.rxcui})" if self.rxcui else self.name
 

@@ -97,7 +97,7 @@
     <tbody>
       {% for entry in entries %}
       <tr{% if entry.is_overdue %} class="table-warning"{% endif %}>
-        <td>{% if entry.medication_name %}{{ entry.medication_name }}{% else %}-{% endif %}</td>
+        <td>{% if entry.medication_name %}<a href="{% url 'medication_concept_detail' name=entry.medication_name %}" class="text-decoration-none">{{ entry.medication_name }}</a>{% else %}-{% endif %}</td>
         <td>{% if entry.dosage %}{{ entry.dosage }}{% else %}-{% endif %}</td>
         <td>{% if entry.frequency %}{{ entry.frequency }}{% else %}-{% endif %}</td>
         <td>{% if entry.start_date %}{{ entry.start_date|date:"Y-m-d" }}{% else %}-{% endif %}</td>
@@ -123,6 +123,10 @@
               <i class="fas fa-ellipsis-v"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a href="{% url 'medication_concept_detail' name=entry.medication_name %}" class="dropdown-item"><i class="fas fa-info-circle me-2"></i>Drug Info</a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
               <li>
                 <a href="{% url 'medication_log_add' %}?schedule={{ entry.id }}" class="dropdown-item"><i class="fas fa-clipboard-check me-2"></i>Log Dose</a>
               </li>

@@ -246,6 +246,7 @@ urlpatterns = [
     path('medications/edit/<int:pk>/', views.medication_schedule_edit, name='medication_schedule_edit'),
     path('medications/delete/<int:pk>/', views.medication_schedule_delete, name='medication_schedule_delete'),
     path('medications/autocomplete/', views.medication_autocomplete, name='medication_autocomplete'),
+    path('medications/info/<str:name>/', views.medication_concept_detail, name='medication_concept_detail'),
 
     # Medication Log (Dose Check-in)
     path('medications/log/', views.medication_log_list, name='medication_log_list'),
