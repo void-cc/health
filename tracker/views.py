@@ -22,7 +22,7 @@ from .models import (
     # Advanced Analytics & AI
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
-    MedicationLog, MedicationInventory,
+    MedicationLog, MedicationInventory, MedicationConcept,
     HealthGoal, CriticalAlert,
     # Export, Sharing & Practitioner Access
     SecureViewingLink, PractitionerAccess, IntakeSummary,
@@ -3023,17 +3023,23 @@ def medication_schedule_add(request):
         try:
             start_str = request.POST.get('start_date', '').strip()
             end_str = request.POST.get('end_date', '').strip()
+            time_str = request.POST.get('time_of_day', '').strip()
+            med_name = request.POST.get('medication_name', '')
+            rxcui = request.POST.get('rxcui', '')
             MedicationSchedule.objects.create(
-                medication_name=request.POST.get('medication_name', ''),
+                user=request.user,
+                medication_name=med_name,
+                rxcui=rxcui,
                 dosage=request.POST.get('dosage', ''),
                 frequency=request.POST.get('frequency', ''),
                 start_date=datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else None,
                 end_date=datetime.strptime(end_str, '%Y-%m-%d').date() if end_str else None,
-                time_of_day=request.POST.get('time_of_day', ''),
+                time_of_day=time_str if time_str else None,
                 is_active=request.POST.get('is_active') == 'on',
                 notes=request.POST.get('notes', ''),
             )
             messages.success(request, 'Medication schedule added!')
+            _warn_interactions(request, med_name)
             return redirect('medication_schedule_list')
         except Exception:
             messages.error(request, 'Error adding medication schedule.')
@@ -3047,16 +3053,20 @@ def medication_schedule_edit(request, pk):
         try:
             start_str = request.POST.get('start_date', '').strip()
             end_str = request.POST.get('end_date', '').strip()
-            entry.medication_name = request.POST.get('medication_name', '')
+            time_str = request.POST.get('time_of_day', '').strip()
+            med_name = request.POST.get('medication_name', '')
+            entry.medication_name = med_name
+            entry.rxcui = request.POST.get('rxcui', entry.rxcui)
             entry.dosage = request.POST.get('dosage', '')
             entry.frequency = request.POST.get('frequency', '')
             entry.start_date = datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else None
             entry.end_date = datetime.strptime(end_str, '%Y-%m-%d').date() if end_str else None
-            entry.time_of_day = request.POST.get('time_of_day', '')
+            entry.time_of_day = time_str if time_str else None
             entry.is_active = request.POST.get('is_active') == 'on'
             entry.notes = request.POST.get('notes', '')
             entry.save()
             messages.success(request, 'Medication schedule updated!')
+            _warn_interactions(request, med_name)
             return redirect('medication_schedule_list')
         except Exception:
             messages.error(request, 'Error updating medication schedule.')
@@ -3069,6 +3079,58 @@ def medication_schedule_delete(request, pk):
         get_object_or_404(MedicationSchedule, id=pk).delete()
         messages.success(request, 'Medication schedule deleted!')
     return redirect('medication_schedule_list')
+
+
+# ===== Interaction helpers / new endpoints =====
+
+def _warn_interactions(request, medication_name):
+    """Run an interaction check and emit Django warning messages for any risks found."""
+    try:
+        from .rxnorm import run_interaction_check_for_user
+        found = run_interaction_check_for_user(request.user, medication_name)
+        for interaction in found:
+            severity_label = interaction.get_severity_display()
+            messages.warning(
+                request,
+                f"\u26a0\ufe0f Interaction ({severity_label}): {interaction.medication_a} \u2715 "
+                f"{interaction.medication_b} \u2014 {interaction.description or 'See Interactions Dashboard for details.'}",
+            )
+    except Exception:
+        pass  # Graceful degradation: never block the save because of API failure
+
+
+@login_required
+def medication_autocomplete(request):
+    """AJAX endpoint returning JSON list of medication name suggestions."""
+    from .rxnorm import search_medication_names
+    query = request.GET.get('q', '').strip()
+    results = search_medication_names(query) if query else []
+    return JsonResponse({'results': results})
+
+
+@login_required
+def interaction_dashboard(request):
+    """Dashboard showing all known/potential interaction risks for the user's current medications."""
+    interactions = PharmacologicalInteraction.objects.filter(
+        user=request.user
+    ).order_by('-detected_at')
+    severity_order = {'critical': 0, 'high': 1, 'moderate': 2, 'low': 3}
+    interactions_sorted = sorted(interactions, key=lambda i: severity_order.get(i.severity, 4))
+
+    active_schedules = MedicationSchedule.objects.filter(
+        user=request.user, is_active=True
+    ).order_by('medication_name')
+
+    return render(request, 'interaction_dashboard.html', {
+        'interactions': interactions_sorted,
+        'active_schedules': active_schedules,
+        'severity_counts': {
+            'critical': sum(1 for i in interactions_sorted if i.severity == 'critical'),
+            'high': sum(1 for i in interactions_sorted if i.severity == 'high'),
+            'moderate': sum(1 for i in interactions_sorted if i.severity == 'moderate'),
+            'low': sum(1 for i in interactions_sorted if i.severity == 'low'),
+        },
+    })
 
 
 # ===== Medication Log (Dose Check-in) =====
@@ -4220,8 +4282,6 @@ _medication = make_crud_views(
     edit_url_name='medication_schedule_edit',
     order_by='-start_date',
 )
-medication_schedule_add = _medication['add']
-medication_schedule_edit = _medication['edit']
 medication_schedule_delete = _medication['delete']
 
 # ===== Pharmacological Interactions =====

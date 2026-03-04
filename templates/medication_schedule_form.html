@@ -2,11 +2,16 @@
 {% block content %}
 <div class="container my-5">
   <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Medication Schedule</h2>
-  <form method="POST">
+  <form method="POST" id="medScheduleForm">
     {% csrf_token %}
-    <div class="mb-3">
+    {# Hidden field to carry the resolved RxCUI back to the server #}
+    <input type="hidden" id="rxcui" name="rxcui" value="{% if editing %}{{ entry.rxcui }}{% endif %}">
+    <div class="mb-3 position-relative">
       <label for="medication_name" class="form-label">Medication Name:</label>
-      <input type="text" class="form-control" id="medication_name" name="medication_name" value="{% if editing %}{{ entry.medication_name }}{% endif %}" required>
+      <input type="text" class="form-control" id="medication_name" name="medication_name"
+             value="{% if editing %}{{ entry.medication_name }}{% endif %}"
+             autocomplete="off" required>
+      <ul id="med-autocomplete-list" class="list-group position-absolute w-100 shadow" style="z-index:1000;display:none;"></ul>
     </div>
     <div class="mb-3">
       <label for="dosage" class="form-label">Dosage:</label>
@@ -42,4 +47,46 @@
     </div>
   </form>
 </div>
+
+<script>
+(function () {
+  const input = document.getElementById('medication_name');
+  const list  = document.getElementById('med-autocomplete-list');
+  const rxcuiField = document.getElementById('rxcui');
+  let debounceTimer;
+
+  input.addEventListener('input', function () {
+    clearTimeout(debounceTimer);
+    const q = this.value.trim();
+    if (q.length < 2) { list.style.display = 'none'; return; }
+    debounceTimer = setTimeout(() => {
+      fetch('{% url "medication_autocomplete" %}?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(data => {
+          list.innerHTML = '';
+          if (!data.results || data.results.length === 0) { list.style.display = 'none'; return; }
+          data.results.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action';
+            li.textContent = item.name;
+            li.dataset.rxcui = item.rxcui || '';
+            li.addEventListener('mousedown', function (e) {
+              e.preventDefault();
+              input.value = this.textContent;
+              rxcuiField.value = this.dataset.rxcui;
+              list.style.display = 'none';
+            });
+            list.appendChild(li);
+          });
+          list.style.display = 'block';
+        })
+        .catch(() => { list.style.display = 'none'; });
+    }, 300);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (e.target !== input) { list.style.display = 'none'; }
+  });
+})();
+</script>
 {% endblock %}

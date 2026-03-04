@@ -245,6 +245,7 @@ urlpatterns = [
     path('medications/add/', views.medication_schedule_add, name='medication_schedule_add'),
     path('medications/edit/<int:pk>/', views.medication_schedule_edit, name='medication_schedule_edit'),
     path('medications/delete/<int:pk>/', views.medication_schedule_delete, name='medication_schedule_delete'),
+    path('medications/autocomplete/', views.medication_autocomplete, name='medication_autocomplete'),
 
     # Medication Log (Dose Check-in)
     path('medications/log/', views.medication_log_list, name='medication_log_list'),
@@ -263,6 +264,7 @@ urlpatterns = [
     path('interactions/add/', views.pharmacological_interaction_add, name='pharmacological_interaction_add'),
     path('interactions/edit/<int:pk>/', views.pharmacological_interaction_edit, name='pharmacological_interaction_edit'),
     path('interactions/delete/<int:pk>/', views.pharmacological_interaction_delete, name='pharmacological_interaction_delete'),
+    path('interactions/dashboard/', views.interaction_dashboard, name='interaction_dashboard'),
 
     # Health Goals
     path('goals/', views.health_goal_list, name='health_goal_list'),

@@ -5,7 +5,7 @@ from .models import (
     ClinicalTrialMatch, HabitLog, Reminder,
     NotificationPreference, NotificationTemplate, NotificationTrigger,
     NotificationLog,
-    MedicationLog, MedicationInventory,
+    MedicationLog, MedicationInventory, MedicationConcept,
     MeasurementType, SourceDocument, Measurement,
 )
 
@@ -150,3 +150,9 @@ class MeasurementAdmin(admin.ModelAdmin):
     list_filter = ('measurement_type', 'observed_at')
     search_fields = ('raw_name', 'raw_line')
     raw_id_fields = ('user', 'source_document')
+
+@admin.register(MedicationConcept)
+class MedicationConceptAdmin(admin.ModelAdmin):
+    list_display = ('name', 'rxcui', 'drug_class', 'source', 'last_fetched')
+    list_filter = ('source',)
+    search_fields = ('name', 'rxcui', 'synonyms', 'drug_class')

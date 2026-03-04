@@ -6,7 +6,7 @@ from tracker.models import (
     UserProfile, SecurityLog, UserSession, PrivacyPreference,
     SecureViewingLink, PractitionerAccess, IntakeSummary,
     DataExportRequest, StakeholderEmail, MedicationSchedule, PharmacologicalInteraction,
-    MedicationLog, MedicationInventory,
+    MedicationLog, MedicationInventory, MedicationConcept,
     SleepLog, MacronutrientLog, FastingLog, MetabolicLog,
     HealthGoal, CriticalAlert, WearableDevice, WearableSyncLog,
     HealthReport, PredictiveBiomarker, BiologicalAgeCalculation,
@@ -6098,3 +6098,260 @@ class MeasurementModelTests(TestCase):
             synonyms='Blood Sugar, Glucose fasting',
         )
         self.assertIn('Blood Sugar', mt.synonyms)
+# =============================================================================
+# Medication Interaction Checker Tests
+# =============================================================================
+
+class MedicationConceptModelTests(TestCase):
+    """Tests for the MedicationConcept model."""
+
+    def test_create_concept_with_rxcui(self):
+        concept = MedicationConcept.objects.create(name='Aspirin', rxcui='1191', source='rxnorm')
+        self.assertEqual(str(concept), 'Aspirin (RXCUI: 1191)')
+
+    def test_create_concept_without_rxcui(self):
+        concept = MedicationConcept.objects.create(name='Ibuprofen')
+        self.assertEqual(str(concept), 'Ibuprofen')
+
+    def test_concept_fields(self):
+        concept = MedicationConcept.objects.create(
+            name='Metformin', rxcui='6809', drug_class='Biguanide', source='rxnorm',
+            synonyms='Glucophage\nFortamet',
+        )
+        self.assertEqual(concept.drug_class, 'Biguanide')
+        self.assertIn('Glucophage', concept.synonyms)
+
+
+class MedicationScheduleConceptLinkTests(TestCase):
+    """Tests that MedicationSchedule can link to a MedicationConcept and store rxcui."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='conceptuser', password='testpass123')
+
+    def test_schedule_with_rxcui(self):
+        schedule = MedicationSchedule.objects.create(
+            user=self.user,
+            medication_name='Aspirin',
+            rxcui='1191',
+            dosage='81mg',
+            frequency='daily',
+            start_date=date.today(),
+        )
+        self.assertEqual(schedule.rxcui, '1191')
+        self.assertIsNone(schedule.concept)
+
+    def test_schedule_links_to_concept(self):
+        concept = MedicationConcept.objects.create(name='Warfarin', rxcui='11289', source='rxnorm')
+        schedule = MedicationSchedule.objects.create(
+            user=self.user,
+            medication_name='Warfarin',
+            rxcui='11289',
+            concept=concept,
+            dosage='5mg',
+            frequency='daily',
+            start_date=date.today(),
+        )
+        self.assertEqual(schedule.concept, concept)
+        self.assertIn(schedule, concept.schedules.all())
+
+
+class PharmacologicalInteractionUserTests(TestCase):
+    """Tests for user-linked PharmacologicalInteraction records."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='intuser', password='testpass123')
+
+    def test_create_interaction_with_user(self):
+        interaction = PharmacologicalInteraction.objects.create(
+            user=self.user,
+            medication_a='Warfarin',
+            medication_b='Aspirin',
+            severity='high',
+            description='Increased bleeding risk.',
+            source='rxnorm',
+        )
+        self.assertEqual(interaction.user, self.user)
+        self.assertEqual(interaction.source, 'rxnorm')
+        self.assertIn(interaction, self.user.pharmacological_interactions.all())
+
+    def test_interaction_str(self):
+        interaction = PharmacologicalInteraction.objects.create(
+            medication_a='Drug A', medication_b='Drug B', severity='moderate',
+        )
+        self.assertIn('Drug A', str(interaction))
+        self.assertIn('Drug B', str(interaction))
+
+
+class MedicationAutocompleteViewTests(TestCase):
+    """Tests for the medication autocomplete AJAX endpoint."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='acuser', password='testpass123')
+        self.client.login(username='acuser', password='testpass123')
+
+    def test_autocomplete_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('medication_autocomplete') + '?q=aspirin')
+        self.assertEqual(response.status_code, 302)
+
+    def test_autocomplete_empty_query_returns_empty(self):
+        response = self.client.get(reverse('medication_autocomplete') + '?q=')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data['results'], [])
+
+    def test_autocomplete_returns_local_cached_results(self):
+        MedicationConcept.objects.create(name='Aspirin', rxcui='1191', source='rxnorm')
+        MedicationConcept.objects.create(name='Aspirin Low Dose', rxcui='1192', source='rxnorm')
+        response = self.client.get(reverse('medication_autocomplete') + '?q=Aspirin')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        names = [r['name'] for r in data['results']]
+        self.assertIn('Aspirin', names)
+
+    def test_autocomplete_short_query_handled(self):
+        response = self.client.get(reverse('medication_autocomplete') + '?q=A')
+        self.assertEqual(response.status_code, 200)
+
+
+class InteractionDashboardViewTests(TestCase):
+    """Tests for the interaction dashboard view."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='dashuser', password='testpass123')
+        self.client.login(username='dashuser', password='testpass123')
+
+    def test_dashboard_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('interaction_dashboard'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_dashboard_empty(self):
+        response = self.client.get(reverse('interaction_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Interaction Dashboard')
+
+    def test_dashboard_shows_interactions(self):
+        PharmacologicalInteraction.objects.create(
+            user=self.user,
+            medication_a='Warfarin',
+            medication_b='Aspirin',
+            severity='high',
+            description='Increased bleeding risk.',
+            source='rxnorm',
+        )
+        response = self.client.get(reverse('interaction_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Warfarin')
+        self.assertContains(response, 'Aspirin')
+        self.assertContains(response, 'Increased bleeding risk')
+
+    def test_dashboard_severity_counts_in_context(self):
+        PharmacologicalInteraction.objects.create(
+            user=self.user, medication_a='DrugA', medication_b='DrugB', severity='critical',
+        )
+        PharmacologicalInteraction.objects.create(
+            user=self.user, medication_a='DrugC', medication_b='DrugD', severity='moderate',
+        )
+        response = self.client.get(reverse('interaction_dashboard'))
+        counts = response.context['severity_counts']
+        self.assertEqual(counts['critical'], 1)
+        self.assertEqual(counts['moderate'], 1)
+
+    def test_dashboard_does_not_show_other_users_interactions(self):
+        other = User.objects.create_user(username='otheruser', password='testpass123')
+        PharmacologicalInteraction.objects.create(
+            user=other, medication_a='SecretDrug', medication_b='Other', severity='low',
+        )
+        response = self.client.get(reverse('interaction_dashboard'))
+        self.assertNotContains(response, 'SecretDrug')
+
+
+class RxNormHelperTests(TestCase):
+    """Unit tests for the rxnorm helper module (offline, no external API calls)."""
+
+    def test_map_severity_known_values(self):
+        from tracker.rxnorm import _map_severity
+        self.assertEqual(_map_severity('high'), 'high')
+        self.assertEqual(_map_severity('moderate'), 'moderate')
+        self.assertEqual(_map_severity('medium'), 'moderate')
+        self.assertEqual(_map_severity('minor'), 'low')
+        self.assertEqual(_map_severity('low'), 'low')
+        self.assertEqual(_map_severity('critical'), 'critical')
+
+    def test_map_severity_unknown_defaults_to_low(self):
+        from tracker.rxnorm import _map_severity
+        self.assertEqual(_map_severity('unknown_value'), 'low')
+
+    def test_search_empty_query_returns_empty(self):
+        from tracker.rxnorm import search_medication_names
+        self.assertEqual(search_medication_names(''), [])
+        self.assertEqual(search_medication_names('  '), [])
+
+    def test_check_interactions_single_drug(self):
+        from tracker.rxnorm import check_interactions
+        # Only one drug — cannot have interactions
+        result = check_interactions(['Aspirin'])
+        self.assertEqual(result, [])
+
+    def test_check_interactions_no_drugs(self):
+        from tracker.rxnorm import check_interactions
+        self.assertEqual(check_interactions([]), [])
+
+    def test_run_interaction_check_no_active_schedules(self):
+        """With only one medication on the regimen there's nothing to check."""
+        from tracker.rxnorm import run_interaction_check_for_user
+        user = User.objects.create_user(username='rxuser', password='testpass')
+        # No schedules exist — function should return [] without error
+        result = run_interaction_check_for_user(user, 'Aspirin')
+        self.assertEqual(result, [])
+
+    def test_search_returns_local_cache_before_api(self):
+        """Local MedicationConcept records are returned without calling the API."""
+        from tracker.rxnorm import search_medication_names
+        MedicationConcept.objects.create(name='Metformin', rxcui='6809', source='rxnorm')
+        results = search_medication_names('Metformin')
+        self.assertTrue(len(results) >= 1)
+        self.assertEqual(results[0]['name'], 'Metformin')
+
+
+class MedicationScheduleAddInteractionTests(TestCase):
+    """Tests that the medication schedule add/edit views emit interaction warnings."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='schedintuser', password='testpass123')
+        self.client.login(username='schedintuser', password='testpass123')
+
+    def test_add_schedule_stores_rxcui(self):
+        response = self.client.post(reverse('medication_schedule_add'), {
+            'medication_name': 'Aspirin',
+            'rxcui': '1191',
+            'dosage': '81mg',
+            'frequency': 'daily',
+            'start_date': date.today().strftime('%Y-%m-%d'),
+            'is_active': 'on',
+        })
+        self.assertRedirects(response, reverse('medication_schedule_list'))
+        sched = MedicationSchedule.objects.get(user=self.user, medication_name='Aspirin')
+        self.assertEqual(sched.rxcui, '1191')
+
+    def test_edit_schedule_stores_rxcui(self):
+        sched = MedicationSchedule.objects.create(
+            user=self.user, medication_name='Aspirin', dosage='81mg',
+            frequency='daily', start_date=date.today(),
+        )
+        response = self.client.post(reverse('medication_schedule_edit', kwargs={'pk': sched.pk}), {
+            'medication_name': 'Aspirin',
+            'rxcui': '1191',
+            'dosage': '100mg',
+            'frequency': 'daily',
+            'start_date': date.today().strftime('%Y-%m-%d'),
+            'is_active': 'on',
+        })
+        self.assertRedirects(response, reverse('medication_schedule_list'))
+        sched.refresh_from_db()
+        self.assertEqual(sched.rxcui, '1191')
+        self.assertEqual(sched.dosage, '100mg')
