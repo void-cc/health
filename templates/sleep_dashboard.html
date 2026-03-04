@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
             borderColor: '#198754',
             backgroundColor: 'rgba(25,135,84,0.08)',
             fill: true,
-            tension: 0.3,
+            lineTension: 0.3,
             pointRadius: 2,
             yAxisID: 'y',
           },
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
             borderColor: '#0d6efd',
             backgroundColor: 'transparent',
             borderDash: [4,4],
-            tension: 0.3,
+            lineTension: 0.3,
             pointRadius: 2,
             yAxisID: 'y1',
           }
@@ -370,12 +370,24 @@ document.addEventListener('DOMContentLoaded', function() {
       },
       options: {
         responsive: true,
-        interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16, font: { size: 11 } } } },
+        tooltips: { mode: 'index', intersect: false },
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16, fontSize: 11 } },
         scales: {
-          y: { position: 'left', title: { display: true, text: 'Quality (0-100)', font: { size: 11 } }, min: 0, max: 100 },
-          y1: { position: 'right', title: { display: true, text: 'Duration (min)', font: { size: 11 } }, grid: { drawOnChartArea: false } },
-          x: { ticks: { font: { size: 10 }, maxRotation: 45 } }
+          yAxes: [
+            {
+              id: 'y',
+              position: 'left',
+              scaleLabel: { display: true, labelString: 'Quality (0-100)', fontSize: 11 },
+              ticks: { min: 0, max: 100 }
+            },
+            {
+              id: 'y1',
+              position: 'right',
+              scaleLabel: { display: true, labelString: 'Duration (min)', fontSize: 11 },
+              gridLines: { drawOnChartArea: false }
+            }
+          ],
+          xAxes: [{ ticks: { fontSize: 10, maxRotation: 45 } }]
         }
       }
     });
@@ -398,9 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
       options: {
         responsive: true,
         cutoutPercentage: 65,
-        plugins: {
-          legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 11 } } }
-        }
+        legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, fontSize: 11 } }
       }
     });
   }
