@@ -3672,14 +3672,32 @@ class Phase9SecureViewingLinkTests(TestCase):
         """Shared view should display health data when available."""
         from django.utils import timezone
         from datetime import timedelta
-        BloodTest.objects.create(test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1))
+        user = User.objects.create_user(username='datauser', password='pass')
+        BloodTest.objects.create(test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1), user=user)
         link = SecureViewingLink.objects.create(
             token='data-token', expires_at=timezone.now() + timedelta(hours=24),
-            is_active=True, data_types='blood_tests',
+            is_active=True, data_types='blood_tests', user=user,
         )
         response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'data-token'}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Glucose')
+
+    def test_shared_view_only_shows_owner_data(self):
+        """Shared view must not expose another user's health data."""
+        from django.utils import timezone
+        from datetime import timedelta
+        owner = User.objects.create_user(username='owner', password='pass')
+        other = User.objects.create_user(username='other', password='pass')
+        BloodTest.objects.create(test_name='OwnerGlucose', value=90, unit='mg/dL', date=date(2026, 3, 1), user=owner)
+        BloodTest.objects.create(test_name='OtherCholesterol', value=200, unit='mg/dL', date=date(2026, 3, 1), user=other)
+        link = SecureViewingLink.objects.create(
+            token='isolation-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True, data_types='blood_tests', user=owner,
+        )
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'isolation-token'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'OwnerGlucose')
+        self.assertNotContains(response, 'OtherCholesterol')
 
     def test_shared_view_invalid_token_404(self):
         """Non-existent tokens should return 404."""

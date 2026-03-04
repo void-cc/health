@@ -3197,14 +3197,16 @@ def secure_link_shared_view(request, token):
     link.save(update_fields=['access_count'])
     data_types = [dt.strip() for dt in link.data_types.split(',') if dt.strip()] if link.data_types else []
     context = {'link': link, 'data': {}}
+    if link.user is None:
+        return render(request, 'secure_link_shared_view.html', context)
     if not data_types or 'blood_tests' in data_types:
-        context['data']['blood_tests'] = list(BloodTest.objects.all().order_by('-date')[:20].values(
+        context['data']['blood_tests'] = list(BloodTest.objects.filter(user=link.user).order_by('-date')[:20].values(
             'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max'))
     if not data_types or 'vitals' in data_types:
-        context['data']['vitals'] = list(VitalSign.objects.all().order_by('-date')[:20].values(
+        context['data']['vitals'] = list(VitalSign.objects.filter(user=link.user).order_by('-date')[:20].values(
             'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt', 'respiratory_rate', 'spo2'))
     if not data_types or 'medications' in data_types:
-        context['data']['medications'] = list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
+        context['data']['medications'] = list(MedicationSchedule.objects.filter(user=link.user).order_by('-start_date')[:20].values(
             'medication_name', 'dosage', 'frequency', 'start_date', 'end_date'))
     return render(request, 'secure_link_shared_view.html', context)
 
@@ -4072,6 +4074,7 @@ def secure_viewing_link_add(request):
                 data_types=request.POST.get('data_types', ''),
                 expires_at=expires_dt,
                 is_active=request.POST.get('is_active') == 'on',
+                user=request.user if request.user.is_authenticated else None,
             )
             messages.success(request, 'Secure viewing link created!')
             return redirect('secure_viewing_link_list')
