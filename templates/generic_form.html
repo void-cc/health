@@ -40,7 +40,7 @@
         {% elif f.type == 'bool' %}
           <div class="form-check">
             <input type="checkbox" class="form-check-input" name="{{ f.name }}" id="{{ f.name }}" {% if editing %}{% with val=entry|get_field:f.name %}{% if val %}checked{% endif %}{% endwith %}{% endif %} />
-            <label class="form-check-label" for="{{ f.name }}">{{ f.label }}</label>
+            <label class="form-check-label" for="{{ f.name }}" aria-hidden="true">{{ f.label }}</label>
           </div>
 
         {% elif f.type == 'float' or f.type == 'int' %}

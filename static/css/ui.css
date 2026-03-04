@@ -127,7 +127,7 @@
   --category-color-5: #d55e00;  /* vermillion */
   --category-color-6: #56b4e9;  /* sky blue */
   --category-color-7: #f0e442;  /* yellow */
-  --category-color-8: #000000;  /* black */
+  --category-color-8: #555555;  /* dark grey (neutral, visible on both light and dark bg) */
 
   /* Spacing helpers */
   --touch-target-min: 44px;
