@@ -34,6 +34,8 @@ from .models import (
     NotificationPreference, NotificationTemplate, NotificationTrigger,
     NotificationLog, NOTIFICATION_CHANNELS, NOTIFICATION_EVENT_TYPES,
     HabitLog, Reminder,
+    # Canonical measurement layer
+    MeasurementType, SourceDocument, Measurement,
 )
 from .generic_crud import make_crud_views
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -339,7 +341,7 @@ def vitals(request):
     all_vitals = VitalSign.objects.all().order_by('-date')
     return render(request, 'vitals.html', {'vitals': all_vitals})
 
-@login_required
+@admin_required
 def add_test(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -391,7 +393,7 @@ def add_test(request):
         test_info = {ti.test_name: {'unit': ti.unit, 'normal_min': ti.normal_min, 'normal_max': ti.normal_max, 'category': ti.category} for ti in test_info_objects}
         return render(request, 'add.html', {'test_info': test_info, 'date': datetime.now().strftime('%Y-%m-%d')})
 
-@login_required
+@admin_required
 def add_test_info(request):
     if request.method == 'POST':
         test_name = request.POST.get('test_name')
@@ -461,7 +463,7 @@ def edit_test(request, test_id):
 
     return render(request, 'edit.html', {'test': test})
 
-@login_required
+@admin_required
 def add_vitals(request):
     if request.method == 'POST':
         date_str = request.POST.get('date')
@@ -664,10 +666,6 @@ def scatter_plots(request):
         'metric_names': metric_names,
     })
 
-import pdfplumber
-import pdf2image
-import pytesseract
-from thefuzz import process, fuzz
 
 @login_required
 def import_data(request):
@@ -685,314 +683,360 @@ def import_data(request):
             messages.error(request, 'Please upload a .csv, .json, .pdf, or .hl7 file')
             return redirect('import_data')
 
+        source_doc = None
         try:
-            file_data = []
+            fname_lower = file.name.lower()
 
-            if file.name.lower().endswith('.csv'):
-                file_content = file.read().decode("UTF8")
-                stream = io.StringIO(file_content, newline=None)
-                csv_input = csv.DictReader(stream)
-                file_data = list(csv_input)
-            elif file.name.lower().endswith('.json'):
-                json_data = json.load(file)
-                if isinstance(json_data, dict) and json_data.get('resourceType') == 'Bundle':
-                    for entry in json_data.get('entry', []):
-                        obs = entry.get('resource', {})
-                        if obs.get('resourceType') == 'Observation':
-                            name = obs.get('code', {}).get('text')
-                            if not name:
-                                codings = obs.get('code', {}).get('coding', [])
-                                if codings:
-                                    name = codings[0].get('display')
+            # --- CSV: new service pipeline → SourceDocument + Measurement ---
+            if fname_lower.endswith('.csv'):
+                from tracker.services.importing import parse_csv, map_candidates
+                file_content = file.read().decode('UTF8')
 
-                            val_quantity = obs.get('valueQuantity', {})
-                            val = val_quantity.get('value')
-                            unit = val_quantity.get('unit')
+                source_doc = SourceDocument.objects.create(
+                    user=request.user,
+                    filename=file.name,
+                    content_type='csv',
+                    status='processing',
+                    raw_text=file_content[:10000],
+                )
 
-                            date_str = obs.get('effectiveDateTime')
-                            date_obj = date_str[:10] if date_str else None
+                candidates = parse_csv(file_content)
+                mapped = map_candidates(candidates)
 
-                            ref_ranges = obs.get('referenceRange', [])
-                            normal_min = None
-                            normal_max = None
-                            if ref_ranges:
-                                normal_min = ref_ranges[0].get('low', {}).get('value')
-                                normal_max = ref_ranges[0].get('high', {}).get('value')
+                imported = 0
+                skipped = 0
+                for cand, mtype in mapped:
+                    if mtype is None:
+                        if cand.confidence and cand.confidence > 0:
+                            messages.warning(
+                                request,
+                                f"Low confidence match for '{cand.raw_name}' "
+                                f"(score: {cand.confidence:.0%}) — skipped."
+                            )
+                        skipped += 1
+                        continue
+                    Measurement.objects.create(
+                        user=request.user,
+                        measurement_type=mtype,
+                        observed_at=cand.observed_at or timezone.now(),
+                        value=cand.value,
+                        unit=cand.unit or mtype.default_unit,
+                        ref_min=cand.ref_min,
+                        ref_max=cand.ref_max,
+                        source_document=source_doc,
+                        confidence=cand.confidence,
+                        raw_name=cand.raw_name,
+                        raw_line=cand.raw_line,
+                    )
+                    imported += 1
 
-                            is_vital = False
-                            categories = obs.get('category', [])
-                            for cat in categories:
-                                codings = cat.get('coding', [])
-                                for c in codings:
-                                    if c.get('code') == 'vital-signs':
-                                        is_vital = True
+                source_doc.status = 'done'
+                source_doc.save()
 
-                            if is_vital:
-                                if name and "Blood Pressure" in name and "component" in obs:
-                                    sys = None
-                                    dia = None
-                                    for comp in obs['component']:
-                                        c_name = comp.get('code', {}).get('text', '').lower()
-                                        c_val = comp.get('valueQuantity', {}).get('value')
-                                        if 'systolic' in c_name:
-                                            sys = c_val
-                                        elif 'diastolic' in c_name:
-                                            dia = c_val
-                                    if sys and dia:
+                flash_msg = f"Imported {imported} measurements."
+                if skipped:
+                    flash_msg += f" Skipped {skipped} unrecognised entries."
+                messages.success(request, flash_msg)
+                return redirect('index')
+
+            # --- PDF: new service pipeline → SourceDocument + Measurement ---
+            elif fname_lower.endswith('.pdf'):
+                from tracker.services.importing import parse_pdf, map_candidates
+                pdf_bytes = file.read()
+
+                source_doc = SourceDocument.objects.create(
+                    user=request.user,
+                    filename=file.name,
+                    content_type='pdf',
+                    status='processing',
+                )
+
+                known_names = list(MeasurementType.objects.values_list('name', flat=True))
+                known_names += list(BloodTestInfo.objects.values_list('test_name', flat=True))
+                known_names = list(set(known_names))
+
+                candidates = parse_pdf(pdf_bytes, known_names)
+                mapped = map_candidates(candidates)
+
+                imported = 0
+                skipped = 0
+                for cand, mtype in mapped:
+                    if mtype is None:
+                        if cand.confidence and cand.confidence > 0:
+                            messages.warning(
+                                request,
+                                f"Low confidence match for '{cand.raw_name}' "
+                                f"(score: {cand.confidence:.0%}) — skipped."
+                            )
+                        skipped += 1
+                        continue
+                    Measurement.objects.create(
+                        user=request.user,
+                        measurement_type=mtype,
+                        observed_at=cand.observed_at or timezone.now(),
+                        value=cand.value,
+                        unit=cand.unit or mtype.default_unit,
+                        ref_min=cand.ref_min,
+                        ref_max=cand.ref_max,
+                        source_document=source_doc,
+                        confidence=cand.confidence,
+                        raw_name=cand.raw_name,
+                        raw_line=cand.raw_line,
+                    )
+                    imported += 1
+
+                source_doc.status = 'done'
+                source_doc.save()
+
+                flash_msg = f"Imported {imported} measurements from PDF."
+                if skipped:
+                    flash_msg += f" Skipped {skipped} unrecognised entries."
+                messages.success(request, flash_msg)
+                return redirect('index')
+
+            # --- JSON / HL7: legacy path (BloodTest / VitalSign) ---
+            else:
+                file_data = []
+
+                if fname_lower.endswith('.json'):
+                    json_data = json.load(file)
+                    if isinstance(json_data, dict) and json_data.get('resourceType') == 'Bundle':
+                        for entry in json_data.get('entry', []):
+                            obs = entry.get('resource', {})
+                            if obs.get('resourceType') == 'Observation':
+                                name = obs.get('code', {}).get('text')
+                                if not name:
+                                    codings = obs.get('code', {}).get('coding', [])
+                                    if codings:
+                                        name = codings[0].get('display')
+
+                                val_quantity = obs.get('valueQuantity', {})
+                                val = val_quantity.get('value')
+                                unit = val_quantity.get('unit')
+
+                                date_str = obs.get('effectiveDateTime')
+                                date_obj = date_str[:10] if date_str else None
+
+                                ref_ranges = obs.get('referenceRange', [])
+                                normal_min = None
+                                normal_max = None
+                                if ref_ranges:
+                                    normal_min = ref_ranges[0].get('low', {}).get('value')
+                                    normal_max = ref_ranges[0].get('high', {}).get('value')
+
+                                is_vital = False
+                                categories = obs.get('category', [])
+                                for cat in categories:
+                                    codings = cat.get('coding', [])
+                                    for c in codings:
+                                        if c.get('code') == 'vital-signs':
+                                            is_vital = True
+
+                                if is_vital:
+                                    if name and "Blood Pressure" in name and "component" in obs:
+                                        sys = None
+                                        dia = None
+                                        for comp in obs['component']:
+                                            c_name = comp.get('code', {}).get('text', '').lower()
+                                            c_val = comp.get('valueQuantity', {}).get('value')
+                                            if 'systolic' in c_name:
+                                                sys = c_val
+                                            elif 'diastolic' in c_name:
+                                                dia = c_val
+                                        if sys and dia:
+                                            file_data.append({
+                                                "Date": date_obj,
+                                                "Type": "Vitals",
+                                                "Value": f"{sys}/{dia} mmHg"
+                                            })
+                                    else:
                                         file_data.append({
                                             "Date": date_obj,
                                             "Type": "Vitals",
-                                            "Value": f"{sys}/{dia} mmHg"
+                                            "Value": f"{val} {unit}"
                                         })
                                 else:
-                                    file_data.append({
-                                        "Date": date_obj,
-                                        "Type": "Vitals",
-                                        "Value": f"{val} {unit}"
-                                    })
-                            else:
-                                if name and val is not None and date_obj:
-                                    file_data.append({
-                                        "Date": date_obj,
-                                        "Type": "Blood Test",
-                                        "Name": name,
-                                        "Value": val,
-                                        "Unit": unit,
-                                        "Normal Min": normal_min,
-                                        "Normal Max": normal_max
-                                    })
-                else:
-                    file_data = json_data
-                    if not isinstance(file_data, list):
-                        messages.error(request, 'JSON file must contain a list of objects or be a FHIR Bundle.')
-                        return redirect('import_data')
-            elif file.name.lower().endswith('.hl7'):
-                hl7_text = file.read().decode("UTF8")
-                lines = hl7_text.replace('\r', '\n').split('\n')
-                current_date = None
-                for line in lines:
-                    fields = line.split('|')
-                    if fields[0] == 'OBR' and len(fields) > 7:
-                        date_field = fields[7]
-                        if date_field and len(date_field) >= 8:
-                            current_date = f"{date_field[0:4]}-{date_field[4:6]}-{date_field[6:8]}"
-                    elif fields[0] == 'OBX' and len(fields) > 5:
-                        name_field = fields[3]
-                        name = name_field.split('^')[1] if '^' in name_field else name_field
-                        val = fields[5]
-                        unit = fields[6] if len(fields) > 6 else ""
-                        ref_range = fields[7] if len(fields) > 7 else ""
-
-                        normal_min = None
-                        normal_max = None
-                        if '-' in ref_range:
-                            try:
-                                normal_min = float(ref_range.split('-')[0])
-                                normal_max = float(ref_range.split('-')[1])
-                            except ValueError:
-                                pass
-
-                        obs_date = current_date
-                        if len(fields) > 14 and fields[14] and len(fields[14]) >= 8:
-                            d = fields[14]
-                            obs_date = f"{d[0:4]}-{d[4:6]}-{d[6:8]}"
-
-                        if not obs_date:
-                            obs_date = datetime.now().date().strftime('%Y-%m-%d')
-
-                        if name and val:
-                            file_data.append({
-                                "Date": obs_date,
-                                "Type": "Blood Test",
-                                "Name": name,
-                                "Value": val,
-                                "Unit": unit,
-                                "Normal Min": normal_min,
-                                "Normal Max": normal_max
-                            })
-            elif file.name.lower().endswith('.pdf'):
-                pdf_bytes = file.read()
-                text = ""
-
-                try:
-                    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-                        for page in pdf.pages:
-                            page_text = page.extract_text()
-                            if page_text:
-                                text += page_text + "\n"
-
-                            tables = page.extract_tables()
-                            for table in tables:
-                                for row in table:
-                                    row_text = " ".join([str(cell) for cell in row if cell])
-                                    if row_text not in text:
-                                        text += row_text + "\n"
-                except Exception as e:
-                    print(f"pdfplumber failed: {e}")
-
-                if len(text.strip()) < 50:
-                    text = ""
-                    images = pdf2image.convert_from_bytes(pdf_bytes)
-                    for img in images:
-                        text += pytesseract.image_to_string(img) + "\n"
-
-                date_match = re.search(r'(\d{4}-\d{2}-\d{2})|(\d{1,2}/\d{1,2}/\d{4})', text)
-                pdf_date_str = None
-                if date_match:
-                    if date_match.group(1):
-                        pdf_date_str = date_match.group(1)
+                                    if name and val is not None and date_obj:
+                                        file_data.append({
+                                            "Date": date_obj,
+                                            "Type": "Blood Test",
+                                            "Name": name,
+                                            "Value": val,
+                                            "Unit": unit,
+                                            "Normal Min": normal_min,
+                                            "Normal Max": normal_max
+                                        })
                     else:
-                        try:
-                            pdf_date_str = datetime.strptime(date_match.group(2), "%m/%d/%Y").strftime("%Y-%m-%d")
-                        except ValueError:
-                            pass
-                if not pdf_date_str:
-                    pdf_date_str = datetime.now().date().strftime('%Y-%m-%d')
+                        file_data = json_data
+                        if not isinstance(file_data, list):
+                            messages.error(request, 'JSON file must contain a list of objects or be a FHIR Bundle.')
+                            return redirect('import_data')
 
-                db_test_names = list(BloodTestInfo.objects.values_list('test_name', flat=True))
+                elif fname_lower.endswith('.hl7'):
+                    hl7_text = file.read().decode("UTF8")
+                    lines = hl7_text.replace('\r', '\n').split('\n')
+                    current_date = None
+                    for line in lines:
+                        fields = line.split('|')
+                        if fields[0] == 'OBR' and len(fields) > 7:
+                            date_field = fields[7]
+                            if date_field and len(date_field) >= 8:
+                                current_date = f"{date_field[0:4]}-{date_field[4:6]}-{date_field[6:8]}"
+                        elif fields[0] == 'OBX' and len(fields) > 5:
+                            name_field = fields[3]
+                            name = name_field.split('^')[1] if '^' in name_field else name_field
+                            val = fields[5]
+                            unit = fields[6] if len(fields) > 6 else ""
+                            ref_range = fields[7] if len(fields) > 7 else ""
 
-                for line in text.split('\n'):
-                    line = line.strip()
-                    if not line:
-                        continue
+                            normal_min = None
+                            normal_max = None
+                            if '-' in ref_range:
+                                try:
+                                    normal_min = float(ref_range.split('-')[0])
+                                    normal_max = float(ref_range.split('-')[1])
+                                except ValueError:
+                                    pass
 
-                    best_match = process.extractOne(line, db_test_names, scorer=fuzz.partial_ratio)
+                            obs_date = current_date
+                            if len(fields) > 14 and fields[14] and len(fields[14]) >= 8:
+                                d = fields[14]
+                                obs_date = f"{d[0:4]}-{d[4:6]}-{d[6:8]}"
 
-                    if best_match and best_match[1] > 85:
-                        t_name = best_match[0]
-                        if len(t_name) <= 3 and t_name not in line.split():
-                            continue
+                            if not obs_date:
+                                obs_date = datetime.now().date().strftime('%Y-%m-%d')
 
-                        nums = re.findall(r"[-+]?\d*\.\d+|\d+", line)
-                        if nums:
-                            val = nums[0]
-
-                            already_added = any(d.get("Name") == t_name for d in file_data)
-                            if not already_added:
+                            if name and val:
                                 file_data.append({
-                                    "Date": pdf_date_str,
+                                    "Date": obs_date,
                                     "Type": "Blood Test",
-                                    "Name": t_name,
-                                    "Value": val
+                                    "Name": name,
+                                    "Value": val,
+                                    "Unit": unit,
+                                    "Normal Min": normal_min,
+                                    "Normal Max": normal_max
                                 })
 
-            imported_tests = 0
-            imported_vitals = 0
-            skipped_rows = 0
+                imported_tests = 0
+                imported_vitals = 0
+                skipped_rows = 0
 
-            test_info_dict = {t.test_name: t for t in BloodTestInfo.objects.all()}
+                test_info_dict = {t.test_name: t for t in BloodTestInfo.objects.all()}
 
-            for row in file_data:
-                try:
-                    date_str = row.get('Date')
-                    if not date_str:
-                        skipped_rows += 1
-                        continue
-                    date = datetime.strptime(date_str, '%Y-%m-%d').date()
-
-                    row_type = row.get('Type')
-
-                    if row_type == 'Blood Test':
-                        name = row.get('Name')
-                        value_str = row.get('Value')
-                        unit = row.get('Unit', '')
-                        normal_min_str = row.get('Normal Min', '')
-                        normal_max_str = row.get('Normal Max', '')
-
-                        if not name or not value_str:
+                for row in file_data:
+                    try:
+                        date_str = row.get('Date')
+                        if not date_str:
                             skipped_rows += 1
                             continue
+                        date = datetime.strptime(date_str, '%Y-%m-%d').date()
 
-                        value = float(value_str)
-                        normal_min = float(normal_min_str) if normal_min_str else None
-                        normal_max = float(normal_max_str) if normal_max_str else None
+                        row_type = row.get('Type')
 
-                        test_info = test_info_dict.get(name)
-                        category = test_info.category if test_info else 'Uncategorized'
+                        if row_type == 'Blood Test':
+                            name = row.get('Name')
+                            value_str = row.get('Value')
+                            unit = row.get('Unit', '')
+                            normal_min_str = row.get('Normal Min', '')
+                            normal_max_str = row.get('Normal Max', '')
 
-                        if test_info and test_info.unit:
-                            final_unit = test_info.unit
-                        else:
-                            final_unit = unit
+                            if not name or not value_str:
+                                skipped_rows += 1
+                                continue
 
-                        if test_info:
-                            if normal_min is None and test_info.normal_min is not None:
-                                normal_min = test_info.normal_min
-                            if normal_max is None and test_info.normal_max is not None:
-                                normal_max = test_info.normal_max
+                            value = float(value_str)
+                            normal_min = float(normal_min_str) if normal_min_str else None
+                            normal_max = float(normal_max_str) if normal_max_str else None
 
-                        BloodTest.objects.create(
-                            test_name=name,
-                            value=value,
-                            unit=final_unit,
-                            date=date,
-                            normal_min=normal_min,
-                            normal_max=normal_max,
-                            category=category
-                        )
-                        imported_tests += 1
+                            test_info = test_info_dict.get(name)
+                            category = test_info.category if test_info else 'Uncategorized'
 
-                    elif row_type == 'Vitals':
-                        value_str = row.get('Value', '')
+                            if test_info and test_info.unit:
+                                final_unit = test_info.unit
+                            else:
+                                final_unit = unit
 
-                        weight = None
-                        heart_rate = None
-                        systolic_bp = None
-                        diastolic_bp = None
+                            if test_info:
+                                if normal_min is None and test_info.normal_min is not None:
+                                    normal_min = test_info.normal_min
+                                if normal_max is None and test_info.normal_max is not None:
+                                    normal_max = test_info.normal_max
 
-                        parts = [p.strip() for p in value_str.split(',')]
-                        for part in parts:
-                            if 'kg' in part:
-                                try:
-                                    weight = float(part.replace('kg', '').strip())
-                                except ValueError:
-                                    pass
-                            elif 'lbs' in part:
-                                try:
-                                    weight = float(part.replace('lbs', '').strip()) * 0.453592
-                                except ValueError:
-                                    pass
-                            elif 'bpm' in part:
-                                try:
-                                    heart_rate = int(part.replace('bpm', '').strip())
-                                except ValueError:
-                                    pass
-                            elif '/' in part:
-                                try:
-                                    bp_parts = part.replace('mmHg', '').split('/')
-                                    systolic_bp = int(bp_parts[0].strip())
-                                    diastolic_bp = int(bp_parts[1].strip())
-                                except (ValueError, IndexError):
-                                    pass
-
-                        if weight is not None or heart_rate is not None or (systolic_bp is not None and diastolic_bp is not None):
-                            VitalSign.objects.create(
+                            BloodTest.objects.create(
+                                test_name=name,
+                                value=value,
+                                unit=final_unit,
                                 date=date,
-                                weight=weight,
-                                heart_rate=heart_rate,
-                                systolic_bp=systolic_bp,
-                                diastolic_bp=diastolic_bp
+                                normal_min=normal_min,
+                                normal_max=normal_max,
+                                category=category
                             )
-                            imported_vitals += 1
+                            imported_tests += 1
+
+                        elif row_type == 'Vitals':
+                            value_str = row.get('Value', '')
+
+                            weight = None
+                            heart_rate = None
+                            systolic_bp = None
+                            diastolic_bp = None
+
+                            parts = [p.strip() for p in value_str.split(',')]
+                            for part in parts:
+                                if 'kg' in part:
+                                    try:
+                                        weight = float(part.replace('kg', '').strip())
+                                    except ValueError:
+                                        pass
+                                elif 'lbs' in part:
+                                    try:
+                                        weight = float(part.replace('lbs', '').strip()) * 0.453592
+                                    except ValueError:
+                                        pass
+                                elif 'bpm' in part:
+                                    try:
+                                        heart_rate = int(part.replace('bpm', '').strip())
+                                    except ValueError:
+                                        pass
+                                elif '/' in part:
+                                    try:
+                                        bp_parts = part.replace('mmHg', '').split('/')
+                                        systolic_bp = int(bp_parts[0].strip())
+                                        diastolic_bp = int(bp_parts[1].strip())
+                                    except (ValueError, IndexError):
+                                        pass
+
+                            if weight is not None or heart_rate is not None or (systolic_bp is not None and diastolic_bp is not None):
+                                VitalSign.objects.create(
+                                    date=date,
+                                    weight=weight,
+                                    heart_rate=heart_rate,
+                                    systolic_bp=systolic_bp,
+                                    diastolic_bp=diastolic_bp
+                                )
+                                imported_vitals += 1
+                            else:
+                                skipped_rows += 1
+
                         else:
                             skipped_rows += 1
 
-                    else:
+                    except Exception as e:
+                        print(f"Error parsing row: {e}")
                         skipped_rows += 1
 
-                except Exception as e:
-                    print(f"Error parsing row: {e}")
-                    skipped_rows += 1
-
-            flash_msg = f"Imported {imported_tests} blood tests and {imported_vitals} vital signs."
-            if skipped_rows > 0:
-                flash_msg += f" Skipped {skipped_rows} rows due to missing/invalid data."
-            messages.success(request, flash_msg)
-
-            return redirect('index')
+                flash_msg = f"Imported {imported_tests} blood tests and {imported_vitals} vital signs."
+                if skipped_rows > 0:
+                    flash_msg += f" Skipped {skipped_rows} rows due to missing/invalid data."
+                messages.success(request, flash_msg)
+                return redirect('index')
 
         except Exception as e:
             print(f"File processing error: {e}")
+            if source_doc is not None:
+                source_doc.status = 'error'
+                source_doc.error_message = str(e)
+                source_doc.save()
             messages.error(request, f"Error processing file: {str(e)}")
             return redirect('import_data')
 
@@ -5013,7 +5057,7 @@ def notification_log_list(request):
         'status_filter': status_filter,
         'channel_filter': channel_filter,
     })
-  
+
 # ===== Habit Log =====
 _habit_log = make_crud_views(
     model_class=HabitLog,

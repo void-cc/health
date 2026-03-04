@@ -56,15 +56,15 @@ class ViewStatusCodeTests(TestCase):
 
     def test_add_test_page(self):
         response = self.client.get(reverse('add_test'))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 403)
 
     def test_add_test_info_page(self):
         response = self.client.get(reverse('add_test_info'))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 403)
 
     def test_add_vitals_page(self):
         response = self.client.get(reverse('add_vitals'))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 403)
 
     def test_blood_tests_charts_page(self):
         response = self.client.get(reverse('blood_tests_charts'))
@@ -99,7 +99,10 @@ class ViewStatusCodeTests(TestCase):
 class ViewWithDataTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123',
+            email='test@example.com', is_staff=True,
+        )
         self.client.login(username='testuser', password='testpass123')
         self.test_info = BloodTestInfo.objects.create(
             test_name="Hemoglobin", unit="g/dL",
@@ -966,7 +969,10 @@ class Phase2VitalsExtensionTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123',
+            email='test@example.com', is_staff=True,
+        )
         self.client.login(username='testuser', password='testpass123')
 
         self.vital = VitalSign.objects.create(
@@ -6629,3 +6635,195 @@ class GetMedicationInfoTests(TestCase):
             result = get_medication_info('Metformin')
 
         self.assertEqual(result['rxcui'], '6809')
+# =============================================================================
+# Ingestion Service Tests (Phase 2)
+# =============================================================================
+
+class IngestionServiceTests(TestCase):
+    """Tests for tracker/services/importing: CSV parsing, fuzzy mapping, and import persistence."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='ingest_user', password='testpass123')
+        self.client.login(username='ingest_user', password='testpass123')
+        self.mtype = MeasurementType.objects.create(
+            name='Hemoglobin',
+            category='CBC',
+            default_unit='g/dL',
+            synonyms='HGB, Hgb',
+            normal_min=12.0,
+            normal_max=17.5,
+        )
+
+    # --- CSV parser ---
+
+    def test_parse_csv_returns_candidates(self):
+        from tracker.services.importing import parse_csv
+        content = (
+            "Date,Name,Value,Unit,Normal Min,Normal Max\n"
+            "2026-01-15,Hemoglobin,14.5,g/dL,12.0,17.5\n"
+        )
+        candidates = parse_csv(content)
+        self.assertEqual(len(candidates), 1)
+        c = candidates[0]
+        self.assertEqual(c.raw_name, 'Hemoglobin')
+        self.assertEqual(c.value, 14.5)
+        self.assertEqual(c.unit, 'g/dL')
+        self.assertEqual(c.ref_min, 12.0)
+        self.assertEqual(c.ref_max, 17.5)
+        self.assertIsNotNone(c.observed_at)
+
+    def test_parse_csv_skips_missing_date(self):
+        from tracker.services.importing import parse_csv
+        content = "Date,Name,Value,Unit\n,Hemoglobin,14.5,g/dL\n"
+        candidates = parse_csv(content)
+        self.assertEqual(len(candidates), 0)
+
+    def test_parse_csv_skips_missing_name(self):
+        from tracker.services.importing import parse_csv
+        content = "Date,Name,Value,Unit\n2026-01-15,,14.5,g/dL\n"
+        candidates = parse_csv(content)
+        self.assertEqual(len(candidates), 0)
+
+    def test_parse_csv_skips_missing_value(self):
+        from tracker.services.importing import parse_csv
+        content = "Date,Name,Value,Unit\n2026-01-15,Hemoglobin,,g/dL\n"
+        candidates = parse_csv(content)
+        self.assertEqual(len(candidates), 0)
+
+    def test_parse_csv_skips_invalid_date(self):
+        from tracker.services.importing import parse_csv
+        content = "Date,Name,Value,Unit\nnot-a-date,Hemoglobin,14.5,g/dL\n"
+        candidates = parse_csv(content)
+        self.assertEqual(len(candidates), 0)
+
+    def test_parse_csv_multiple_rows(self):
+        from tracker.services.importing import parse_csv
+        content = (
+            "Date,Name,Value,Unit\n"
+            "2026-01-15,Hemoglobin,14.5,g/dL\n"
+            "2026-01-15,Glucose,95.0,mg/dL\n"
+        )
+        candidates = parse_csv(content)
+        self.assertEqual(len(candidates), 2)
+
+    # --- Fuzzy mapper ---
+
+    def test_map_candidates_exact_match(self):
+        from tracker.services.importing import map_candidates, ParsedMeasurementCandidate
+        cand = ParsedMeasurementCandidate(
+            raw_name='Hemoglobin', raw_line='Hemoglobin 14.5 g/dL',
+            value=14.5, observed_at=datetime(2026, 1, 15),
+        )
+        results = map_candidates([cand])
+        self.assertEqual(len(results), 1)
+        _, mtype = results[0]
+        self.assertIsNotNone(mtype)
+        self.assertEqual(mtype.name, 'Hemoglobin')
+        self.assertGreaterEqual(results[0][0].confidence, 0.85)
+
+    def test_map_candidates_synonym_match(self):
+        from tracker.services.importing import map_candidates, ParsedMeasurementCandidate
+        cand = ParsedMeasurementCandidate(
+            raw_name='HGB', raw_line='HGB 14.5',
+            value=14.5, observed_at=datetime(2026, 1, 15),
+        )
+        results = map_candidates([cand])
+        _, mtype = results[0]
+        self.assertIsNotNone(mtype)
+        self.assertEqual(mtype.name, 'Hemoglobin')
+
+    def test_map_candidates_low_confidence(self):
+        from tracker.services.importing import map_candidates, ParsedMeasurementCandidate
+        cand = ParsedMeasurementCandidate(
+            raw_name='completely_unknown_biomarker_xyz', raw_line='test 1.0',
+            value=1.0, observed_at=datetime(2026, 1, 15),
+        )
+        results = map_candidates([cand])
+        _, mtype = results[0]
+        self.assertIsNone(mtype)
+        self.assertLess(results[0][0].confidence, 0.85)
+
+    def test_map_candidates_sets_measurement_type_name(self):
+        from tracker.services.importing import map_candidates, ParsedMeasurementCandidate
+        cand = ParsedMeasurementCandidate(
+            raw_name='Hemoglobin', raw_line='Hemoglobin 14.5',
+            value=14.5, observed_at=datetime(2026, 1, 15),
+        )
+        map_candidates([cand])
+        self.assertEqual(cand.measurement_type_name, 'Hemoglobin')
+
+    # --- Import view: CSV persists SourceDocument + Measurement ---
+
+    def test_import_csv_persists_measurement_and_source_document(self):
+        from io import BytesIO
+        csv_content = (
+            "Date,Name,Value,Unit,Normal Min,Normal Max\n"
+            "2026-01-15,Hemoglobin,14.5,g/dL,12.0,17.5\n"
+        )
+        csv_file = BytesIO(csv_content.encode('utf-8'))
+        csv_file.name = 'test_lab.csv'
+
+        response = self.client.post(
+            reverse('import_data'),
+            {'file': csv_file},
+            format='multipart',
+        )
+        self.assertEqual(response.status_code, 302)
+
+        self.assertEqual(Measurement.objects.filter(user=self.user).count(), 1)
+        m = Measurement.objects.get(user=self.user)
+        self.assertEqual(m.measurement_type, self.mtype)
+        self.assertEqual(m.value, 14.5)
+        self.assertEqual(m.raw_name, 'Hemoglobin')
+
+        self.assertEqual(SourceDocument.objects.filter(user=self.user).count(), 1)
+        doc = SourceDocument.objects.get(user=self.user)
+        self.assertEqual(doc.status, 'done')
+        self.assertEqual(doc.content_type, 'csv')
+        self.assertEqual(m.source_document, doc)
+
+    def test_import_csv_unknown_name_skipped(self):
+        from io import BytesIO
+        csv_content = (
+            "Date,Name,Value,Unit\n"
+            "2026-01-15,UnknownBiomarkerXYZ,99.0,units\n"
+        )
+        csv_file = BytesIO(csv_content.encode('utf-8'))
+        csv_file.name = 'unknown.csv'
+
+        response = self.client.post(
+            reverse('import_data'),
+            {'file': csv_file},
+            format='multipart',
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Measurement.objects.filter(user=self.user).count(), 0)
+        # SourceDocument is still created
+        self.assertEqual(SourceDocument.objects.filter(user=self.user).count(), 1)
+
+    # --- Staff-only CRUD access control ---
+
+    def test_add_test_requires_staff(self):
+        response = self.client.get(reverse('add_test'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_add_vitals_requires_staff(self):
+        response = self.client.get(reverse('add_vitals'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_add_test_info_requires_staff(self):
+        response = self.client.get(reverse('add_test_info'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_staff_can_access_add_test(self):
+        staff = User.objects.create_user(username='staff_user', password='testpass123', is_staff=True)
+        self.client.login(username='staff_user', password='testpass123')
+        response = self.client.get(reverse('add_test'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_staff_can_access_add_vitals(self):
+        staff = User.objects.create_user(username='staff_user2', password='testpass123', is_staff=True)
+        self.client.login(username='staff_user2', password='testpass123')
+        response = self.client.get(reverse('add_vitals'))
+        self.assertEqual(response.status_code, 200)
