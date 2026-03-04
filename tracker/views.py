@@ -2006,7 +2006,7 @@ def sleep_list(request):
     )
 
     # Chart data (last 30 entries, chronological)
-    chart_entries = list(entries.order_by('date')[:30])
+    chart_entries = entries.order_by('date')[:30]
     chart_dates = [e.date.isoformat() for e in chart_entries]
     chart_quality = [e.sleep_quality_score for e in chart_entries]
     chart_total = [e.total_sleep_minutes for e in chart_entries]

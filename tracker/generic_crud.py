@@ -57,9 +57,10 @@ def make_crud_views(
 
     Returns a dict with keys 'list', 'add', 'edit', 'delete' containing
     the four view functions.  When *require_staff* is True (the default)
-    each view is wrapped with @staff_only.  When False the views only
-    require login (@login_required), making them suitable for personal
-    health data that every authenticated user should access.
+    each view is guarded by ``@staff_only`` so only staff users may access
+    it.  When *require_staff* is False the views are guarded by
+    ``@login_required`` instead, making them suitable for personal health
+    data that every authenticated user should be able to access.
     """
 
     _guard = staff_only if require_staff else login_required

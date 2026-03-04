@@ -4734,7 +4734,10 @@ class BiologicalAgeEstimateTests(TestCase):
 class IntegrationConfigActivateTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.user = User.objects.create_user(
+            username='testuser', password='testpass123',
+            email='test@example.com', is_staff=True,
+        )
         self.client.login(username='testuser', password='testpass123')
 
     def test_activate_with_config(self):
