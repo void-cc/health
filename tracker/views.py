@@ -1655,6 +1655,7 @@ def wearable_device_delete(request, pk):
         messages.success(request, 'Wearable device deleted!')
     return redirect('wearable_device_list')
 
+@login_required
 def wearable_device_sync(request, pk):
     device = get_object_or_404(WearableDevice, id=pk)
     if request.method == 'POST':

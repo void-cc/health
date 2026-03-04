@@ -2811,6 +2811,12 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(WearableDevice.objects.count(), 0)
 
+    def test_wearable_device_sync_post(self):
+        d = WearableDevice.objects.create(platform='fitbit', device_name='Test')
+        response = self.client.post(reverse('wearable_device_sync', kwargs={'pk': d.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(WearableSyncLog.objects.filter(device=d).exists())
+
     # ----- SleepLog -----
     def test_sleep_add_post(self):
         response = self.client.post(reverse('sleep_add'), {
