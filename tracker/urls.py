@@ -357,4 +357,15 @@ urlpatterns = [
     path('notifications/triggers/delete/<int:pk>/', views.notification_trigger_delete, name='notification_trigger_delete'),
     path('notifications/triggers/<int:pk>/channels/', views.notification_trigger_set_channels, name='notification_trigger_set_channels'),
     path('notifications/logs/', views.notification_log_list, name='notification_log_list'),
+    # Habit Log
+    path('habits/', views.habit_log_list, name='habit_log_list'),
+    path('habits/add/', views.habit_log_add, name='habit_log_add'),
+    path('habits/edit/<int:pk>/', views.habit_log_edit, name='habit_log_edit'),
+    path('habits/delete/<int:pk>/', views.habit_log_delete, name='habit_log_delete'),
+
+    # Reminders
+    path('reminders/', views.reminder_list, name='reminder_list'),
+    path('reminders/add/', views.reminder_add, name='reminder_add'),
+    path('reminders/edit/<int:pk>/', views.reminder_edit, name='reminder_edit'),
+    path('reminders/delete/<int:pk>/', views.reminder_delete, name='reminder_delete'),
 ]

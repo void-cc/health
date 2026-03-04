@@ -32,11 +32,11 @@ from .models import (
     # Notification System
     NotificationPreference, NotificationTemplate, NotificationTrigger,
     NotificationLog, NOTIFICATION_CHANNELS, NOTIFICATION_EVENT_TYPES,
+    HabitLog, Reminder,
 )
 from .generic_crud import make_crud_views
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.conf import settings
 from datetime import datetime
@@ -47,7 +47,7 @@ import io
 import json
 import re
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Q as models_Q, Avg, Sum, Count
+from django.db.models import Q as models_Q, Avg, Count
 from django.core.paginator import Paginator
 import functools
 
@@ -416,7 +416,7 @@ def add_test_info(request):
             with open(csv_path, mode='a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow([test_name, unit, normal_min, normal_max, category])
-        except Exception as e:
+        except Exception:
             pass # Non-critical if CSV update fails, DB is truth
 
         BloodTestInfo.objects.create(
@@ -454,7 +454,7 @@ def edit_test(request, test_id):
             test.save()
             messages.success(request, 'Blood test updated successfully!')
             return redirect('index')
-        except Exception as e:
+        except Exception:
             messages.error(request, 'Error updating blood test. Please try again.')
             return redirect('edit_test', test_id=test.id)
 
@@ -491,7 +491,7 @@ def add_vitals(request):
             )
             messages.success(request, 'Vital signs added successfully!')
             return redirect('vitals')
-        except Exception as e:
+        except Exception:
             messages.error(request, 'Error adding vital signs. Please try again.')
             return redirect('add_vitals')
 
@@ -524,7 +524,7 @@ def edit_vitals(request, vital_id):
 
             messages.success(request, 'Vital signs updated successfully!')
             return redirect('vitals')
-        except Exception as e:
+        except Exception:
             messages.error(request, 'Error updating vital signs. Please try again.')
             return redirect('edit_vitals', vital_id=vital.id)
 
@@ -1753,7 +1753,7 @@ def wearable_oauth_callback(request, platform):
     device = get_object_or_404(WearableDevice, id=device_id)
     client = get_client(platform)
     if not client:
-        messages.error(request, f'No integration client for this platform.')
+        messages.error(request, 'No integration client available for this platform.')
         return redirect('wearable_device_list')
 
     try:
@@ -4661,3 +4661,45 @@ def notification_log_list(request):
         'status_filter': status_filter,
         'channel_filter': channel_filter,
     })
+  
+# ===== Habit Log =====
+_habit_log = make_crud_views(
+    model_class=HabitLog,
+    display_name='Habit Log',
+    fields=[
+        {'name': 'date', 'type': 'date', 'required': True, 'label': 'Date'},
+        {'name': 'habit_name', 'type': 'str', 'required': True, 'label': 'Habit Name'},
+        {'name': 'category', 'type': 'str', 'choices': HabitLog.CATEGORY_CHOICES, 'default': 'other', 'label': 'Category'},
+        {'name': 'completed', 'type': 'bool', 'label': 'Completed'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea', 'label': 'Notes'},
+    ],
+    list_url_name='habit_log_list',
+    add_url_name='habit_log_add',
+    edit_url_name='habit_log_edit',
+    order_by='-date',
+)
+habit_log_list = _habit_log['list']
+habit_log_add = _habit_log['add']
+habit_log_edit = _habit_log['edit']
+habit_log_delete = _habit_log['delete']
+
+# ===== Reminders =====
+_reminder = make_crud_views(
+    model_class=Reminder,
+    display_name='Reminder',
+    fields=[
+        {'name': 'title', 'type': 'str', 'required': True, 'label': 'Title'},
+        {'name': 'message', 'type': 'str', 'widget': 'textarea', 'label': 'Message'},
+        {'name': 'due_datetime', 'type': 'datetime', 'required': True, 'label': 'Due Date & Time'},
+        {'name': 'frequency', 'type': 'str', 'choices': Reminder.FREQUENCY_CHOICES, 'default': 'once', 'label': 'Frequency'},
+        {'name': 'active', 'type': 'bool', 'label': 'Active'},
+    ],
+    list_url_name='reminder_list',
+    add_url_name='reminder_add',
+    edit_url_name='reminder_edit',
+    order_by='due_datetime',
+)
+reminder_list = _reminder['list']
+reminder_add = _reminder['add']
+reminder_edit = _reminder['edit']
+reminder_delete = _reminder['delete']

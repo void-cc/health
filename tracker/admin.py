@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
-    ClinicalTrialMatch,
+    ClinicalTrialMatch, HabitLog, Reminder,
     NotificationPreference, NotificationTemplate, NotificationTrigger,
     NotificationLog,
 )
@@ -95,3 +95,16 @@ class NotificationLogAdmin(admin.ModelAdmin):
     list_filter = ('event_type', 'channel', 'status')
     search_fields = ('recipient', 'subject')
     readonly_fields = ('created_at',)
+    
+@admin.register(HabitLog)
+class HabitLogAdmin(admin.ModelAdmin):
+    list_display = ('date', 'habit_name', 'category', 'completed')
+    list_filter = ('date', 'category', 'completed')
+    search_fields = ('habit_name', 'notes')
+
+
+@admin.register(Reminder)
+class ReminderAdmin(admin.ModelAdmin):
+    list_display = ('title', 'due_datetime', 'frequency', 'active')
+    list_filter = ('frequency', 'active')
+    search_fields = ('title', 'message')

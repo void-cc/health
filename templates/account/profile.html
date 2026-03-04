@@ -19,23 +19,24 @@
       </div>
     </div>
 
-    <!-- Edit Profile -->
-    <div class="account-card">
-      <div class="account-card-header">
-        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-        Edit Profile
-      </div>
-      <div class="account-card-body">
-        <form method="post" enctype="multipart/form-data" novalidate>
-          {% csrf_token %}
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
 
-          {% if form.non_field_errors %}
-            <div class="auth-alert auth-alert-danger">
-              {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-            </div>
-          {% endif %}
+      {% if form.non_field_errors %}
+        <div class="auth-alert auth-alert-danger">
+          {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+        </div>
+      {% endif %}
 
+      <!-- Edit Profile -->
+      <div class="account-card">
+        <div class="account-card-header">
+          <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          Edit Profile
+        </div>
+        <div class="account-card-body">
           {% for field in form %}
+            {% if field.name != 'allergies' and field.name != 'medications' and field.name != 'chronic_conditions' %}
             <div class="account-form-group">
               <label for="{{ field.id_for_label }}">{{ field.label }}</label>
               {% if field.name == 'avatar' %}
@@ -56,15 +57,38 @@
               {% if field.help_text %}<div class="account-form-help">{{ field.help_text }}</div>{% endif %}
               {% for error in field.errors %}<div class="auth-error">{{ error }}</div>{% endfor %}
             </div>
+            {% endif %}
           {% endfor %}
-
-          <button type="submit" class="account-btn account-btn-primary">
-            <svg viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
-            Save Profile
-          </button>
-        </form>
+        </div>
       </div>
-    </div>
+
+      <!-- Health Information -->
+      <div class="account-card">
+        <div class="account-card-header">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+          Health Information
+        </div>
+        <div class="account-card-body">
+          {% for field in form %}
+            {% if field.name == 'allergies' or field.name == 'medications' or field.name == 'chronic_conditions' %}
+            <div class="account-form-group">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              <textarea name="{{ field.name }}" id="{{ field.id_for_label }}" class="account-textarea" rows="3" placeholder="{{ field.field.widget.attrs.placeholder|default:'' }}">{{ field.value|default:'' }}</textarea>
+              {% if field.help_text %}<div class="account-form-help">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="auth-error">{{ error }}</div>{% endfor %}
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="account-card-body" style="padding: 0 0 1rem 0;">
+        <button type="submit" class="account-btn account-btn-primary">
+          <svg viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+          Save Profile
+        </button>
+      </div>
+    </form>
 
     <!-- Security & Privacy -->
     <div class="account-card">

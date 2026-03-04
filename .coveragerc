@@ -1,0 +1,9 @@
+[run]
+source = tracker
+omit =
+    */migrations/*
+    tracker/tests.py
+
+[report]
+show_missing = true
+skip_covered = false

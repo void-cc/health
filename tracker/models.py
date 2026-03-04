@@ -354,6 +354,9 @@ class UserProfile(models.Model):
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     theme_preference = models.CharField(max_length=20, choices=THEME_CHOICES, default='system')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
+    allergies = models.TextField(blank=True, default='', help_text='List known allergies, one per line.')
+    medications = models.TextField(blank=True, default='', help_text='Current medications, one per line.')
+    chronic_conditions = models.TextField(blank=True, default='', help_text='Chronic conditions or diagnoses, one per line.')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -468,7 +471,7 @@ class WearableDevice(models.Model):
             records_synced = 0
 
             # Import heart rate, SpO2, and weight as a VitalSign entry
-            vital = VitalSign.objects.create(
+            VitalSign.objects.create(
                 date=timezone.now().date(),
                 heart_rate=None,
                 spo2=None,
@@ -647,7 +650,6 @@ class CircadianRhythmLog(models.Model):
         Uses average sleep onset and wake time from recent entries to suggest
         the best sleep/wake times for this individual.
         """
-        from datetime import timedelta, datetime as dt
         recent = CircadianRhythmLog.objects.filter(
             sleep_onset__isnull=False, wake_time__isnull=False,
         ).order_by('-date')[:7]
@@ -849,6 +851,7 @@ class EncryptionKey(models.Model):
 
 
 class AuditLog(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_logs')
     action = models.CharField(max_length=200)
     details = models.TextField(blank=True, default='')
     ip_address = models.GenericIPAddressField(null=True, blank=True)
@@ -1824,3 +1827,42 @@ class NotificationLog(models.Model):
 
     def __str__(self):
         return f"{self.get_event_type_display()} → {self.channel} ({self.status})"
+      
+class HabitLog(models.Model):
+    CATEGORY_CHOICES = [
+        ('exercise', 'Exercise'),
+        ('nutrition', 'Nutrition'),
+        ('sleep', 'Sleep'),
+        ('mindfulness', 'Mindfulness'),
+        ('hydration', 'Hydration'),
+        ('medication', 'Medication'),
+        ('other', 'Other'),
+    ]
+    date = models.DateField(db_index=True)
+    habit_name = models.CharField(max_length=200)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='other')
+    completed = models.BooleanField(default=False)
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        status = 'Done' if self.completed else 'Pending'
+        return f"{self.habit_name} on {self.date} [{status}]"
+
+
+class Reminder(models.Model):
+    FREQUENCY_CHOICES = [
+        ('once', 'Once'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    ]
+    title = models.CharField(max_length=200)
+    message = models.TextField(blank=True, default='')
+    due_datetime = models.DateTimeField(db_index=True)
+    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='once')
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} at {self.due_datetime}"

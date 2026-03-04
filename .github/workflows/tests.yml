@@ -10,6 +10,24 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    name: Lint (flake8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run flake8
+        run: flake8 tracker health_tracker
+
   test:
     name: ${{ matrix.group.name }}
     runs-on: ubuntu-latest
@@ -63,6 +81,27 @@ jobs:
 
       - name: Run ${{ matrix.group.name }} tests
         run: python manage.py test ${{ matrix.group.tests }} --verbosity 2
+
+  coverage:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests with coverage
+        run: coverage run manage.py test tracker --verbosity 1
+
+      - name: Report coverage
+        run: coverage report
 
   parsing:
     name: Data Parsing
