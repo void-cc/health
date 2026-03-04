@@ -1549,6 +1549,7 @@ def global_search(request):
 
 # ===== Wearable Integrations =====
 
+@login_required
 def wearable_device_list(request):
     entries = WearableDevice.objects.all().order_by('-created_at')
     from tracker.integrations.registry import is_oauth_platform, get_client
@@ -1566,6 +1567,7 @@ def wearable_device_list(request):
             entry.is_configured = False
     return render(request, 'wearable_device_list.html', {'entries': entries})
 
+@login_required
 def wearable_device_add(request):
     if request.method == 'POST':
         try:
@@ -1582,6 +1584,7 @@ def wearable_device_add(request):
             return redirect('wearable_device_add')
     return render(request, 'wearable_device_form.html', {'editing': False, 'platforms': WEARABLE_PLATFORMS})
 
+@login_required
 def wearable_device_edit(request, pk):
     entry = get_object_or_404(WearableDevice, id=pk)
     if request.method == 'POST':
@@ -1597,12 +1600,14 @@ def wearable_device_edit(request, pk):
             return redirect('wearable_device_edit', pk=pk)
     return render(request, 'wearable_device_form.html', {'entry': entry, 'editing': True, 'platforms': WEARABLE_PLATFORMS})
 
+@login_required
 def wearable_device_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(WearableDevice, id=pk).delete()
         messages.success(request, 'Wearable device deleted!')
     return redirect('wearable_device_list')
 
+@login_required
 def wearable_device_sync(request, pk):
     device = get_object_or_404(WearableDevice, id=pk)
     if request.method == 'POST':
@@ -1613,6 +1618,7 @@ def wearable_device_sync(request, pk):
             messages.error(request, f'Sync failed: {sync_log.error_message}')
     return redirect('wearable_device_list')
 
+@login_required
 def sync_log_list(request):
     entries = WearableSyncLog.objects.all().order_by('-started_at')
     return render(request, 'sync_log_list.html', {'entries': entries})
@@ -2352,10 +2358,12 @@ def caffeine_alcohol_delete(request, pk):
 
 # ===== User Profile =====
 
+@login_required
 def user_profile_list(request):
     entries = UserProfile.objects.select_related('user').all().order_by('-created_at')
     return render(request, 'user_profile_list.html', {'entries': entries})
 
+@login_required
 def user_profile_add(request):
     if request.method == 'POST':
         try:
@@ -2374,6 +2382,7 @@ def user_profile_add(request):
             return redirect('user_profile_add')
     return render(request, 'user_profile_form.html', {'editing': False})
 
+@login_required
 def user_profile_edit(request, pk):
     entry = get_object_or_404(UserProfile, id=pk)
     if request.method == 'POST':
@@ -2390,6 +2399,7 @@ def user_profile_edit(request, pk):
             return redirect('user_profile_edit', pk=pk)
     return render(request, 'user_profile_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def user_profile_delete(request, pk):
     if request.method == 'POST':
         profile = get_object_or_404(UserProfile, id=pk)
@@ -2400,10 +2410,12 @@ def user_profile_delete(request, pk):
 
 # ===== Family Account =====
 
+@login_required
 def family_account_list(request):
     entries = FamilyAccount.objects.all().order_by('-created_at')
     return render(request, 'family_account_list.html', {'entries': entries})
 
+@login_required
 def family_account_add(request):
     if request.method == 'POST':
         try:
@@ -2420,6 +2432,7 @@ def family_account_add(request):
             return redirect('family_account_add')
     return render(request, 'family_account_form.html', {'editing': False})
 
+@login_required
 def family_account_edit(request, pk):
     entry = get_object_or_404(FamilyAccount, id=pk)
     if request.method == 'POST':
@@ -2436,6 +2449,7 @@ def family_account_edit(request, pk):
             return redirect('family_account_edit', pk=pk)
     return render(request, 'family_account_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def family_account_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(FamilyAccount, id=pk).delete()
@@ -2445,10 +2459,12 @@ def family_account_delete(request, pk):
 
 # ===== Consent Log =====
 
+@login_required
 def consent_log_list(request):
     entries = ConsentLog.objects.all().order_by('-accepted_at')
     return render(request, 'consent_log_list.html', {'entries': entries})
 
+@login_required
 def consent_log_add(request):
     if request.method == 'POST':
         try:
@@ -2465,6 +2481,7 @@ def consent_log_add(request):
             return redirect('consent_log_add')
     return render(request, 'consent_log_form.html', {'editing': False})
 
+@login_required
 def consent_log_edit(request, pk):
     entry = get_object_or_404(ConsentLog, id=pk)
     if request.method == 'POST':
@@ -2481,6 +2498,7 @@ def consent_log_edit(request, pk):
             return redirect('consent_log_edit', pk=pk)
     return render(request, 'consent_log_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def consent_log_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(ConsentLog, id=pk).delete()
@@ -2490,10 +2508,12 @@ def consent_log_delete(request, pk):
 
 # ===== Tenant Config =====
 
+@login_required
 def tenant_config_list(request):
     entries = TenantConfig.objects.all().order_by('-created_at')
     return render(request, 'tenant_config_list.html', {'entries': entries})
 
+@login_required
 def tenant_config_add(request):
     if request.method == 'POST':
         try:
@@ -2509,6 +2529,7 @@ def tenant_config_add(request):
             return redirect('tenant_config_add')
     return render(request, 'tenant_config_form.html', {'editing': False})
 
+@login_required
 def tenant_config_edit(request, pk):
     entry = get_object_or_404(TenantConfig, id=pk)
     if request.method == 'POST':
@@ -2524,6 +2545,7 @@ def tenant_config_edit(request, pk):
             return redirect('tenant_config_edit', pk=pk)
     return render(request, 'tenant_config_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def tenant_config_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(TenantConfig, id=pk).delete()
@@ -2533,10 +2555,12 @@ def tenant_config_delete(request, pk):
 
 # ===== Admin Telemetry =====
 
+@login_required
 def admin_telemetry_list(request):
     entries = AdminTelemetry.objects.all().order_by('-recorded_at')
     return render(request, 'admin_telemetry_list.html', {'entries': entries})
 
+@login_required
 def admin_telemetry_add(request):
     if request.method == 'POST':
         try:
@@ -2552,6 +2576,7 @@ def admin_telemetry_add(request):
             return redirect('admin_telemetry_add')
     return render(request, 'admin_telemetry_form.html', {'editing': False})
 
+@login_required
 def admin_telemetry_edit(request, pk):
     entry = get_object_or_404(AdminTelemetry, id=pk)
     if request.method == 'POST':
@@ -2567,6 +2592,7 @@ def admin_telemetry_edit(request, pk):
             return redirect('admin_telemetry_edit', pk=pk)
     return render(request, 'admin_telemetry_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def admin_telemetry_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(AdminTelemetry, id=pk).delete()
@@ -2576,10 +2602,12 @@ def admin_telemetry_delete(request, pk):
 
 # ===== API Rate Limit Config =====
 
+@login_required
 def api_rate_limit_list(request):
     entries = APIRateLimitConfig.objects.all().order_by('endpoint')
     return render(request, 'api_rate_limit_list.html', {'entries': entries})
 
+@login_required
 def api_rate_limit_add(request):
     if request.method == 'POST':
         try:
@@ -2598,6 +2626,7 @@ def api_rate_limit_add(request):
             return redirect('api_rate_limit_add')
     return render(request, 'api_rate_limit_form.html', {'editing': False})
 
+@login_required
 def api_rate_limit_edit(request, pk):
     entry = get_object_or_404(APIRateLimitConfig, id=pk)
     if request.method == 'POST':
@@ -2616,6 +2645,7 @@ def api_rate_limit_edit(request, pk):
             return redirect('api_rate_limit_edit', pk=pk)
     return render(request, 'api_rate_limit_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def api_rate_limit_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(APIRateLimitConfig, id=pk).delete()
@@ -2625,10 +2655,12 @@ def api_rate_limit_delete(request, pk):
 
 # ===== Encryption Keys =====
 
+@login_required
 def encryption_key_list(request):
     entries = EncryptionKey.objects.all().order_by('-created_at')
     return render(request, 'encryption_key_list.html', {'entries': entries})
 
+@login_required
 def encryption_key_add(request):
     if request.method == 'POST':
         try:
@@ -2644,6 +2676,7 @@ def encryption_key_add(request):
             return redirect('encryption_key_add')
     return render(request, 'encryption_key_form.html', {'editing': False})
 
+@login_required
 def encryption_key_edit(request, pk):
     entry = get_object_or_404(EncryptionKey, id=pk)
     if request.method == 'POST':
@@ -2659,6 +2692,7 @@ def encryption_key_edit(request, pk):
             return redirect('encryption_key_edit', pk=pk)
     return render(request, 'encryption_key_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def encryption_key_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(EncryptionKey, id=pk).delete()
@@ -2668,10 +2702,12 @@ def encryption_key_delete(request, pk):
 
 # ===== Audit Logs =====
 
+@login_required
 def audit_log_list(request):
     entries = AuditLog.objects.all().order_by('-created_at')
     return render(request, 'audit_log_list.html', {'entries': entries})
 
+@login_required
 def audit_log_add(request):
     if request.method == 'POST':
         try:
@@ -2687,6 +2723,7 @@ def audit_log_add(request):
             return redirect('audit_log_add')
     return render(request, 'audit_log_form.html', {'editing': False})
 
+@login_required
 def audit_log_edit(request, pk):
     entry = get_object_or_404(AuditLog, id=pk)
     if request.method == 'POST':
@@ -2702,6 +2739,7 @@ def audit_log_edit(request, pk):
             return redirect('audit_log_edit', pk=pk)
     return render(request, 'audit_log_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def audit_log_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(AuditLog, id=pk).delete()
@@ -2711,10 +2749,12 @@ def audit_log_delete(request, pk):
 
 # ===== Anonymized Data Reports =====
 
+@login_required
 def anonymized_data_list(request):
     entries = AnonymizedDataReport.objects.all().order_by('-generated_at')
     return render(request, 'anonymized_data_list.html', {'entries': entries})
 
+@login_required
 def anonymized_data_add(request):
     if request.method == 'POST':
         try:
@@ -2733,6 +2773,7 @@ def anonymized_data_add(request):
             return redirect('anonymized_data_add')
     return render(request, 'anonymized_data_form.html', {'editing': False})
 
+@login_required
 def anonymized_data_edit(request, pk):
     entry = get_object_or_404(AnonymizedDataReport, id=pk)
     if request.method == 'POST':
@@ -2751,6 +2792,7 @@ def anonymized_data_edit(request, pk):
             return redirect('anonymized_data_edit', pk=pk)
     return render(request, 'anonymized_data_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def anonymized_data_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(AnonymizedDataReport, id=pk).delete()
@@ -2760,10 +2802,12 @@ def anonymized_data_delete(request, pk):
 
 # ===== Database Scaling Config =====
 
+@login_required
 def database_scaling_list(request):
     entries = DatabaseScalingConfig.objects.all().order_by('-created_at')
     return render(request, 'database_scaling_list.html', {'entries': entries})
 
+@login_required
 def database_scaling_add(request):
     if request.method == 'POST':
         try:
@@ -2782,6 +2826,7 @@ def database_scaling_add(request):
             return redirect('database_scaling_add')
     return render(request, 'database_scaling_form.html', {'editing': False})
 
+@login_required
 def database_scaling_edit(request, pk):
     entry = get_object_or_404(DatabaseScalingConfig, id=pk)
     if request.method == 'POST':
@@ -2800,6 +2845,7 @@ def database_scaling_edit(request, pk):
             return redirect('database_scaling_edit', pk=pk)
     return render(request, 'database_scaling_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def database_scaling_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(DatabaseScalingConfig, id=pk).delete()
@@ -2809,10 +2855,12 @@ def database_scaling_delete(request, pk):
 
 # ===== Backup Configuration =====
 
+@login_required
 def backup_config_list(request):
     entries = BackupConfiguration.objects.all().order_by('-created_at')
     return render(request, 'backup_config_list.html', {'entries': entries})
 
+@login_required
 def backup_config_add(request):
     if request.method == 'POST':
         try:
@@ -2831,6 +2879,7 @@ def backup_config_add(request):
             return redirect('backup_config_add')
     return render(request, 'backup_config_form.html', {'editing': False})
 
+@login_required
 def backup_config_edit(request, pk):
     entry = get_object_or_404(BackupConfiguration, id=pk)
     if request.method == 'POST':
@@ -2849,6 +2898,7 @@ def backup_config_edit(request, pk):
             return redirect('backup_config_edit', pk=pk)
     return render(request, 'backup_config_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def backup_config_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(BackupConfiguration, id=pk).delete()
@@ -2858,6 +2908,7 @@ def backup_config_delete(request, pk):
 
 # ===== Medication Schedule =====
 
+@login_required
 def medication_schedule_list(request):
     entries = MedicationSchedule.objects.all().order_by('-start_date')
 
@@ -2894,6 +2945,7 @@ def medication_schedule_list(request):
     }
     return render(request, 'medication_schedule_list.html', context)
 
+@login_required
 def medication_schedule_add(request):
     if request.method == 'POST':
         try:
@@ -2916,6 +2968,7 @@ def medication_schedule_add(request):
             return redirect('medication_schedule_add')
     return render(request, 'medication_schedule_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def medication_schedule_edit(request, pk):
     entry = get_object_or_404(MedicationSchedule, id=pk)
     if request.method == 'POST':
@@ -2938,6 +2991,7 @@ def medication_schedule_edit(request, pk):
             return redirect('medication_schedule_edit', pk=pk)
     return render(request, 'medication_schedule_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def medication_schedule_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MedicationSchedule, id=pk).delete()
@@ -2947,6 +3001,7 @@ def medication_schedule_delete(request, pk):
 
 # ===== Health Goal =====
 
+@login_required
 def health_goal_list(request):
     entries = HealthGoal.objects.all().order_by('-created_at')
 
@@ -2983,6 +3038,7 @@ def health_goal_list(request):
     }
     return render(request, 'health_goal_list.html', context)
 
+@login_required
 def health_goal_add(request):
     if request.method == 'POST':
         try:
@@ -3007,6 +3063,7 @@ def health_goal_add(request):
             return redirect('health_goal_add')
     return render(request, 'health_goal_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def health_goal_edit(request, pk):
     entry = get_object_or_404(HealthGoal, id=pk)
     if request.method == 'POST':
@@ -3031,6 +3088,7 @@ def health_goal_edit(request, pk):
             return redirect('health_goal_edit', pk=pk)
     return render(request, 'health_goal_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def health_goal_delete(request, pk):
     if request.method == 'POST':
         device = get_object_or_404(WearableDevice, id=pk)
@@ -3069,6 +3127,7 @@ def wearable_sync(request, pk):
 # ===== Sleep & Circadian =====
 
 
+@login_required
 def critical_alert_auto_check(request):
     if request.method == 'POST':
         new_alerts = CriticalAlert.check_and_create_alerts()
@@ -3082,6 +3141,7 @@ def critical_alert_auto_check(request):
 # ===== Health Report =====
 
 
+@login_required
 def health_report_generate(request):
     if request.method == 'POST':
         report_type = request.POST.get('report_type', 'monthly')
@@ -3100,6 +3160,7 @@ def health_report_generate(request):
 # ===== Biological Age Calculation =====
 
 
+@login_required
 def biological_age_estimate(request):
     if request.method == 'POST':
         try:
@@ -3117,6 +3178,7 @@ def biological_age_estimate(request):
 # ===== Predictive Biomarker =====
 
 
+@login_required
 def predictive_biomarker_generate(request):
     if request.method == 'POST':
         biomarker_name = request.POST.get('biomarker_name', '').strip()
@@ -3160,6 +3222,7 @@ def secure_link_shared_view(request, token):
 # ===== Practitioner Access =====
 
 
+@login_required
 def practitioner_portal(request):
     """Dedicated portal for practitioners to request access and view patient data."""
     context = {'access_entries': [], 'error': None}
@@ -3188,6 +3251,7 @@ def practitioner_portal(request):
     return render(request, 'practitioner_portal.html', context)
 
 
+@login_required
 def practitioner_request_access(request):
     """Allow a practitioner to request access to patient data."""
     if request.method == 'POST':
@@ -3211,6 +3275,7 @@ def practitioner_request_access(request):
 # ===== Intake Summary =====
 
 
+@login_required
 def intake_summary_generate(request):
     """Auto-generate an intake summary from existing health data."""
     blood_tests = BloodTest.objects.all().order_by('-date')[:10]
@@ -3300,6 +3365,7 @@ def _data_to_xml(data):
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(root, encoding='unicode')
 
 
+@login_required
 def data_export_download(request, pk):
     """Download exported health data in the requested format (JSON or XML)."""
     export_req = get_object_or_404(DataExportRequest, id=pk)
@@ -3359,6 +3425,7 @@ def _build_health_summary_text():
     return "\n".join(lines)
 
 
+@login_required
 def stakeholder_email_send(request, pk):
     """Send a health summary email to a specific stakeholder."""
     entry = get_object_or_404(StakeholderEmail, id=pk)
@@ -3386,6 +3453,7 @@ def stakeholder_email_send(request, pk):
 # ===== Integration Config =====
 
 
+@login_required
 def integration_config_activate(request, pk):
     entry = get_object_or_404(IntegrationConfig, id=pk)
     if request.method == 'POST':
@@ -3396,6 +3464,7 @@ def integration_config_activate(request, pk):
             messages.error(request, msg)
     return redirect('integration_config_list')
 
+@login_required
 def integration_config_run(request, pk):
     entry = get_object_or_404(IntegrationConfig, id=pk)
     if request.method == 'POST':
@@ -3990,6 +4059,7 @@ _secure_viewing_link = make_crud_views(
 secure_viewing_link_list = _secure_viewing_link['list']
 secure_viewing_link_delete = _secure_viewing_link['delete']
 
+@login_required
 def secure_viewing_link_add(request):
     if request.method == 'POST':
         try:
@@ -4008,6 +4078,7 @@ def secure_viewing_link_add(request):
             return redirect('secure_viewing_link_add')
     return render(request, 'secure_viewing_link_form.html', {'editing': False})
 
+@login_required
 def secure_viewing_link_edit(request, pk):
     entry = get_object_or_404(SecureViewingLink, id=pk)
     if request.method == 'POST':
@@ -4044,6 +4115,7 @@ practitioner_access_list = _practitioner_access['list']
 practitioner_access_add = _practitioner_access['add']
 practitioner_access_delete = _practitioner_access['delete']
 
+@login_required
 def practitioner_access_edit(request, pk):
     entry = get_object_or_404(PractitionerAccess, id=pk)
     if request.method == 'POST':
@@ -4102,6 +4174,7 @@ data_export_list = _data_export['list']
 data_export_edit = _data_export['edit']
 data_export_delete = _data_export['delete']
 
+@login_required
 def data_export_add(request):
     if request.method == 'POST':
         try:

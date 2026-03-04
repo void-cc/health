@@ -1914,6 +1914,71 @@ class Phase4ProtectedViewTests(TestCase):
         response = self.client.get(reverse('security_log'))
         self.assertEqual(response.status_code, 302)
 
+    def test_wearable_device_list_requires_login(self):
+        response = self.client.get(reverse('wearable_device_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_sync_log_list_requires_login(self):
+        response = self.client.get(reverse('sync_log_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_medication_schedule_list_requires_login(self):
+        response = self.client.get(reverse('medication_schedule_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_health_goal_list_requires_login(self):
+        response = self.client.get(reverse('health_goal_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_user_profile_list_requires_login(self):
+        response = self.client.get(reverse('user_profile_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_critical_alert_auto_check_requires_login(self):
+        response = self.client.post(reverse('critical_alert_auto_check'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_health_report_generate_requires_login(self):
+        response = self.client.post(reverse('health_report_generate'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_practitioner_portal_requires_login(self):
+        response = self.client.get(reverse('practitioner_portal'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_intake_summary_generate_requires_login(self):
+        response = self.client.get(reverse('intake_summary_generate'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_stakeholder_email_list_requires_login(self):
+        response = self.client.get(reverse('stakeholder_email_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_integration_config_list_requires_login(self):
+        response = self.client.get(reverse('integration_config_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_secure_viewing_link_list_requires_login(self):
+        response = self.client.get(reverse('secure_viewing_link_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_data_export_list_requires_login(self):
+        response = self.client.get(reverse('data_export_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
 
 class Phase4SidebarTests(TestCase):
     def setUp(self):
@@ -3524,8 +3589,8 @@ class Phase9SecureViewingLinkTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-
-    def test_auto_token_generation(self):
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
         """Tokens should be auto-generated when creating a link."""
         from django.utils import timezone
         from datetime import timedelta
@@ -3671,6 +3736,8 @@ class Phase9PractitionerPortalTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_portal_page_loads(self):
         response = self.client.get(reverse('practitioner_portal'))
@@ -3762,6 +3829,8 @@ class Phase9IntakeSummaryGenerateTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_generate_empty_data(self):
         """Generate should work even with no health data."""
@@ -3828,6 +3897,8 @@ class Phase9DataExportTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
         BloodTest.objects.create(
             test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1),
         )
@@ -3904,6 +3975,8 @@ class Phase9StakeholderEmailTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_send_email_to_active_stakeholder(self):
         """Sending to active stakeholder should succeed."""
