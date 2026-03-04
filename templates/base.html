@@ -68,14 +68,34 @@
 
       <ul class="sidebar-nav" role="menubar">
         {% for section in sidebar_nav %}
-        <li class="sidebar-category">{{ section.category }}</li>
+        {% if section.collapsible %}
+        <li class="sidebar-category sidebar-category--collapsible{% if section.expanded %} sidebar-category--expanded{% endif %}" role="none">
+          <button type="button" class="sidebar-collapse-toggle" aria-expanded="{{ section.expanded|yesno:'true,false' }}">
+            {{ section.category }}
+            <i class="fas fa-chevron-down sidebar-collapse-icon" aria-hidden="true"></i>
+          </button>
+          <ul class="list-unstyled sidebar-collapse-body{% if section.expanded %} sidebar-collapse-body--open{% endif %}" role="group">
+            {% for item in section.items %}
+            <li class="sidebar-item {% if item.active %}active{% endif %}">
+              <a href="{{ item.url }}" class="sidebar-link" role="menuitem">
+                <i class="fas {{ item.icon }}" aria-hidden="true"></i>
+                <span>{{ item.label }}</span>
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </li>
+        {% else %}
+        <li class="sidebar-category" role="none">{{ section.category }}</li>
         {% for item in section.items %}
         <li class="sidebar-item {% if item.active %}active{% endif %}">
           <a href="{{ item.url }}" class="sidebar-link" role="menuitem">
-            <i class="fas {{ item.icon }}" aria-hidden="true"></i> <span>{{ item.label }}</span>
+            <i class="fas {{ item.icon }}" aria-hidden="true"></i>
+            <span>{{ item.label }}</span>
           </a>
         </li>
         {% endfor %}
+        {% endif %}
         {% endfor %}
       </ul>
     </div>

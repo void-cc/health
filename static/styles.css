@@ -242,6 +242,38 @@ main h4 {
   margin-left: 0;
 }
 
+/* Collapsible sidebar categories */
+.sidebar-collapse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+  cursor: pointer;
+}
+.sidebar-collapse-toggle:hover { opacity: 1; }
+.sidebar-collapse-icon {
+  transition: transform 0.2s;
+  font-size: 0.6rem;
+}
+.sidebar-category--expanded .sidebar-collapse-icon {
+  transform: rotate(180deg);
+}
+.sidebar-collapse-body {
+  display: none;
+}
+.sidebar-collapse-body--open {
+  display: block;
+}
+
 /* ---- Phase 3: Top navbar styling ---- */
 .top-navbar {
   display: flex;

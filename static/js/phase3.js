@@ -854,3 +854,16 @@
     }
   }
 })();
+
+// Collapsible sidebar categories
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.sidebar-collapse-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var parent = btn.closest('.sidebar-category--collapsible');
+      var body = parent.querySelector('.sidebar-collapse-body');
+      var expanded = parent.classList.toggle('sidebar-category--expanded');
+      body.classList.toggle('sidebar-collapse-body--open', expanded);
+      btn.setAttribute('aria-expanded', String(expanded));
+    });
+  });
+});
