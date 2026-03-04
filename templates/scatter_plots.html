@@ -94,6 +94,8 @@
     var points = buildScatterData(xName, yName);
     if (scatterChart) { scatterChart.destroy(); }
     var ctx = document.getElementById('scatterChart').getContext('2d');
+    var axisFont = { fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, fontColor: '#6b7280' };
+    var gridCfg = { color: 'rgba(0,0,0,0.05)', drawBorder: false };
     scatterChart = new Chart(ctx, {
       type: 'scatter',
       data: {
@@ -113,8 +115,8 @@
         layout: { padding: { top: 8, right: 8 } },
         legend: { display: false },
         scales: {
-          xAxes: [{ scaleLabel: { display: true, labelString: xName, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, fontColor: '#6b7280' }, gridLines: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, fontColor: '#6b7280', padding: 8 } }],
-          yAxes: [{ scaleLabel: { display: true, labelString: yName, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, fontColor: '#6b7280' }, gridLines: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, fontColor: '#6b7280', padding: 12 } }]
+          xAxes: [{ scaleLabel: Object.assign({ display: true, labelString: xName }, axisFont), gridLines: gridCfg, ticks: Object.assign({ padding: 8 }, axisFont) }],
+          yAxes: [{ scaleLabel: Object.assign({ display: true, labelString: yName }, axisFont), gridLines: gridCfg, ticks: Object.assign({ padding: 12 }, axisFont) }]
         },
         tooltips: {
           backgroundColor: 'rgba(17,24,39,0.92)',
