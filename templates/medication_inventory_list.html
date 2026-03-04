@@ -62,7 +62,7 @@
 {% if refill_count %}
 <div class="alert alert-warning d-flex align-items-center gap-2 py-2" style="font-size:0.8125rem;">
   <i data-lucide="alert-triangle" style="width:16px;height:16px;flex-shrink:0;"></i>
-  <span><strong>{{ refill_count }} item{{ refill_count|pluralize }} need{{ refill_count|pluralize:"s," }} a refill.</strong></span>
+  <span><strong>{{ refill_count }} item{{ refill_count|pluralize }} to refill.</strong></span>
 </div>
 {% endif %}
 {% if expired_count %}
