@@ -1203,6 +1203,10 @@
   margin-bottom: var(--space-6);
 }
 
+.chart-section {
+  margin-bottom: var(--space-6);
+}
+
 .chart-section-header {
   display: flex;
   align-items: flex-start;
@@ -1233,6 +1237,149 @@
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-primary);
 }
+
+.chart-card-header-text {
+  min-width: 0;
+}
+
+.chart-card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.2rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chart-card-subtitle {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.chart-card-badge {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.chart-card-body {
+  padding: var(--space-5);
+  position: relative;
+}
+
+.chart-canvas-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* ── Chart stats strip ────────────────────────────────────────────────────── */
+
+.chart-stats-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.chart-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chart-stat-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.chart-stat-value.stat-normal {
+  color: var(--color-success);
+}
+
+.chart-stat-value.stat-high {
+  color: var(--color-warning);
+}
+
+.chart-stat-value.stat-critical {
+  color: var(--color-error);
+}
+
+.chart-stat-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+/* ── Chart legend ──────────────────────────────────────────────────────────── */
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.chart-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chart-legend-line {
+  width: 18px;
+  height: 2px;
+  flex-shrink: 0;
+  border-radius: 1px;
+  border-top: 2px dashed;
+}
+
+/* ── Dark mode chart cards ─────────────────────────────────────────────────── */
+
+[data-theme="dark"] .chart-card {
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .chart-card-header {
+  background: var(--bg-primary);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .chart-stats-strip {
+  background: var(--bg-tertiary);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .chart-legend {
+  background: var(--bg-tertiary);
+  border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .chart-filters-bar {
+  border-color: var(--border-color);
+}
+
 
 .chart-card-header-text {
   min-width: 0;
