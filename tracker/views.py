@@ -169,6 +169,50 @@ def index(request):
             pct = round((len(cat_tests) / max_count) * 100)
             cat_bar_data.append({'name': cat, 'count': len(cat_tests), 'pct': pct})
 
+    # Blood test trend chart data (for blood_charts widget)
+    charts_data = {}
+    for test in tests.order_by('date'):
+        if test.test_name not in charts_data:
+            charts_data[test.test_name] = {
+                'unit': test.unit,
+                'data': [],
+                'normal_min': test.normal_min,
+                'normal_max': test.normal_max,
+            }
+        charts_data[test.test_name]['data'].append({
+            'x': test.date.strftime('%Y-%m-%d'),
+            'y': test.value,
+        })
+
+    # Vitals chart data (for vitals_charts widget)
+    all_vitals = VitalSign.objects.all().order_by('date')
+    weight_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.weight} for v in all_vitals if v.weight is not None]
+    hr_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.heart_rate} for v in all_vitals if v.heart_rate is not None]
+    sys_bp_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.systolic_bp} for v in all_vitals if v.systolic_bp is not None]
+    dia_bp_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.diastolic_bp} for v in all_vitals if v.diastolic_bp is not None]
+
+    # Comparative bar data (for comparative_bars widget)
+    latest_tests = {}
+    for test in tests:
+        if test.test_name not in latest_tests:
+            if test.normal_min is not None and test.normal_max is not None:
+                latest_tests[test.test_name] = test
+
+    # Boxplot data (for boxplots widget)
+    boxplots_data = {}
+    for test in tests.order_by('date'):
+        if test.test_name not in boxplots_data:
+            boxplots_data[test.test_name] = {
+                'unit': test.unit,
+                'data': [],
+                'normal_min': test.normal_min,
+                'normal_max': test.normal_max,
+            }
+        boxplots_data[test.test_name]['data'].append(test.value)
+
+    # Recent vitals list (for vital_signs widget)
+    recent_vitals = list(VitalSign.objects.all().order_by('-date')[:5])
+
     context = {
         'tests': tests,
         'test_types': test_types,
@@ -185,6 +229,14 @@ def index(request):
         'hr_sparkline_points': hr_sparkline_points,
         'test_sparklines': test_sparklines,
         'cat_bar_data': cat_bar_data,
+        'charts_data': charts_data,
+        'weight_data': weight_data,
+        'hr_data': hr_data,
+        'sys_bp_data': sys_bp_data,
+        'dia_bp_data': dia_bp_data,
+        'latest_tests': latest_tests,
+        'boxplots_data': boxplots_data,
+        'recent_vitals': recent_vitals,
     }
     return render(request, 'index.html', context)
 
@@ -1563,6 +1615,7 @@ def global_search(request):
 
 # ===== Wearable Integrations =====
 
+@login_required
 def wearable_device_list(request):
     entries = WearableDevice.objects.all().order_by('-created_at')
     from tracker.integrations.registry import is_oauth_platform, get_client
@@ -1580,6 +1633,7 @@ def wearable_device_list(request):
             entry.is_configured = False
     return render(request, 'wearable_device_list.html', {'entries': entries})
 
+@login_required
 def wearable_device_add(request):
     if request.method == 'POST':
         try:
@@ -1596,6 +1650,7 @@ def wearable_device_add(request):
             return redirect('wearable_device_add')
     return render(request, 'wearable_device_form.html', {'editing': False, 'platforms': WEARABLE_PLATFORMS})
 
+@login_required
 def wearable_device_edit(request, pk):
     entry = get_object_or_404(WearableDevice, id=pk)
     if request.method == 'POST':
@@ -1611,12 +1666,14 @@ def wearable_device_edit(request, pk):
             return redirect('wearable_device_edit', pk=pk)
     return render(request, 'wearable_device_form.html', {'entry': entry, 'editing': True, 'platforms': WEARABLE_PLATFORMS})
 
+@login_required
 def wearable_device_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(WearableDevice, id=pk).delete()
         messages.success(request, 'Wearable device deleted!')
     return redirect('wearable_device_list')
 
+@login_required
 def wearable_device_sync(request, pk):
     device = get_object_or_404(WearableDevice, id=pk)
     if request.method == 'POST':
@@ -1627,6 +1684,7 @@ def wearable_device_sync(request, pk):
             messages.error(request, f'Sync failed: {sync_log.error_message}')
     return redirect('wearable_device_list')
 
+@login_required
 def sync_log_list(request):
     entries = WearableSyncLog.objects.all().order_by('-started_at')
     return render(request, 'sync_log_list.html', {'entries': entries})
@@ -2916,6 +2974,7 @@ def backup_config_delete(request, pk):
 
 # ===== Medication Schedule =====
 
+@login_required
 def medication_schedule_list(request):
     entries = MedicationSchedule.objects.all().order_by('-start_date')
 
@@ -2952,6 +3011,7 @@ def medication_schedule_list(request):
     }
     return render(request, 'medication_schedule_list.html', context)
 
+@login_required
 def medication_schedule_add(request):
     if request.method == 'POST':
         try:
@@ -2974,6 +3034,7 @@ def medication_schedule_add(request):
             return redirect('medication_schedule_add')
     return render(request, 'medication_schedule_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def medication_schedule_edit(request, pk):
     entry = get_object_or_404(MedicationSchedule, id=pk)
     if request.method == 'POST':
@@ -2996,6 +3057,7 @@ def medication_schedule_edit(request, pk):
             return redirect('medication_schedule_edit', pk=pk)
     return render(request, 'medication_schedule_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def medication_schedule_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(MedicationSchedule, id=pk).delete()
@@ -3005,6 +3067,7 @@ def medication_schedule_delete(request, pk):
 
 # ===== Health Goal =====
 
+@login_required
 def health_goal_list(request):
     entries = HealthGoal.objects.all().order_by('-created_at')
 
@@ -3041,6 +3104,7 @@ def health_goal_list(request):
     }
     return render(request, 'health_goal_list.html', context)
 
+@login_required
 def health_goal_add(request):
     if request.method == 'POST':
         try:
@@ -3065,6 +3129,7 @@ def health_goal_add(request):
             return redirect('health_goal_add')
     return render(request, 'health_goal_form.html', {'date': datetime.now().strftime('%Y-%m-%d'), 'editing': False})
 
+@login_required
 def health_goal_edit(request, pk):
     entry = get_object_or_404(HealthGoal, id=pk)
     if request.method == 'POST':
@@ -3089,44 +3154,15 @@ def health_goal_edit(request, pk):
             return redirect('health_goal_edit', pk=pk)
     return render(request, 'health_goal_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def health_goal_delete(request, pk):
     if request.method == 'POST':
-        device = get_object_or_404(WearableDevice, id=pk)
-        device.access_token = ''
-        device.refresh_token = ''
-        device.token_expires_at = None
-        device.scope = ''
-        device.save(update_fields=['access_token', 'refresh_token', 'token_expires_at', 'scope'])
-        messages.success(request, f'{device.get_platform_display()} disconnected.')
-    return redirect('wearable_device_list')
+        get_object_or_404(HealthGoal, id=pk).delete()
+        messages.success(request, 'Health goal deleted!')
+    return redirect('health_goal_list')
 
 
 @login_required
-def wearable_sync(request, pk):
-    """Trigger a data sync for a wearable device."""
-    if request.method == 'POST':
-        device = get_object_or_404(WearableDevice, id=pk)
-        if not device.access_token:
-            messages.error(request, f'{device.get_platform_display()} is not connected. Please connect first.')
-            return redirect('wearable_device_list')
-
-        from tracker.integrations.registry import get_client
-        client = get_client(device.platform)
-        if not client:
-            messages.error(request, f'No integration client for {device.get_platform_display()}.')
-            return redirect('wearable_device_list')
-
-        sync_log = client.sync_data(device)
-        if sync_log.status == 'success':
-            messages.success(request, f'Synced {sync_log.records_synced} records from {device.get_platform_display()}.')
-        else:
-            messages.error(request, f'Sync failed: {sync_log.error_message}')
-    return redirect('wearable_device_list')
-
-
-# ===== Sleep & Circadian =====
-
-
 def critical_alert_auto_check(request):
     if request.method == 'POST':
         new_alerts = CriticalAlert.check_and_create_alerts()
@@ -3140,6 +3176,7 @@ def critical_alert_auto_check(request):
 # ===== Health Report =====
 
 
+@login_required
 def health_report_generate(request):
     if request.method == 'POST':
         report_type = request.POST.get('report_type', 'monthly')
@@ -3158,6 +3195,7 @@ def health_report_generate(request):
 # ===== Biological Age Calculation =====
 
 
+@login_required
 def biological_age_estimate(request):
     if request.method == 'POST':
         try:
@@ -3175,6 +3213,7 @@ def biological_age_estimate(request):
 # ===== Predictive Biomarker =====
 
 
+@login_required
 def predictive_biomarker_generate(request):
     if request.method == 'POST':
         biomarker_name = request.POST.get('biomarker_name', '').strip()
@@ -3203,14 +3242,16 @@ def secure_link_shared_view(request, token):
     link.save(update_fields=['access_count'])
     data_types = [dt.strip() for dt in link.data_types.split(',') if dt.strip()] if link.data_types else []
     context = {'link': link, 'data': {}}
+    if link.user is None:
+        return render(request, 'secure_link_shared_view.html', context)
     if not data_types or 'blood_tests' in data_types:
-        context['data']['blood_tests'] = list(BloodTest.objects.all().order_by('-date')[:20].values(
+        context['data']['blood_tests'] = list(BloodTest.objects.filter(user=link.user).order_by('-date')[:20].values(
             'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max'))
     if not data_types or 'vitals' in data_types:
-        context['data']['vitals'] = list(VitalSign.objects.all().order_by('-date')[:20].values(
+        context['data']['vitals'] = list(VitalSign.objects.filter(user=link.user).order_by('-date')[:20].values(
             'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt', 'respiratory_rate', 'spo2'))
     if not data_types or 'medications' in data_types:
-        context['data']['medications'] = list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
+        context['data']['medications'] = list(MedicationSchedule.objects.filter(user=link.user).order_by('-start_date')[:20].values(
             'medication_name', 'dosage', 'frequency', 'start_date', 'end_date'))
     return render(request, 'secure_link_shared_view.html', context)
 
@@ -3218,6 +3259,7 @@ def secure_link_shared_view(request, token):
 # ===== Practitioner Access =====
 
 
+@login_required
 def practitioner_portal(request):
     """Dedicated portal for practitioners to request access and view patient data."""
     context = {'access_entries': [], 'error': None}
@@ -3228,13 +3270,17 @@ def practitioner_portal(request):
                 practitioner_email=email, access_status='approved'
             )
             if entries.exists():
+                # Only include patients who explicitly authorized access (non-null patient FK).
+                # Entries without a patient association (legacy records) are intentionally
+                # excluded to prevent unscoped data exposure.
+                patient_ids = entries.exclude(patient__isnull=True).values_list('patient', flat=True)
                 data = {
-                    'blood_tests': list(BloodTest.objects.all().order_by('-date')[:20].values(
+                    'blood_tests': list(BloodTest.objects.filter(user__in=patient_ids).order_by('-date')[:20].values(
                         'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max')),
-                    'vitals': list(VitalSign.objects.all().order_by('-date')[:20].values(
+                    'vitals': list(VitalSign.objects.filter(user__in=patient_ids).order_by('-date')[:20].values(
                         'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt',
                         'respiratory_rate', 'spo2')),
-                    'medications': list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
+                    'medications': list(MedicationSchedule.objects.filter(user__in=patient_ids).order_by('-start_date')[:20].values(
                         'medication_name', 'dosage', 'frequency', 'start_date', 'end_date')),
                 }
                 context['access_entries'] = entries
@@ -3246,6 +3292,7 @@ def practitioner_portal(request):
     return render(request, 'practitioner_portal.html', context)
 
 
+@login_required
 def practitioner_request_access(request):
     """Allow a practitioner to request access to patient data."""
     if request.method == 'POST':
@@ -3269,6 +3316,7 @@ def practitioner_request_access(request):
 # ===== Intake Summary =====
 
 
+@login_required
 def intake_summary_generate(request):
     """Auto-generate an intake summary from existing health data."""
     blood_tests = BloodTest.objects.all().order_by('-date')[:10]
@@ -3358,6 +3406,7 @@ def _data_to_xml(data):
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(root, encoding='unicode')
 
 
+@login_required
 def data_export_download(request, pk):
     """Download exported health data in the requested format (JSON or XML)."""
     export_req = get_object_or_404(DataExportRequest, id=pk)
@@ -3417,6 +3466,7 @@ def _build_health_summary_text():
     return "\n".join(lines)
 
 
+@login_required
 def stakeholder_email_send(request, pk):
     """Send a health summary email to a specific stakeholder."""
     entry = get_object_or_404(StakeholderEmail, id=pk)
@@ -3444,6 +3494,7 @@ def stakeholder_email_send(request, pk):
 # ===== Integration Config =====
 
 
+@login_required
 def integration_config_activate(request, pk):
     entry = get_object_or_404(IntegrationConfig, id=pk)
     if request.method == 'POST':
@@ -3454,6 +3505,7 @@ def integration_config_activate(request, pk):
             messages.error(request, msg)
     return redirect('integration_config_list')
 
+@login_required
 def integration_config_run(request, pk):
     entry = get_object_or_404(IntegrationConfig, id=pk)
     if request.method == 'POST':
@@ -3924,6 +3976,26 @@ medication_schedule_add = _medication['add']
 medication_schedule_edit = _medication['edit']
 medication_schedule_delete = _medication['delete']
 
+# ===== Pharmacological Interactions =====
+_pharmacological_interaction = make_crud_views(
+    model_class=PharmacologicalInteraction,
+    display_name='Pharmacological Interaction',
+    fields=[
+        {'name': 'medication_a', 'type': 'str', 'required': True, 'label': 'Medication A'},
+        {'name': 'medication_b', 'type': 'str', 'required': True, 'label': 'Medication B'},
+        {'name': 'severity', 'type': 'str', 'choices': PharmacologicalInteraction.SEVERITY_CHOICES, 'default': 'low', 'label': 'Severity'},
+        {'name': 'description', 'type': 'str', 'widget': 'textarea', 'label': 'Description'},
+    ],
+    list_url_name='pharmacological_interaction_list',
+    add_url_name='pharmacological_interaction_add',
+    edit_url_name='pharmacological_interaction_edit',
+    order_by='-detected_at',
+)
+pharmacological_interaction_list = _pharmacological_interaction['list']
+pharmacological_interaction_add = _pharmacological_interaction['add']
+pharmacological_interaction_edit = _pharmacological_interaction['edit']
+pharmacological_interaction_delete = _pharmacological_interaction['delete']
+
 # ===== Health Goals =====
 _health_goal = make_crud_views(
     model_class=HealthGoal,
@@ -4048,6 +4120,7 @@ _secure_viewing_link = make_crud_views(
 secure_viewing_link_list = _secure_viewing_link['list']
 secure_viewing_link_delete = _secure_viewing_link['delete']
 
+@login_required
 def secure_viewing_link_add(request):
     if request.method == 'POST':
         try:
@@ -4058,6 +4131,7 @@ def secure_viewing_link_add(request):
                 data_types=request.POST.get('data_types', ''),
                 expires_at=expires_dt,
                 is_active=request.POST.get('is_active') == 'on',
+                user=request.user if request.user.is_authenticated else None,
             )
             messages.success(request, 'Secure viewing link created!')
             return redirect('secure_viewing_link_list')
@@ -4066,6 +4140,7 @@ def secure_viewing_link_add(request):
             return redirect('secure_viewing_link_add')
     return render(request, 'secure_viewing_link_form.html', {'editing': False})
 
+@login_required
 def secure_viewing_link_edit(request, pk):
     entry = get_object_or_404(SecureViewingLink, id=pk)
     if request.method == 'POST':
@@ -4102,6 +4177,7 @@ practitioner_access_list = _practitioner_access['list']
 practitioner_access_add = _practitioner_access['add']
 practitioner_access_delete = _practitioner_access['delete']
 
+@login_required
 def practitioner_access_edit(request, pk):
     entry = get_object_or_404(PractitionerAccess, id=pk)
     if request.method == 'POST':
@@ -4112,6 +4188,10 @@ def practitioner_access_edit(request, pk):
             new_status = request.POST.get('access_status', entry.access_status)
             if new_status == 'approved' and entry.access_status != 'approved':
                 entry.granted_at = timezone.now()
+                # Only set the patient if not already linked to prevent overwriting
+                # an existing patient association by a different logged-in user.
+                if entry.patient is None:
+                    entry.patient = request.user
             entry.access_status = new_status
             entry.save()
             messages.success(request, 'Practitioner access updated!')
@@ -4160,6 +4240,7 @@ data_export_list = _data_export['list']
 data_export_edit = _data_export['edit']
 data_export_delete = _data_export['delete']
 
+@login_required
 def data_export_add(request):
     if request.method == 'POST':
         try:

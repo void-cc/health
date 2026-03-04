@@ -5,7 +5,7 @@ from tracker.models import (
     BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
     UserProfile, SecurityLog, UserSession, PrivacyPreference,
     SecureViewingLink, PractitionerAccess, IntakeSummary,
-    DataExportRequest, StakeholderEmail, MedicationSchedule,
+    DataExportRequest, StakeholderEmail, MedicationSchedule, PharmacologicalInteraction,
     SleepLog, MacronutrientLog, FastingLog, MetabolicLog,
     HealthGoal, CriticalAlert, WearableDevice, WearableSyncLog,
     HealthReport, PredictiveBiomarker, BiologicalAgeCalculation,
@@ -1914,6 +1914,71 @@ class Phase4ProtectedViewTests(TestCase):
         response = self.client.get(reverse('security_log'))
         self.assertEqual(response.status_code, 302)
 
+    def test_wearable_device_list_requires_login(self):
+        response = self.client.get(reverse('wearable_device_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_sync_log_list_requires_login(self):
+        response = self.client.get(reverse('sync_log_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_medication_schedule_list_requires_login(self):
+        response = self.client.get(reverse('medication_schedule_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_health_goal_list_requires_login(self):
+        response = self.client.get(reverse('health_goal_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_user_profile_list_requires_login(self):
+        response = self.client.get(reverse('user_profile_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_critical_alert_auto_check_requires_login(self):
+        response = self.client.post(reverse('critical_alert_auto_check'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_health_report_generate_requires_login(self):
+        response = self.client.post(reverse('health_report_generate'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_practitioner_portal_requires_login(self):
+        response = self.client.get(reverse('practitioner_portal'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_intake_summary_generate_requires_login(self):
+        response = self.client.get(reverse('intake_summary_generate'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_stakeholder_email_list_requires_login(self):
+        response = self.client.get(reverse('stakeholder_email_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_integration_config_list_requires_login(self):
+        response = self.client.get(reverse('integration_config_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_secure_viewing_link_list_requires_login(self):
+        response = self.client.get(reverse('secure_viewing_link_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_data_export_list_requires_login(self):
+        response = self.client.get(reverse('data_export_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
 
 class Phase4SidebarTests(TestCase):
     def setUp(self):
@@ -2697,6 +2762,12 @@ class Phase5To12StatusCodeTests(TestCase):
     def test_medication_schedule_add(self):
         self.assertEqual(self.client.get(reverse('medication_schedule_add')).status_code, 200)
 
+    def test_pharmacological_interaction_list(self):
+        self.assertEqual(self.client.get(reverse('pharmacological_interaction_list')).status_code, 200)
+
+    def test_pharmacological_interaction_add(self):
+        self.assertEqual(self.client.get(reverse('pharmacological_interaction_add')).status_code, 200)
+
     def test_health_goal_list(self):
         self.assertEqual(self.client.get(reverse('health_goal_list')).status_code, 200)
 
@@ -2804,6 +2875,12 @@ class Phase5To12CRUDTests(TestCase):
         response = self.client.post(reverse('wearable_device_delete', kwargs={'pk': d.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(WearableDevice.objects.count(), 0)
+
+    def test_wearable_device_sync_post(self):
+        d = WearableDevice.objects.create(platform='fitbit', device_name='Test')
+        response = self.client.post(reverse('wearable_device_sync', kwargs={'pk': d.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(WearableSyncLog.objects.filter(device=d).exists())
 
     # ----- SleepLog -----
     def test_sleep_add_post(self):
@@ -3251,6 +3328,39 @@ class Phase5To12CRUDTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(MedicationSchedule.objects.count(), 0)
 
+    # ----- PharmacologicalInteraction -----
+    def test_pharmacological_interaction_add_post(self):
+        response = self.client.post(reverse('pharmacological_interaction_add'), {
+            'medication_a': 'Aspirin',
+            'medication_b': 'Warfarin',
+            'severity': 'high',
+            'description': 'Increased bleeding risk.',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PharmacologicalInteraction.objects.count(), 1)
+
+    def test_pharmacological_interaction_edit_post(self):
+        pi = PharmacologicalInteraction.objects.create(
+            medication_a='Aspirin', medication_b='Warfarin', severity='high',
+        )
+        response = self.client.post(reverse('pharmacological_interaction_edit', kwargs={'pk': pi.pk}), {
+            'medication_a': 'Aspirin',
+            'medication_b': 'Warfarin',
+            'severity': 'critical',
+            'description': 'Updated description.',
+        })
+        self.assertEqual(response.status_code, 302)
+        pi.refresh_from_db()
+        self.assertEqual(pi.severity, 'critical')
+
+    def test_pharmacological_interaction_delete_post(self):
+        pi = PharmacologicalInteraction.objects.create(
+            medication_a='Aspirin', medication_b='Warfarin', severity='low',
+        )
+        response = self.client.post(reverse('pharmacological_interaction_delete', kwargs={'pk': pi.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PharmacologicalInteraction.objects.count(), 0)
+
     # ----- HealthGoal -----
     def test_health_goal_add_post(self):
         response = self.client.post(reverse('health_goal_add'), {
@@ -3524,6 +3634,8 @@ class Phase9SecureViewingLinkTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_auto_token_generation(self):
         """Tokens should be auto-generated when creating a link."""
@@ -3633,14 +3745,32 @@ class Phase9SecureViewingLinkTests(TestCase):
         """Shared view should display health data when available."""
         from django.utils import timezone
         from datetime import timedelta
-        BloodTest.objects.create(test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1))
+        user = User.objects.create_user(username='datauser', password='pass')
+        BloodTest.objects.create(test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1), user=user)
         link = SecureViewingLink.objects.create(
             token='data-token', expires_at=timezone.now() + timedelta(hours=24),
-            is_active=True, data_types='blood_tests',
+            is_active=True, data_types='blood_tests', user=user,
         )
         response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'data-token'}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Glucose')
+
+    def test_shared_view_only_shows_owner_data(self):
+        """Shared view must not expose another user's health data."""
+        from django.utils import timezone
+        from datetime import timedelta
+        owner = User.objects.create_user(username='owner', password='pass')
+        other = User.objects.create_user(username='other', password='pass')
+        BloodTest.objects.create(test_name='OwnerGlucose', value=90, unit='mg/dL', date=date(2026, 3, 1), user=owner)
+        BloodTest.objects.create(test_name='OtherCholesterol', value=200, unit='mg/dL', date=date(2026, 3, 1), user=other)
+        link = SecureViewingLink.objects.create(
+            token='isolation-token', expires_at=timezone.now() + timedelta(hours=24),
+            is_active=True, data_types='blood_tests', user=owner,
+        )
+        response = self.client.get(reverse('secure_link_shared_view', kwargs={'token': 'isolation-token'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'OwnerGlucose')
+        self.assertNotContains(response, 'OtherCholesterol')
 
     def test_shared_view_invalid_token_404(self):
         """Non-existent tokens should return 404."""
@@ -3671,6 +3801,8 @@ class Phase9PractitionerPortalTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_portal_page_loads(self):
         response = self.client.get(reverse('practitioner_portal'))
@@ -3731,7 +3863,9 @@ class Phase9PractitionerPortalTests(TestCase):
         self.assertContains(response, 'No approved access found')
 
     def test_approve_practitioner_sets_granted_at(self):
-        """Approving a practitioner should set granted_at timestamp."""
+        """Approving a practitioner should set granted_at timestamp and link the patient."""
+        user = User.objects.create_user(username='patient_user', password='testpass123')
+        self.client.login(username='patient_user', password='testpass123')
         pa = PractitionerAccess.objects.create(
             practitioner_name='Dr. New',
             practitioner_email='new@hospital.com',
@@ -3747,6 +3881,39 @@ class Phase9PractitionerPortalTests(TestCase):
         pa.refresh_from_db()
         self.assertEqual(pa.access_status, 'approved')
         self.assertIsNotNone(pa.granted_at)
+        self.assertEqual(pa.patient, user)
+
+    def test_portal_only_shows_authorized_patient_data(self):
+        """Portal must not expose data belonging to patients who did not authorize the practitioner."""
+        from django.utils import timezone
+        patient_a = User.objects.create_user(username='patient_a', password='testpass123')
+        patient_b = User.objects.create_user(username='patient_b', password='testpass123')
+        # Only patient_a authorized Dr. Smith
+        PractitionerAccess.objects.create(
+            practitioner_name='Dr. Smith',
+            practitioner_email='smith@hospital.com',
+            access_status='approved',
+            granted_at=timezone.now(),
+            patient=patient_a,
+        )
+        # Create health data for both patients
+        BloodTest.objects.create(
+            user=patient_a, test_name='Glucose', value=90.0, unit='mg/dL',
+            date=timezone.now().date(),
+        )
+        BloodTest.objects.create(
+            user=patient_b, test_name='Cholesterol', value=180.0, unit='mg/dL',
+            date=timezone.now().date(),
+        )
+        response = self.client.post(reverse('practitioner_portal'), {
+            'practitioner_email': 'smith@hospital.com',
+        })
+        self.assertEqual(response.status_code, 200)
+        patient_data = response.context.get('patient_data', {})
+        blood_test_names = [bt['test_name'] for bt in patient_data.get('blood_tests', [])]
+        # Dr. Smith should only see patient_a's Glucose, not patient_b's Cholesterol
+        self.assertIn('Glucose', blood_test_names)
+        self.assertNotIn('Cholesterol', blood_test_names)
 
     def test_request_access_requires_name_and_email(self):
         """Access request without name/email should not create entry."""
@@ -3762,6 +3929,8 @@ class Phase9IntakeSummaryGenerateTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_generate_empty_data(self):
         """Generate should work even with no health data."""
@@ -3828,6 +3997,8 @@ class Phase9DataExportTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
         BloodTest.objects.create(
             test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1),
         )
@@ -3904,6 +4075,8 @@ class Phase9StakeholderEmailTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
 
     def test_send_email_to_active_stakeholder(self):
         """Sending to active stakeholder should succeed."""
@@ -4836,3 +5009,75 @@ class AdminAccessControlTests(TestCase):
                 response.status_code, 200,
                 msg=f'{url_name} should be accessible by staff users'
             )
+class DashboardWidgetTests(TestCase):
+    """Tests for all 7 dashboard widget types being rendered on the index page."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        self.client.login(username='testuser', password='testpass123')
+        self.blood_test = BloodTest.objects.create(
+            test_name="Glucose", value=90.0, unit="mg/dL",
+            date=date(2026, 1, 15), normal_min=70.0, normal_max=100.0,
+            category="Metabolic"
+        )
+        self.vital = VitalSign.objects.create(
+            date=date(2026, 1, 15), weight=70.5, heart_rate=72,
+            systolic_bp=120, diastolic_bp=80, spo2=98.0, bbt=36.5
+        )
+
+    def test_index_context_contains_chart_data(self):
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('charts_data', response.context)
+        self.assertIn('weight_data', response.context)
+        self.assertIn('hr_data', response.context)
+        self.assertIn('sys_bp_data', response.context)
+        self.assertIn('dia_bp_data', response.context)
+        self.assertIn('latest_tests', response.context)
+        self.assertIn('boxplots_data', response.context)
+        self.assertIn('recent_vitals', response.context)
+
+    def test_vital_signs_widget_rendered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Vital Signs')
+        self.assertContains(response, '70.5')
+
+    def test_blood_charts_widget_rendered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Blood Test Trends')
+        self.assertContains(response, 'dash-blood-chart-')
+
+    def test_vitals_charts_widget_rendered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Vital Signs Trends')
+        self.assertContains(response, 'dash-weight-chart')
+
+    def test_comparative_bars_widget_rendered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Compare to Normal Range')
+        self.assertContains(response, 'dash-comp-chart-')
+
+    def test_boxplots_widget_rendered(self):
+        response = self.client.get(reverse('index'))
+        self.assertContains(response, 'Distribution Analysis')
+        self.assertContains(response, 'dash-box-chart-')
+
+    def test_widget_visibility_toggle(self):
+        # First, load the page so widgets are created
+        self.client.get(reverse('index'))
+        widgets = DashboardWidget.objects.all()
+        for w in widgets:
+            if w.widget_type == 'boxplots':
+                w.visible = False
+                w.save()
+        response = self.client.get(reverse('index'))
+        self.assertNotContains(response, 'Distribution Analysis')
+
+    def test_empty_dashboard_shows_empty_states(self):
+        BloodTest.objects.all().delete()
+        VitalSign.objects.all().delete()
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No blood tests yet')
+        self.assertContains(response, 'No vitals recorded')
