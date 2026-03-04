@@ -9,7 +9,7 @@ actually do.
 
 ## 1. Authentication & Access Control
 
-### 1.1 — ~75 view functions are not protected by `@login_required`
+### 1.1 — 53 view functions are not protected by `@login_required`
 
 **Affected files:** `tracker/views.py`
 
@@ -101,24 +101,6 @@ through the application.
 Same situation as `ClinicalTrialMatch`. The model is defined and imported but
 there is no way to view, create, edit, or delete interactions through the UI.
 No drug-interaction checking is wired up to the Medications feature either.
-
-### 3.3 — `wearable_device_sync` (line 1606) is never registered in `urls.py`
-
-**Affected files:** `tracker/views.py` (line 1606), `tracker/urls.py`
-
-A function `wearable_device_sync` exists at line 1606 that uses
-`device.trigger_sync()`. It is not listed in `urlpatterns` and is therefore
-completely unreachable.
-
-### 3.4 — Duplicate `wearable_sync` definition — first is silently overridden
-
-**Affected files:** `tracker/views.py` (lines 1722 and 3047)
-
-There are two top-level functions named `wearable_sync`. Python (and Django)
-will only use the second definition (line 3047). The first definition at
-line 1722 (which carries `@login_required` and uses the OAuth integration
-client) is silently discarded. The registered URL therefore points to the
-second, undecorated version.
 
 ---
 
@@ -290,7 +272,7 @@ modify, or erase the audit trail.
 
 | # | Area | Issue | Severity |
 |---|------|-------|----------|
-| 1.1 | Auth | ~75 views missing `@login_required` | Critical |
+| 1.1 | Auth | 53 views missing `@login_required` | Critical |
 | 1.2 | Auth | RBAC roles stored but never enforced | High |
 | 1.3 | Auth | Admin pages accessible by all users | High |
 | 2.1 | Data | No per-user data isolation on any model | High |
@@ -298,8 +280,6 @@ modify, or erase the audit trail.
 | 2.3 | Data | Practitioner portal exposes all users' data | High |
 | 3.1 | Missing | `ClinicalTrialMatch` has no UI | Medium |
 | 3.2 | Missing | `PharmacologicalInteraction` has no UI | Medium |
-| 3.3 | Missing | `wearable_device_sync` not in `urls.py` | Medium |
-| 3.4 | Bug | Duplicate `wearable_sync` — first silently overridden | Medium |
 | 4.1 | Stub | Wearable `trigger_sync` creates empty placeholder records | Medium |
 | 4.2 | Stub | `IntegrationConfig.run_integration()` does nothing | Medium |
 | 4.3 | Stub | CSV and PDF export formats produce JSON output | Medium |
@@ -317,3 +297,123 @@ modify, or erase the audit trail.
 | 6.1 | UI | Practitioner portal does not extend `base.html` | Medium |
 | 6.2 | UI | `theme_preference` saved but never applied | Low |
 | 6.3 | Security | `AuditLog` is fully editable/deletable | High |
+| 8.1 | Bug | HL7 parsing swallows `ValueError` | Medium |
+| 8.2 | Bug | FHIR JSON parsing is brittle | High |
+| 8.3 | Bug | CSV Importer `Exception` block hides errors | High |
+| 8.4 | Bug | OCR parsing fails on multi-page PDFs | High |
+| 9.1 | Stub | Wearable APIs are entirely mocked | Medium |
+| 9.2 | Stub | `IntegrationSubTask` doesn't trigger workflows | Medium |
+| 9.3 | Security | OAuth credentials stored in plaintext | Critical |
+| 9.4 | Bug | Telehealth links expire but no background cleanup | Low |
+| 10.1 | Bug | Critical Alerts trigger infinitely | Medium |
+| 10.2 | Security | Notification templates lack escaping | High |
+| 10.3 | Perf | Email delivery is synchronous | Medium |
+| 10.4 | Stub | Push notifications lack a provider | Low |
+| 11.1 | Bug | Broken test suite due to syntax error | High |
+| 11.2 | Bug | Migrations fail on conflicting leaf nodes | Critical |
+| 11.3 | Bug | Migrations fail on `patient_id` duplicate column | Critical |
+| 11.4 | Tests | Coverage is extremely low for Analytics | Low |
+| 12.1 | Perf | In-memory caching leads to stale dashboards | High |
+| 12.2 | Perf | Pagination missing on large datasets | High |
+| 12.3 | Bug | Hardcoded timezone calculations | Medium |
+| 12.4 | Security | Missing CSRF protection on API endpoints | Critical |
+
+
+
+## 8. Data Import & Parsing Bugs
+
+### 8.1 — HL7 parsing swallows `ValueError` for invalid ranges
+**Affected files:** `tracker/views.py` (line ~785)
+HL7 parsing uses a blanket `try: float(...) except ValueError: pass` which means invalid reference ranges silently result in no normal limits rather than failing or warning.
+
+### 8.2 — FHIR JSON parsing is brittle and lacks schema validation
+**Affected files:** `tracker/views.py` (JSON import section)
+The JSON importer expects an exact FHIR "Bundle" and "Observation" shape and crashes with `KeyError` if an expected node is missing.
+
+### 8.3 — CSV Importer `Exception` block hides data corruption
+**Affected files:** `tracker/views.py` (CSV import section)
+The import loops use bare `except Exception:` blocks, hiding database constraint errors or malformed row errors.
+
+### 8.4 — OCR parsing fails on multi-page PDFs
+**Affected files:** `tracker/views.py` (PDF OCR section)
+The `pdfplumber` and `pytesseract` multi-pass logic does not properly loop over all pages or aggregate text cleanly, leading to lost data on page 2+.
+
+---
+
+## 9. Wearable & Telehealth Shortcomings
+
+### 9.1 — Wearable APIs are entirely mocked
+**Affected files:** `tracker/models.py`
+Integrations like Fitbit, Garmin, and Oura have models but zero actual OAuth callback or HTTP request logic. `trigger_sync` creates empty data.
+
+### 9.2 — `IntegrationSubTask` status changes don't trigger workflows
+**Affected files:** `tracker/views.py`
+Changing a subtask status to "completed" is a simple CRUD operation and doesn't fire signals to run actual data pipelines.
+
+### 9.3 — OAuth credentials stored in plaintext
+**Affected files:** `tracker/models.py` (WearableDevice)
+The `access_token` and `refresh_token` are stored in plain `CharField` rather than being encrypted via the `EncryptionKey` mechanism.
+
+### 9.4 — Telehealth links expire but no background cleanup
+**Affected files:** `tracker/models.py`
+`SecureViewingLink` entries pile up indefinitely. There is no Celery beat or management command to prune expired links.
+
+---
+
+## 10. Notifications & Alerts
+
+### 10.1 — Critical Alerts trigger infinitely
+**Affected files:** `tracker/views.py`
+There is no "acknowledged" state or deduplication for `CriticalAlert`. The system checks thresholds and creates duplicates on every run.
+
+### 10.2 — Notification templates lack escaping
+**Affected files:** `tracker/views.py`
+Using python's `.format()` or simple substitution for notifications allows potential injection if user-provided strings (e.g. test names) are included.
+
+### 10.3 — Email delivery is synchronous
+**Affected files:** `tracker/views.py` (StakeholderEmail)
+Triggering stakeholder emails blocks the web request until the SMTP server responds, which can timeout the Gunicorn worker.
+
+### 10.4 — Push notifications lack a provider
+**Affected files:** `tracker/models.py` (NotificationLog)
+The 'push' channel is defined but no APNS or FCM provider is integrated. The logs stay "pending" forever.
+
+---
+
+## 11. Testing & CI Pipeline
+
+### 11.1 — Broken test suite due to syntax error
+**Affected files:** `tracker/tests.py` (line 5243)
+A misplaced `)` causes `SyntaxError` which completely breaks `manage.py test`.
+
+### 11.2 — Test database migrations fail on conflicting leaf nodes
+**Affected files:** `tracker/migrations/`
+Multiple developers committed migrations simultaneously (`0014_add_language`, `0014_notification_system`, etc) causing `makemigrations --merge` to be required before tests can even create the schema.
+
+### 11.3 — Test database migrations fail on `patient_id` duplicate column
+**Affected files:** `tracker/migrations/`
+Even after merging, running migrations produces `sqlite3.OperationalError: duplicate column name: patient_id` due to a bad schema operation.
+
+### 11.4 — Coverage is extremely low for Analytics
+**Affected files:** `tracker/tests.py`
+Machine Learning and Predictive Analytics modules have 0% test coverage, rendering the stubs unverified.
+
+---
+
+## 12. Miscellaneous Backend Flaws
+
+### 12.1 — In-memory caching leads to stale dashboards
+**Affected files:** `tracker/views.py`
+Phase 11 and Dashboard views cache heavy queries locally instead of using Redis, meaning multi-worker setups serve inconsistent data.
+
+### 12.2 — Pagination missing on large datasets
+**Affected files:** `tracker/views.py` (AuditLog list)
+Audit logs and Vital Signs can grow to millions of rows, but the views attempt to render all of them without Django `Paginator`.
+
+### 12.3 — Hardcoded timezone calculations
+**Affected files:** `tracker/models.py`
+Several models use `datetime.now()` instead of `timezone.now()`, which breaks when running the server in UTC but users are in local time.
+
+### 12.4 — Missing CSRF protection on API endpoints
+**Affected files:** `tracker/views.py`
+Many JSON-returning views lack `@csrf_protect` or are not routed through Django REST Framework, exposing them to Cross-Site Request Forgery.
