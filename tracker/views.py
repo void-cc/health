@@ -3083,42 +3083,12 @@ def health_goal_edit(request, pk):
             return redirect('health_goal_edit', pk=pk)
     return render(request, 'health_goal_form.html', {'entry': entry, 'editing': True})
 
+@login_required
 def health_goal_delete(request, pk):
     if request.method == 'POST':
-        device = get_object_or_404(WearableDevice, id=pk)
-        device.access_token = ''
-        device.refresh_token = ''
-        device.token_expires_at = None
-        device.scope = ''
-        device.save(update_fields=['access_token', 'refresh_token', 'token_expires_at', 'scope'])
-        messages.success(request, f'{device.get_platform_display()} disconnected.')
-    return redirect('wearable_device_list')
-
-
-@login_required
-def wearable_sync(request, pk):
-    """Trigger a data sync for a wearable device."""
-    if request.method == 'POST':
-        device = get_object_or_404(WearableDevice, id=pk)
-        if not device.access_token:
-            messages.error(request, f'{device.get_platform_display()} is not connected. Please connect first.')
-            return redirect('wearable_device_list')
-
-        from tracker.integrations.registry import get_client
-        client = get_client(device.platform)
-        if not client:
-            messages.error(request, f'No integration client for {device.get_platform_display()}.')
-            return redirect('wearable_device_list')
-
-        sync_log = client.sync_data(device)
-        if sync_log.status == 'success':
-            messages.success(request, f'Synced {sync_log.records_synced} records from {device.get_platform_display()}.')
-        else:
-            messages.error(request, f'Sync failed: {sync_log.error_message}')
-    return redirect('wearable_device_list')
-
-
-# ===== Sleep & Circadian =====
+        get_object_or_404(HealthGoal, id=pk).delete()
+        messages.success(request, 'Health goal deleted!')
+    return redirect('health_goal_list')
 
 
 def critical_alert_auto_check(request):
