@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 from .models import (
     BloodTest, BloodTestInfo, VitalSign, DataPointAnnotation, DashboardWidget,
@@ -42,33 +43,21 @@ import os
 import io
 import json
 import re
-from functools import wraps
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.db.models import Q as models_Q, Avg, Sum, Count
 from django.core.paginator import Paginator
+import functools
 
 
-def require_role(*roles):
-    """Decorator that restricts a view to users with one of the given roles.
-
-    Also enforces authentication: unauthenticated users are redirected to the
-    login page (same behaviour as @login_required).
-    """
-    def decorator(view_func):
-        @wraps(view_func)
-        def wrapper(request, *args, **kwargs):
-            if not request.user.is_authenticated:
-                from django.contrib.auth.views import redirect_to_login
-                return redirect_to_login(request.get_full_path())
-            try:
-                role = request.user.profile.role
-            except (AttributeError, UserProfile.DoesNotExist):
-                role = None
-            if role not in roles:
-                return HttpResponseForbidden('Access denied.')
-            return view_func(request, *args, **kwargs)
-        return wrapper
-    return decorator
+def admin_required(view_func):
+    """Decorator that requires the user to be logged in and have staff privileges."""
+    @login_required
+    @functools.wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_staff:
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return wrapped
 
 
 @login_required
@@ -180,6 +169,50 @@ def index(request):
             pct = round((len(cat_tests) / max_count) * 100)
             cat_bar_data.append({'name': cat, 'count': len(cat_tests), 'pct': pct})
 
+    # Blood test trend chart data (for blood_charts widget)
+    charts_data = {}
+    for test in tests.order_by('date'):
+        if test.test_name not in charts_data:
+            charts_data[test.test_name] = {
+                'unit': test.unit,
+                'data': [],
+                'normal_min': test.normal_min,
+                'normal_max': test.normal_max,
+            }
+        charts_data[test.test_name]['data'].append({
+            'x': test.date.strftime('%Y-%m-%d'),
+            'y': test.value,
+        })
+
+    # Vitals chart data (for vitals_charts widget)
+    all_vitals = VitalSign.objects.all().order_by('date')
+    weight_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.weight} for v in all_vitals if v.weight is not None]
+    hr_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.heart_rate} for v in all_vitals if v.heart_rate is not None]
+    sys_bp_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.systolic_bp} for v in all_vitals if v.systolic_bp is not None]
+    dia_bp_data = [{'x': v.date.strftime('%Y-%m-%d'), 'y': v.diastolic_bp} for v in all_vitals if v.diastolic_bp is not None]
+
+    # Comparative bar data (for comparative_bars widget)
+    latest_tests = {}
+    for test in tests:
+        if test.test_name not in latest_tests:
+            if test.normal_min is not None and test.normal_max is not None:
+                latest_tests[test.test_name] = test
+
+    # Boxplot data (for boxplots widget)
+    boxplots_data = {}
+    for test in tests.order_by('date'):
+        if test.test_name not in boxplots_data:
+            boxplots_data[test.test_name] = {
+                'unit': test.unit,
+                'data': [],
+                'normal_min': test.normal_min,
+                'normal_max': test.normal_max,
+            }
+        boxplots_data[test.test_name]['data'].append(test.value)
+
+    # Recent vitals list (for vital_signs widget)
+    recent_vitals = list(VitalSign.objects.all().order_by('-date')[:5])
+
     context = {
         'tests': tests,
         'test_types': test_types,
@@ -196,6 +229,14 @@ def index(request):
         'hr_sparkline_points': hr_sparkline_points,
         'test_sparklines': test_sparklines,
         'cat_bar_data': cat_bar_data,
+        'charts_data': charts_data,
+        'weight_data': weight_data,
+        'hr_data': hr_data,
+        'sys_bp_data': sys_bp_data,
+        'dia_bp_data': dia_bp_data,
+        'latest_tests': latest_tests,
+        'boxplots_data': boxplots_data,
+        'recent_vitals': recent_vitals,
     }
     return render(request, 'index.html', context)
 
@@ -2383,12 +2424,12 @@ def caffeine_alcohol_delete(request, pk):
 
 # ===== User Profile =====
 
-@require_role('admin')
+@admin_required
 def user_profile_list(request):
     entries = UserProfile.objects.select_related('user').all().order_by('-created_at')
     return render(request, 'user_profile_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def user_profile_add(request):
     if request.method == 'POST':
         try:
@@ -2407,7 +2448,7 @@ def user_profile_add(request):
             return redirect('user_profile_add')
     return render(request, 'user_profile_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def user_profile_edit(request, pk):
     entry = get_object_or_404(UserProfile, id=pk)
     if request.method == 'POST':
@@ -2424,7 +2465,7 @@ def user_profile_edit(request, pk):
             return redirect('user_profile_edit', pk=pk)
     return render(request, 'user_profile_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def user_profile_delete(request, pk):
     if request.method == 'POST':
         profile = get_object_or_404(UserProfile, id=pk)
@@ -2435,12 +2476,12 @@ def user_profile_delete(request, pk):
 
 # ===== Family Account =====
 
-@require_role('admin')
+@admin_required
 def family_account_list(request):
     entries = FamilyAccount.objects.all().order_by('-created_at')
     return render(request, 'family_account_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def family_account_add(request):
     if request.method == 'POST':
         try:
@@ -2457,7 +2498,7 @@ def family_account_add(request):
             return redirect('family_account_add')
     return render(request, 'family_account_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def family_account_edit(request, pk):
     entry = get_object_or_404(FamilyAccount, id=pk)
     if request.method == 'POST':
@@ -2474,7 +2515,7 @@ def family_account_edit(request, pk):
             return redirect('family_account_edit', pk=pk)
     return render(request, 'family_account_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def family_account_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(FamilyAccount, id=pk).delete()
@@ -2484,12 +2525,12 @@ def family_account_delete(request, pk):
 
 # ===== Consent Log =====
 
-@require_role('admin')
+@admin_required
 def consent_log_list(request):
     entries = ConsentLog.objects.all().order_by('-accepted_at')
     return render(request, 'consent_log_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def consent_log_add(request):
     if request.method == 'POST':
         try:
@@ -2506,7 +2547,7 @@ def consent_log_add(request):
             return redirect('consent_log_add')
     return render(request, 'consent_log_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def consent_log_edit(request, pk):
     entry = get_object_or_404(ConsentLog, id=pk)
     if request.method == 'POST':
@@ -2523,7 +2564,7 @@ def consent_log_edit(request, pk):
             return redirect('consent_log_edit', pk=pk)
     return render(request, 'consent_log_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def consent_log_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(ConsentLog, id=pk).delete()
@@ -2533,12 +2574,12 @@ def consent_log_delete(request, pk):
 
 # ===== Tenant Config =====
 
-@require_role('admin')
+@admin_required
 def tenant_config_list(request):
     entries = TenantConfig.objects.all().order_by('-created_at')
     return render(request, 'tenant_config_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def tenant_config_add(request):
     if request.method == 'POST':
         try:
@@ -2554,7 +2595,7 @@ def tenant_config_add(request):
             return redirect('tenant_config_add')
     return render(request, 'tenant_config_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def tenant_config_edit(request, pk):
     entry = get_object_or_404(TenantConfig, id=pk)
     if request.method == 'POST':
@@ -2570,7 +2611,7 @@ def tenant_config_edit(request, pk):
             return redirect('tenant_config_edit', pk=pk)
     return render(request, 'tenant_config_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def tenant_config_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(TenantConfig, id=pk).delete()
@@ -2580,12 +2621,12 @@ def tenant_config_delete(request, pk):
 
 # ===== Admin Telemetry =====
 
-@require_role('admin')
+@admin_required
 def admin_telemetry_list(request):
     entries = AdminTelemetry.objects.all().order_by('-recorded_at')
     return render(request, 'admin_telemetry_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def admin_telemetry_add(request):
     if request.method == 'POST':
         try:
@@ -2601,7 +2642,7 @@ def admin_telemetry_add(request):
             return redirect('admin_telemetry_add')
     return render(request, 'admin_telemetry_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def admin_telemetry_edit(request, pk):
     entry = get_object_or_404(AdminTelemetry, id=pk)
     if request.method == 'POST':
@@ -2617,7 +2658,7 @@ def admin_telemetry_edit(request, pk):
             return redirect('admin_telemetry_edit', pk=pk)
     return render(request, 'admin_telemetry_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def admin_telemetry_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(AdminTelemetry, id=pk).delete()
@@ -2627,12 +2668,12 @@ def admin_telemetry_delete(request, pk):
 
 # ===== API Rate Limit Config =====
 
-@require_role('admin')
+@admin_required
 def api_rate_limit_list(request):
     entries = APIRateLimitConfig.objects.all().order_by('endpoint')
     return render(request, 'api_rate_limit_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def api_rate_limit_add(request):
     if request.method == 'POST':
         try:
@@ -2651,7 +2692,7 @@ def api_rate_limit_add(request):
             return redirect('api_rate_limit_add')
     return render(request, 'api_rate_limit_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def api_rate_limit_edit(request, pk):
     entry = get_object_or_404(APIRateLimitConfig, id=pk)
     if request.method == 'POST':
@@ -2670,7 +2711,7 @@ def api_rate_limit_edit(request, pk):
             return redirect('api_rate_limit_edit', pk=pk)
     return render(request, 'api_rate_limit_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def api_rate_limit_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(APIRateLimitConfig, id=pk).delete()
@@ -2680,12 +2721,12 @@ def api_rate_limit_delete(request, pk):
 
 # ===== Encryption Keys =====
 
-@require_role('admin')
+@admin_required
 def encryption_key_list(request):
     entries = EncryptionKey.objects.all().order_by('-created_at')
     return render(request, 'encryption_key_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def encryption_key_add(request):
     if request.method == 'POST':
         try:
@@ -2701,7 +2742,7 @@ def encryption_key_add(request):
             return redirect('encryption_key_add')
     return render(request, 'encryption_key_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def encryption_key_edit(request, pk):
     entry = get_object_or_404(EncryptionKey, id=pk)
     if request.method == 'POST':
@@ -2717,7 +2758,7 @@ def encryption_key_edit(request, pk):
             return redirect('encryption_key_edit', pk=pk)
     return render(request, 'encryption_key_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def encryption_key_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(EncryptionKey, id=pk).delete()
@@ -2727,12 +2768,12 @@ def encryption_key_delete(request, pk):
 
 # ===== Audit Logs =====
 
-@require_role('admin')
+@admin_required
 def audit_log_list(request):
     entries = AuditLog.objects.all().order_by('-created_at')
     return render(request, 'audit_log_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def audit_log_add(request):
     if request.method == 'POST':
         try:
@@ -2748,7 +2789,7 @@ def audit_log_add(request):
             return redirect('audit_log_add')
     return render(request, 'audit_log_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def audit_log_edit(request, pk):
     entry = get_object_or_404(AuditLog, id=pk)
     if request.method == 'POST':
@@ -2764,7 +2805,7 @@ def audit_log_edit(request, pk):
             return redirect('audit_log_edit', pk=pk)
     return render(request, 'audit_log_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def audit_log_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(AuditLog, id=pk).delete()
@@ -2774,12 +2815,12 @@ def audit_log_delete(request, pk):
 
 # ===== Anonymized Data Reports =====
 
-@require_role('admin')
+@admin_required
 def anonymized_data_list(request):
     entries = AnonymizedDataReport.objects.all().order_by('-generated_at')
     return render(request, 'anonymized_data_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def anonymized_data_add(request):
     if request.method == 'POST':
         try:
@@ -2798,7 +2839,7 @@ def anonymized_data_add(request):
             return redirect('anonymized_data_add')
     return render(request, 'anonymized_data_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def anonymized_data_edit(request, pk):
     entry = get_object_or_404(AnonymizedDataReport, id=pk)
     if request.method == 'POST':
@@ -2817,7 +2858,7 @@ def anonymized_data_edit(request, pk):
             return redirect('anonymized_data_edit', pk=pk)
     return render(request, 'anonymized_data_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def anonymized_data_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(AnonymizedDataReport, id=pk).delete()
@@ -2827,12 +2868,12 @@ def anonymized_data_delete(request, pk):
 
 # ===== Database Scaling Config =====
 
-@require_role('admin')
+@admin_required
 def database_scaling_list(request):
     entries = DatabaseScalingConfig.objects.all().order_by('-created_at')
     return render(request, 'database_scaling_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def database_scaling_add(request):
     if request.method == 'POST':
         try:
@@ -2851,7 +2892,7 @@ def database_scaling_add(request):
             return redirect('database_scaling_add')
     return render(request, 'database_scaling_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def database_scaling_edit(request, pk):
     entry = get_object_or_404(DatabaseScalingConfig, id=pk)
     if request.method == 'POST':
@@ -2870,7 +2911,7 @@ def database_scaling_edit(request, pk):
             return redirect('database_scaling_edit', pk=pk)
     return render(request, 'database_scaling_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def database_scaling_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(DatabaseScalingConfig, id=pk).delete()
@@ -2880,12 +2921,12 @@ def database_scaling_delete(request, pk):
 
 # ===== Backup Configuration =====
 
-@require_role('admin')
+@admin_required
 def backup_config_list(request):
     entries = BackupConfiguration.objects.all().order_by('-created_at')
     return render(request, 'backup_config_list.html', {'entries': entries})
 
-@require_role('admin')
+@admin_required
 def backup_config_add(request):
     if request.method == 'POST':
         try:
@@ -2904,7 +2945,7 @@ def backup_config_add(request):
             return redirect('backup_config_add')
     return render(request, 'backup_config_form.html', {'editing': False})
 
-@require_role('admin')
+@admin_required
 def backup_config_edit(request, pk):
     entry = get_object_or_404(BackupConfiguration, id=pk)
     if request.method == 'POST':
@@ -2923,7 +2964,7 @@ def backup_config_edit(request, pk):
             return redirect('backup_config_edit', pk=pk)
     return render(request, 'backup_config_form.html', {'entry': entry, 'editing': True})
 
-@require_role('admin')
+@admin_required
 def backup_config_delete(request, pk):
     if request.method == 'POST':
         get_object_or_404(BackupConfiguration, id=pk).delete()
@@ -3116,40 +3157,9 @@ def health_goal_edit(request, pk):
 @login_required
 def health_goal_delete(request, pk):
     if request.method == 'POST':
-        device = get_object_or_404(WearableDevice, id=pk)
-        device.access_token = ''
-        device.refresh_token = ''
-        device.token_expires_at = None
-        device.scope = ''
-        device.save(update_fields=['access_token', 'refresh_token', 'token_expires_at', 'scope'])
-        messages.success(request, f'{device.get_platform_display()} disconnected.')
-    return redirect('wearable_device_list')
-
-
-@login_required
-def wearable_sync(request, pk):
-    """Trigger a data sync for a wearable device."""
-    if request.method == 'POST':
-        device = get_object_or_404(WearableDevice, id=pk)
-        if not device.access_token:
-            messages.error(request, f'{device.get_platform_display()} is not connected. Please connect first.')
-            return redirect('wearable_device_list')
-
-        from tracker.integrations.registry import get_client
-        client = get_client(device.platform)
-        if not client:
-            messages.error(request, f'No integration client for {device.get_platform_display()}.')
-            return redirect('wearable_device_list')
-
-        sync_log = client.sync_data(device)
-        if sync_log.status == 'success':
-            messages.success(request, f'Synced {sync_log.records_synced} records from {device.get_platform_display()}.')
-        else:
-            messages.error(request, f'Sync failed: {sync_log.error_message}')
-    return redirect('wearable_device_list')
-
-
-# ===== Sleep & Circadian =====
+        get_object_or_404(HealthGoal, id=pk).delete()
+        messages.success(request, 'Health goal deleted!')
+    return redirect('health_goal_list')
 
 
 @login_required
@@ -3232,14 +3242,16 @@ def secure_link_shared_view(request, token):
     link.save(update_fields=['access_count'])
     data_types = [dt.strip() for dt in link.data_types.split(',') if dt.strip()] if link.data_types else []
     context = {'link': link, 'data': {}}
+    if link.user is None:
+        return render(request, 'secure_link_shared_view.html', context)
     if not data_types or 'blood_tests' in data_types:
-        context['data']['blood_tests'] = list(BloodTest.objects.all().order_by('-date')[:20].values(
+        context['data']['blood_tests'] = list(BloodTest.objects.filter(user=link.user).order_by('-date')[:20].values(
             'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max'))
     if not data_types or 'vitals' in data_types:
-        context['data']['vitals'] = list(VitalSign.objects.all().order_by('-date')[:20].values(
+        context['data']['vitals'] = list(VitalSign.objects.filter(user=link.user).order_by('-date')[:20].values(
             'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt', 'respiratory_rate', 'spo2'))
     if not data_types or 'medications' in data_types:
-        context['data']['medications'] = list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
+        context['data']['medications'] = list(MedicationSchedule.objects.filter(user=link.user).order_by('-start_date')[:20].values(
             'medication_name', 'dosage', 'frequency', 'start_date', 'end_date'))
     return render(request, 'secure_link_shared_view.html', context)
 
@@ -3247,7 +3259,7 @@ def secure_link_shared_view(request, token):
 # ===== Practitioner Access =====
 
 
-@require_role('admin', 'practitioner')
+@login_required
 def practitioner_portal(request):
     """Dedicated portal for practitioners to request access and view patient data."""
     context = {'access_entries': [], 'error': None}
@@ -3258,13 +3270,17 @@ def practitioner_portal(request):
                 practitioner_email=email, access_status='approved'
             )
             if entries.exists():
+                # Only include patients who explicitly authorized access (non-null patient FK).
+                # Entries without a patient association (legacy records) are intentionally
+                # excluded to prevent unscoped data exposure.
+                patient_ids = entries.exclude(patient__isnull=True).values_list('patient', flat=True)
                 data = {
-                    'blood_tests': list(BloodTest.objects.all().order_by('-date')[:20].values(
+                    'blood_tests': list(BloodTest.objects.filter(user__in=patient_ids).order_by('-date')[:20].values(
                         'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max')),
-                    'vitals': list(VitalSign.objects.all().order_by('-date')[:20].values(
+                    'vitals': list(VitalSign.objects.filter(user__in=patient_ids).order_by('-date')[:20].values(
                         'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt',
                         'respiratory_rate', 'spo2')),
-                    'medications': list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
+                    'medications': list(MedicationSchedule.objects.filter(user__in=patient_ids).order_by('-start_date')[:20].values(
                         'medication_name', 'dosage', 'frequency', 'start_date', 'end_date')),
                 }
                 context['access_entries'] = entries
@@ -3276,7 +3292,7 @@ def practitioner_portal(request):
     return render(request, 'practitioner_portal.html', context)
 
 
-@require_role('admin', 'practitioner')
+@login_required
 def practitioner_request_access(request):
     """Allow a practitioner to request access to patient data."""
     if request.method == 'POST':
@@ -3504,7 +3520,6 @@ def integration_config_run(request, pk):
 # ===== Integration Sub-Task =====
 
 
-@login_required
 def phase11_dashboard(request):
     subtasks = IntegrationSubTask.objects.filter(phase=11).order_by('sub_task_number')
 
@@ -3961,6 +3976,26 @@ medication_schedule_add = _medication['add']
 medication_schedule_edit = _medication['edit']
 medication_schedule_delete = _medication['delete']
 
+# ===== Pharmacological Interactions =====
+_pharmacological_interaction = make_crud_views(
+    model_class=PharmacologicalInteraction,
+    display_name='Pharmacological Interaction',
+    fields=[
+        {'name': 'medication_a', 'type': 'str', 'required': True, 'label': 'Medication A'},
+        {'name': 'medication_b', 'type': 'str', 'required': True, 'label': 'Medication B'},
+        {'name': 'severity', 'type': 'str', 'choices': PharmacologicalInteraction.SEVERITY_CHOICES, 'default': 'low', 'label': 'Severity'},
+        {'name': 'description', 'type': 'str', 'widget': 'textarea', 'label': 'Description'},
+    ],
+    list_url_name='pharmacological_interaction_list',
+    add_url_name='pharmacological_interaction_add',
+    edit_url_name='pharmacological_interaction_edit',
+    order_by='-detected_at',
+)
+pharmacological_interaction_list = _pharmacological_interaction['list']
+pharmacological_interaction_add = _pharmacological_interaction['add']
+pharmacological_interaction_edit = _pharmacological_interaction['edit']
+pharmacological_interaction_delete = _pharmacological_interaction['delete']
+
 # ===== Health Goals =====
 _health_goal = make_crud_views(
     model_class=HealthGoal,
@@ -4068,6 +4103,28 @@ predictive_biomarker_add = _predictive_biomarker['add']
 predictive_biomarker_edit = _predictive_biomarker['edit']
 predictive_biomarker_delete = _predictive_biomarker['delete']
 
+# ===== Clinical Trial Matches =====
+_clinical_trial = make_crud_views(
+    model_class=ClinicalTrialMatch,
+    display_name='Clinical Trial Match',
+    fields=[
+        {'name': 'trial_id', 'type': 'str', 'required': True, 'label': 'Trial ID'},
+        {'name': 'trial_title', 'type': 'str', 'required': True, 'label': 'Trial Title'},
+        {'name': 'condition', 'type': 'str', 'required': True, 'label': 'Condition'},
+        {'name': 'match_score', 'type': 'float', 'label': 'Match Score'},
+        {'name': 'status', 'type': 'str', 'label': 'Status'},
+        {'name': 'url', 'type': 'str', 'label': 'URL'},
+    ],
+    list_url_name='clinical_trial_list',
+    add_url_name='clinical_trial_add',
+    edit_url_name='clinical_trial_edit',
+    order_by='-found_at',
+)
+clinical_trial_list = _clinical_trial['list']
+clinical_trial_add = _clinical_trial['add']
+clinical_trial_edit = _clinical_trial['edit']
+clinical_trial_delete = _clinical_trial['delete']
+
 # ===== Secure Viewing Links =====
 _secure_viewing_link = make_crud_views(
     model_class=SecureViewingLink,
@@ -4096,6 +4153,7 @@ def secure_viewing_link_add(request):
                 data_types=request.POST.get('data_types', ''),
                 expires_at=expires_dt,
                 is_active=request.POST.get('is_active') == 'on',
+                user=request.user if request.user.is_authenticated else None,
             )
             messages.success(request, 'Secure viewing link created!')
             return redirect('secure_viewing_link_list')
@@ -4137,11 +4195,11 @@ _practitioner_access = make_crud_views(
     edit_url_name='practitioner_access_edit',
     order_by='-granted_at',
 )
-practitioner_access_list = require_role('admin', 'practitioner')(_practitioner_access['list'])
-practitioner_access_add = require_role('admin', 'practitioner')(_practitioner_access['add'])
-practitioner_access_delete = require_role('admin', 'practitioner')(_practitioner_access['delete'])
+practitioner_access_list = _practitioner_access['list']
+practitioner_access_add = _practitioner_access['add']
+practitioner_access_delete = _practitioner_access['delete']
 
-@require_role('admin', 'practitioner')
+@login_required
 def practitioner_access_edit(request, pk):
     entry = get_object_or_404(PractitionerAccess, id=pk)
     if request.method == 'POST':
@@ -4152,6 +4210,10 @@ def practitioner_access_edit(request, pk):
             new_status = request.POST.get('access_status', entry.access_status)
             if new_status == 'approved' and entry.access_status != 'approved':
                 entry.granted_at = timezone.now()
+                # Only set the patient if not already linked to prevent overwriting
+                # an existing patient association by a different logged-in user.
+                if entry.patient is None:
+                    entry.patient = request.user
             entry.access_status = new_status
             entry.save()
             messages.success(request, 'Practitioner access updated!')
@@ -4249,7 +4311,7 @@ _user_profile = make_crud_views(
     edit_url_name='user_profile_edit',
     order_by='-created_at',
 )
-user_profile_list = require_role('admin')(_user_profile['list'])
+user_profile_list = admin_required(_user_profile['list'])
 
 # ===== Family Accounts =====
 _family_account = make_crud_views(
@@ -4265,10 +4327,10 @@ _family_account = make_crud_views(
     edit_url_name='family_account_edit',
     order_by='-created_at',
 )
-family_account_list = require_role('admin')(_family_account['list'])
-family_account_add = require_role('admin')(_family_account['add'])
-family_account_edit = require_role('admin')(_family_account['edit'])
-family_account_delete = require_role('admin')(_family_account['delete'])
+family_account_list = admin_required(_family_account['list'])
+family_account_add = admin_required(_family_account['add'])
+family_account_edit = admin_required(_family_account['edit'])
+family_account_delete = admin_required(_family_account['delete'])
 
 # ===== Consent Logs =====
 _consent_log = make_crud_views(
@@ -4285,10 +4347,10 @@ _consent_log = make_crud_views(
     edit_url_name='consent_log_edit',
     order_by='-accepted_at',
 )
-consent_log_list = require_role('admin')(_consent_log['list'])
-consent_log_add = require_role('admin')(_consent_log['add'])
-consent_log_edit = require_role('admin')(_consent_log['edit'])
-consent_log_delete = require_role('admin')(_consent_log['delete'])
+consent_log_list = admin_required(_consent_log['list'])
+consent_log_add = admin_required(_consent_log['add'])
+consent_log_edit = admin_required(_consent_log['edit'])
+consent_log_delete = admin_required(_consent_log['delete'])
 
 # ===== Tenant Config =====
 _tenant_config = make_crud_views(
@@ -4304,10 +4366,10 @@ _tenant_config = make_crud_views(
     edit_url_name='tenant_config_edit',
     order_by='-created_at',
 )
-tenant_config_list = require_role('admin')(_tenant_config['list'])
-tenant_config_add = require_role('admin')(_tenant_config['add'])
-tenant_config_edit = require_role('admin')(_tenant_config['edit'])
-tenant_config_delete = require_role('admin')(_tenant_config['delete'])
+tenant_config_list = admin_required(_tenant_config['list'])
+tenant_config_add = admin_required(_tenant_config['add'])
+tenant_config_edit = admin_required(_tenant_config['edit'])
+tenant_config_delete = admin_required(_tenant_config['delete'])
 
 # ===== Admin Telemetry =====
 _admin_telemetry = make_crud_views(
@@ -4322,10 +4384,10 @@ _admin_telemetry = make_crud_views(
     edit_url_name='admin_telemetry_edit',
     order_by='-recorded_at',
 )
-admin_telemetry_list = require_role('admin')(_admin_telemetry['list'])
-admin_telemetry_add = require_role('admin')(_admin_telemetry['add'])
-admin_telemetry_edit = require_role('admin')(_admin_telemetry['edit'])
-admin_telemetry_delete = require_role('admin')(_admin_telemetry['delete'])
+admin_telemetry_list = admin_required(_admin_telemetry['list'])
+admin_telemetry_add = admin_required(_admin_telemetry['add'])
+admin_telemetry_edit = admin_required(_admin_telemetry['edit'])
+admin_telemetry_delete = admin_required(_admin_telemetry['delete'])
 
 # ===== API Rate Limits =====
 _api_rate_limit = make_crud_views(
@@ -4342,10 +4404,10 @@ _api_rate_limit = make_crud_views(
     edit_url_name='api_rate_limit_edit',
     order_by='endpoint',
 )
-api_rate_limit_list = require_role('admin')(_api_rate_limit['list'])
-api_rate_limit_add = require_role('admin')(_api_rate_limit['add'])
-api_rate_limit_edit = require_role('admin')(_api_rate_limit['edit'])
-api_rate_limit_delete = require_role('admin')(_api_rate_limit['delete'])
+api_rate_limit_list = admin_required(_api_rate_limit['list'])
+api_rate_limit_add = admin_required(_api_rate_limit['add'])
+api_rate_limit_edit = admin_required(_api_rate_limit['edit'])
+api_rate_limit_delete = admin_required(_api_rate_limit['delete'])
 
 # ===== Encryption Keys =====
 _encryption_key = make_crud_views(
@@ -4361,10 +4423,10 @@ _encryption_key = make_crud_views(
     edit_url_name='encryption_key_edit',
     order_by='-created_at',
 )
-encryption_key_list = require_role('admin')(_encryption_key['list'])
-encryption_key_add = require_role('admin')(_encryption_key['add'])
-encryption_key_edit = require_role('admin')(_encryption_key['edit'])
-encryption_key_delete = require_role('admin')(_encryption_key['delete'])
+encryption_key_list = admin_required(_encryption_key['list'])
+encryption_key_add = admin_required(_encryption_key['add'])
+encryption_key_edit = admin_required(_encryption_key['edit'])
+encryption_key_delete = admin_required(_encryption_key['delete'])
 
 # ===== Audit Logs =====
 _audit_log = make_crud_views(
@@ -4380,10 +4442,10 @@ _audit_log = make_crud_views(
     edit_url_name='audit_log_edit',
     order_by='-created_at',
 )
-audit_log_list = require_role('admin')(_audit_log['list'])
-audit_log_add = require_role('admin')(_audit_log['add'])
-audit_log_edit = require_role('admin')(_audit_log['edit'])
-audit_log_delete = require_role('admin')(_audit_log['delete'])
+audit_log_list = admin_required(_audit_log['list'])
+audit_log_add = admin_required(_audit_log['add'])
+audit_log_edit = admin_required(_audit_log['edit'])
+audit_log_delete = admin_required(_audit_log['delete'])
 
 # ===== Anonymized Data =====
 _anonymized_data = make_crud_views(
@@ -4401,10 +4463,10 @@ _anonymized_data = make_crud_views(
     edit_url_name='anonymized_data_edit',
     order_by='-generated_at',
 )
-anonymized_data_list = require_role('admin')(_anonymized_data['list'])
-anonymized_data_add = require_role('admin')(_anonymized_data['add'])
-anonymized_data_edit = require_role('admin')(_anonymized_data['edit'])
-anonymized_data_delete = require_role('admin')(_anonymized_data['delete'])
+anonymized_data_list = admin_required(_anonymized_data['list'])
+anonymized_data_add = admin_required(_anonymized_data['add'])
+anonymized_data_edit = admin_required(_anonymized_data['edit'])
+anonymized_data_delete = admin_required(_anonymized_data['delete'])
 
 # ===== Database Scaling =====
 _database_scaling = make_crud_views(
@@ -4422,10 +4484,10 @@ _database_scaling = make_crud_views(
     edit_url_name='database_scaling_edit',
     order_by='-created_at',
 )
-database_scaling_list = require_role('admin')(_database_scaling['list'])
-database_scaling_add = require_role('admin')(_database_scaling['add'])
-database_scaling_edit = require_role('admin')(_database_scaling['edit'])
-database_scaling_delete = require_role('admin')(_database_scaling['delete'])
+database_scaling_list = admin_required(_database_scaling['list'])
+database_scaling_add = admin_required(_database_scaling['add'])
+database_scaling_edit = admin_required(_database_scaling['edit'])
+database_scaling_delete = admin_required(_database_scaling['delete'])
 
 # ===== Backup Config =====
 _backup_config = make_crud_views(
@@ -4443,10 +4505,10 @@ _backup_config = make_crud_views(
     edit_url_name='backup_config_edit',
     order_by='-created_at',
 )
-backup_config_list = require_role('admin')(_backup_config['list'])
-backup_config_add = require_role('admin')(_backup_config['add'])
-backup_config_edit = require_role('admin')(_backup_config['edit'])
-backup_config_delete = require_role('admin')(_backup_config['delete'])
+backup_config_list = admin_required(_backup_config['list'])
+backup_config_add = admin_required(_backup_config['add'])
+backup_config_edit = admin_required(_backup_config['edit'])
+backup_config_delete = admin_required(_backup_config['delete'])
 
 # ===== Integration Config =====
 _integration_config = make_crud_views(
