@@ -727,6 +727,8 @@ def import_data(request):
                         confidence=cand.confidence,
                         raw_name=cand.raw_name,
                         raw_line=cand.raw_line,
+                        is_confirmed=False,
+                        review_status='pending',
                     )
                     imported += 1
 
@@ -782,6 +784,8 @@ def import_data(request):
                         confidence=cand.confidence,
                         raw_name=cand.raw_name,
                         raw_line=cand.raw_line,
+                        is_confirmed=False,
+                        review_status='pending',
                     )
                     imported += 1
 
@@ -1041,6 +1045,114 @@ def import_data(request):
             return redirect('import_data')
 
     return render(request, 'import_data.html')
+
+
+@login_required
+def review_measurements(request):
+    """List all pending measurements for the current user to review."""
+    measurements = Measurement.objects.filter(
+        user=request.user, review_status='pending',
+    ).select_related('measurement_type', 'source_document')
+    return render(request, 'review_measurements.html', {
+        'measurements': measurements,
+    })
+
+
+@login_required
+def confirm_measurement(request, pk):
+    """Confirm or reject a single measurement."""
+    from .forms import MeasurementReviewForm
+    measurement = get_object_or_404(Measurement, pk=pk)
+    if measurement.user != request.user and not request.user.is_staff:
+        raise PermissionDenied
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'confirm':
+            form = MeasurementReviewForm(request.POST, instance=measurement)
+            if form.is_valid():
+                m = form.save(commit=False)
+                m.is_confirmed = True
+                m.review_status = 'confirmed'
+                m.save()
+                messages.success(request, 'Measurement confirmed.')
+                return redirect('review_measurements')
+        elif action == 'reject':
+            measurement.is_confirmed = False
+            measurement.review_status = 'rejected'
+            measurement.confirmation_notes = request.POST.get('confirmation_notes', '')
+            measurement.save()
+            messages.success(request, 'Measurement rejected.')
+            return redirect('review_measurements')
+        elif action == 'defer':
+            measurement.review_status = 'deferred'
+            measurement.confirmation_notes = request.POST.get('confirmation_notes', '')
+            measurement.save()
+            messages.info(request, 'Measurement deferred for later review.')
+            return redirect('review_measurements')
+    else:
+        form = MeasurementReviewForm(instance=measurement)
+    return render(request, 'confirm_measurement.html', {
+        'measurement': measurement,
+        'form': form,
+    })
+
+
+@login_required
+def review_import(request, doc_id):
+    """Review all measurements from a specific import (SourceDocument)."""
+    doc = get_object_or_404(SourceDocument, pk=doc_id)
+    if doc.user != request.user and not request.user.is_staff:
+        raise PermissionDenied
+    measurements = Measurement.objects.filter(
+        source_document=doc,
+    ).select_related('measurement_type')
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        pending = measurements.filter(review_status='pending')
+        if action == 'confirm_all':
+            count = pending.update(is_confirmed=True, review_status='confirmed')
+            messages.success(request, f'Confirmed {count} measurements.')
+        elif action == 'reject_all':
+            count = pending.update(is_confirmed=False, review_status='rejected')
+            messages.success(request, f'Rejected {count} measurements.')
+        return redirect('review_measurements')
+    return render(request, 'review_import.html', {
+        'doc': doc,
+        'measurements': measurements,
+        'has_pending': measurements.filter(review_status='pending').exists(),
+    })
+
+
+@admin_required
+def staff_edit_measurement(request, pk):
+    """Staff-only view for editing any measurement (advanced corrections)."""
+    from .forms import MeasurementReviewForm
+    measurement = get_object_or_404(Measurement, pk=pk)
+    if request.method == 'POST':
+        form = MeasurementReviewForm(request.POST, instance=measurement)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Measurement updated.')
+            return redirect('review_measurements')
+    else:
+        form = MeasurementReviewForm(instance=measurement)
+    return render(request, 'staff_edit_measurement.html', {
+        'measurement': measurement,
+        'form': form,
+    })
+
+
+@admin_required
+def staff_delete_measurement(request, pk):
+    """Staff-only view for deleting a measurement."""
+    measurement = get_object_or_404(Measurement, pk=pk)
+    if request.method == 'POST':
+        measurement.delete()
+        messages.success(request, 'Measurement deleted.')
+        return redirect('review_measurements')
+    return render(request, 'staff_delete_measurement.html', {
+        'measurement': measurement,
+    })
 
 @login_required
 def export_data(request):

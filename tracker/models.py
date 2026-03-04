@@ -2088,6 +2088,24 @@ class Measurement(models.Model):
         blank=True, default='',
         help_text='Original line/row from the source document.'
     )
+    REVIEW_STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('confirmed', 'Confirmed'),
+        ('rejected', 'Rejected'),
+        ('deferred', 'Deferred'),
+    ]
+    is_confirmed = models.BooleanField(
+        default=True,
+        help_text='Whether this measurement has been reviewed and confirmed.'
+    )
+    review_status = models.CharField(
+        max_length=20, choices=REVIEW_STATUS_CHOICES, default='confirmed',
+        help_text='Review workflow status for imported measurements.'
+    )
+    confirmation_notes = models.TextField(
+        blank=True, default='',
+        help_text='Notes recorded during review/confirmation.'
+    )
 
     class Meta:
         ordering = ['-observed_at']
