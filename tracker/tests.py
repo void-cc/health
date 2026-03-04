@@ -11,6 +11,7 @@ from tracker.models import (
     HealthGoal, CriticalAlert, WearableDevice, WearableSyncLog,
     HealthReport, PredictiveBiomarker, BiologicalAgeCalculation,
     IntegrationConfig, BodyComposition, HabitLog, Reminder,
+    MeasurementType, SourceDocument, Measurement,
 )
 from datetime import date, datetime, timedelta
 from django.utils import timezone
@@ -6007,6 +6008,96 @@ class MedicationInventoryViewTests(TestCase):
         self.assertEqual(response.context['total_count'], 1)
 
 
+class MeasurementModelTests(TestCase):
+    """Phase 1: canonical Measurement model and SourceDocument ingestion foundation."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='meas_user', password='pass')
+        self.mtype = MeasurementType.objects.create(
+            name='Hemoglobin',
+            category='CBC',
+            default_unit='g/dL',
+            normal_min=12.0,
+            normal_max=17.5,
+        )
+
+    def test_measurement_type_str(self):
+        self.assertEqual(str(self.mtype), 'Hemoglobin')
+
+    def test_measurement_type_fields(self):
+        self.assertEqual(self.mtype.category, 'CBC')
+        self.assertEqual(self.mtype.default_unit, 'g/dL')
+        self.assertEqual(self.mtype.normal_min, 12.0)
+        self.assertEqual(self.mtype.normal_max, 17.5)
+
+    def test_source_document_str(self):
+        doc = SourceDocument.objects.create(
+            user=self.user,
+            filename='lab_results.pdf',
+            content_type='pdf',
+            status='done',
+        )
+        self.assertIn('lab_results.pdf', str(doc))
+        self.assertIn('Done', str(doc))
+
+    def test_source_document_defaults(self):
+        doc = SourceDocument.objects.create(user=self.user)
+        self.assertEqual(doc.status, 'pending')
+        self.assertEqual(doc.content_type, 'other')
+        self.assertEqual(doc.raw_text, '')
+        self.assertEqual(doc.error_message, '')
+
+    def test_measurement_create_and_str(self):
+        doc = SourceDocument.objects.create(user=self.user, filename='report.pdf', status='done')
+        m = Measurement.objects.create(
+            user=self.user,
+            measurement_type=self.mtype,
+            observed_at=timezone.now(),
+            value=14.5,
+            unit='g/dL',
+            ref_min=12.0,
+            ref_max=17.5,
+            source_document=doc,
+            confidence=0.95,
+            raw_name='Hemoglobine',
+            raw_line='Hemoglobine  14.5  g/dL',
+        )
+        self.assertEqual(m.value, 14.5)
+        self.assertEqual(m.unit, 'g/dL')
+        self.assertIn('Hemoglobin', str(m))
+        self.assertIn('14.5', str(m))
+
+    def test_measurement_without_source_document(self):
+        m = Measurement.objects.create(
+            user=self.user,
+            measurement_type=self.mtype,
+            observed_at=timezone.now(),
+            value=13.0,
+            unit='g/dL',
+        )
+        self.assertIsNone(m.source_document)
+        self.assertIsNone(m.confidence)
+
+    def test_measurement_ordering(self):
+        t1 = timezone.now() - timedelta(days=2)
+        t2 = timezone.now() - timedelta(days=1)
+        m1 = Measurement.objects.create(user=self.user, measurement_type=self.mtype, observed_at=t1, value=13.0)
+        m2 = Measurement.objects.create(user=self.user, measurement_type=self.mtype, observed_at=t2, value=14.0)
+        results = list(Measurement.objects.filter(user=self.user))
+        self.assertEqual(results[0], m2)
+        self.assertEqual(results[1], m1)
+
+    def test_measurement_type_unique_name(self):
+        from django.db import IntegrityError
+        with self.assertRaises(IntegrityError):
+            MeasurementType.objects.create(name='Hemoglobin')
+
+    def test_measurement_type_synonyms(self):
+        mt = MeasurementType.objects.create(
+            name='CustomTestMarker',
+            synonyms='Blood Sugar, Glucose fasting',
+        )
+        self.assertIn('Blood Sugar', mt.synonyms)
 # =============================================================================
 # Medication Interaction Checker Tests
 # =============================================================================
