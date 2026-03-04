@@ -5,8 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, PasswordResetForm
-from django.http import JsonResponse
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.utils import timezone
 
 from .models import UserProfile, SecurityLog, UserSession, PrivacyPreference

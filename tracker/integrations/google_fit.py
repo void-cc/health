@@ -10,7 +10,7 @@ Google Fit uses OAuth2 for authentication and provides APIs for:
 API docs: https://developers.google.com/fit/rest
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from django.conf import settings
 from django.utils import timezone

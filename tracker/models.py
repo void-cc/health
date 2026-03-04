@@ -468,7 +468,7 @@ class WearableDevice(models.Model):
             records_synced = 0
 
             # Import heart rate, SpO2, and weight as a VitalSign entry
-            vital = VitalSign.objects.create(
+            VitalSign.objects.create(
                 date=timezone.now().date(),
                 heart_rate=None,
                 spo2=None,
@@ -647,7 +647,6 @@ class CircadianRhythmLog(models.Model):
         Uses average sleep onset and wake time from recent entries to suggest
         the best sleep/wake times for this individual.
         """
-        from datetime import timedelta, datetime as dt
         recent = CircadianRhythmLog.objects.filter(
             sleep_onset__isnull=False, wake_time__isnull=False,
         ).order_by('-date')[:7]

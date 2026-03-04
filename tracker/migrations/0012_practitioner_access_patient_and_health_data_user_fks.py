@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tracker', '0011_merge_20260302_1059'),
+        ('tracker', '0012_add_user_to_secure_link_and_health_models'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
