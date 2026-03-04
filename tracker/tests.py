@@ -3546,6 +3546,8 @@ class Phase11DashboardTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='dashboarduser', password='testpass123')
+        self.client.login(username='dashboarduser', password='testpass123')
         IntegrationSubTask.objects.filter(phase=11).delete()
         IntegrationSubTask.objects.create(
             phase=11, sub_task_number=91, title='Macronutrients User Dashboard',
