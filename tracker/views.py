@@ -5277,12 +5277,15 @@ def labs_dashboard(request):
 
     ratios = compute_derived_ratios(latest_by_name)
 
-    # Group insights by category
+    # Group insights by category — build lookup dict to avoid N+1 queries
+    category_by_name = {}
+    for bt in blood_tests:
+        if bt.test_name not in category_by_name:
+            category_by_name[bt.test_name] = bt.category or 'Uncategorized'
+
     categories: dict[str, list] = {}
     for ins in insights:
-        # Look up category from the tests queryset
-        bt = blood_tests.filter(test_name=ins['test_name']).first()
-        cat = (bt.category if bt and bt.category else 'Uncategorized')
+        cat = category_by_name.get(ins['test_name'], 'Uncategorized')
         categories.setdefault(cat, []).append(ins)
 
     # Chart data for each test (time-series)

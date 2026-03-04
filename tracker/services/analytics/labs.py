@@ -16,7 +16,7 @@ def compute_delta(current_value, previous_value):
     if previous_value == 0:
         pct_change = 0.0
     else:
-        pct_change = round((abs_change / abs(previous_value)) * 100, 1)
+        pct_change = round((abs_change / previous_value) * 100, 1)
     if abs_change > 0:
         direction = "up"
     elif abs_change < 0:
