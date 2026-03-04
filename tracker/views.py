@@ -2267,8 +2267,8 @@ def sleep_dashboard(request):
     # Trend chart data
     chart_entries = sleep_entries.order_by('date')
     chart_dates = [e.date.isoformat() for e in chart_entries]
-    chart_quality = [e.sleep_quality_score for e in chart_entries if e.sleep_quality_score is not None]
-    chart_duration = [e.total_sleep_minutes for e in chart_entries if e.total_sleep_minutes is not None]
+    chart_quality = [e.sleep_quality_score for e in chart_entries]
+    chart_duration = [e.total_sleep_minutes for e in chart_entries]
 
     # Circadian insights
     circadian_stats = circadian_entries.aggregate(
