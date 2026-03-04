@@ -1,7 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from datetime import datetime
+
+from .decorators import staff_only
 
 
 def _parse_field_value(field_cfg, raw_value):
@@ -53,7 +54,7 @@ def make_crud_views(
     Factory that generates list, add, edit, and delete views for a model.
 
     Returns a dict with keys 'list', 'add', 'edit', 'delete' containing
-    the four view functions, each wrapped with @login_required.
+    the four view functions, each wrapped with @staff_only.
     """
 
     delete_url_name = list_url_name.rsplit('_list', 1)[0] + '_delete'
@@ -65,7 +66,7 @@ def make_crud_views(
         f.setdefault('required', False)
 
     # -- list view --
-    @login_required
+    @staff_only
     def list_view(request):
         entries = model_class.objects.all().order_by(order_by)
         context = {
@@ -82,7 +83,7 @@ def make_crud_views(
     has_date = any(f['name'] == 'date' for f in fields)
 
     # -- add view --
-    @login_required
+    @staff_only
     def add_view(request):
         if request.method == 'POST':
             if has_date:
@@ -116,7 +117,7 @@ def make_crud_views(
         return render(request, form_template, context)
 
     # -- edit view --
-    @login_required
+    @staff_only
     def edit_view(request, pk):
         entry = get_object_or_404(model_class, id=pk)
         if request.method == 'POST':
@@ -142,7 +143,7 @@ def make_crud_views(
         return render(request, form_template, context)
 
     # -- delete view --
-    @login_required
+    @staff_only
     def delete_view(request, pk):
         if request.method == 'POST':
             entry = get_object_or_404(model_class, id=pk)
