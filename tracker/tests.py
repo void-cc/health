@@ -6323,6 +6323,101 @@ class RxNormHelperTests(TestCase):
         self.assertEqual(results[0]['name'], 'Metformin')
 
 
+class RxNormHardeningTests(TestCase):
+    """Tests for RxNav 404/429 handling, negative cache, and multi-provider fallback."""
+
+    def setUp(self):
+        from tracker import rxnorm
+        rxnorm._not_found_cache.clear()
+
+    def tearDown(self):
+        from tracker import rxnorm
+        rxnorm._not_found_cache.clear()
+
+    def test_404_logged_at_debug_not_warning(self):
+        """HTTP 404 from a drug API should be logged at DEBUG, not WARNING."""
+        from tracker.rxnorm import _get
+        from unittest.mock import patch, MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.json.return_value = {}
+
+        with patch('tracker.rxnorm.requests.get', return_value=mock_resp):
+            with patch('tracker.rxnorm.logger') as mock_logger:
+                result = _get('https://rxnav.nlm.nih.gov/REST/rxcui/999999/property.json')
+
+        self.assertIsNone(result)
+        mock_logger.warning.assert_not_called()
+        mock_logger.debug.assert_called_once()
+
+    def test_429_logged_at_warning(self):
+        """HTTP 429 from a drug API should be logged at WARNING level."""
+        from tracker.rxnorm import _get
+        from unittest.mock import patch, MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 429
+        mock_resp.json.return_value = {}
+
+        with patch('tracker.rxnorm.requests.get', return_value=mock_resp):
+            with patch('tracker.rxnorm.logger') as mock_logger:
+                result = _get('https://rxnav.nlm.nih.gov/REST/approximateTerm.json')
+
+        self.assertIsNone(result)
+        mock_logger.warning.assert_called_once()
+        warning_msg = mock_logger.warning.call_args[0][0]
+        self.assertIn('429', warning_msg)
+
+    def test_negative_cache_prevents_repeat_requests(self):
+        """After a 404 on _get_rxnorm_name, the second call hits the cache."""
+        from tracker import rxnorm
+        from unittest.mock import patch, MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.json.return_value = {}
+
+        with patch('tracker.rxnorm.requests.get', return_value=mock_resp) as mock_get:
+            rxnorm._get_rxnorm_name('999999')
+            rxnorm._get_rxnorm_name('999999')
+
+        # requests.get should only have been called once (second hit the cache)
+        self.assertEqual(mock_get.call_count, 1)
+
+    def test_autocomplete_uses_fallback_when_rxnorm_fails(self):
+        """When RxNorm returns nothing, a fallback provider supplies results."""
+        from tracker.rxnorm import search_medication_names
+        from unittest.mock import patch
+
+        with patch('tracker.rxnorm._get', return_value=None), \
+             patch('tracker.rxnorm._search_openfda', return_value=[
+                 {'name': 'Ibuprofen 200mg', 'rxcui': '', 'source': 'openfda'}
+             ]):
+            results = search_medication_names('ibuprofen')
+
+        self.assertGreater(len(results), 0)
+        self.assertEqual(results[0]['name'], 'Ibuprofen 200mg')
+        self.assertEqual(results[0]['source'], 'openfda')
+
+    def test_deduplication_across_providers(self):
+        """The same drug name from multiple providers appears only once."""
+        from tracker.rxnorm import search_medication_names
+        from unittest.mock import patch
+
+        with patch('tracker.rxnorm._get', return_value=None), \
+             patch('tracker.rxnorm._search_openfda', return_value=[
+                 {'name': 'Aspirin', 'rxcui': '', 'source': 'openfda'}
+             ]), \
+             patch('tracker.rxnorm._search_dailymed', return_value=[
+                 {'name': 'Aspirin', 'rxcui': '', 'source': 'dailymed'}
+             ]):
+            results = search_medication_names('aspirin')
+
+        names = [r['name'] for r in results]
+        self.assertEqual(names.count('Aspirin'), 1)
+
+
 class MedicationScheduleAddInteractionTests(TestCase):
     """Tests that the medication schedule add/edit views emit interaction warnings."""
 
@@ -6363,6 +6458,183 @@ class MedicationScheduleAddInteractionTests(TestCase):
         self.assertEqual(sched.dosage, '100mg')
 
 
+class MedicationConceptDetailViewTests(TestCase):
+    """Tests for the medication concept detail / overview page."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='detailuser', password='testpass123')
+        self.client.login(username='detailuser', password='testpass123')
+
+    def test_detail_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('medication_concept_detail', kwargs={'name': 'Aspirin'}))
+        self.assertEqual(response.status_code, 302)
+
+    def test_detail_returns_200_for_logged_in_user(self):
+        from unittest.mock import patch
+        mock_info = {
+            'name': 'Aspirin',
+            'rxcui': '1191',
+            'drug_class': 'NSAID',
+            'synonyms': ['Acetylsalicylic Acid'],
+            'indications': 'Pain, fever, inflammation.',
+            'side_effects': 'GI upset.',
+            'warnings': 'Do not use if allergic.',
+            'dosage_forms': 'Tablet, 81mg, 325mg',
+            'mechanism': 'COX inhibitor.',
+            'external_ids': {'pubchem_cid': 2244},
+            'source': 'rxnorm',
+            'last_enriched': None,
+        }
+        with patch('tracker.rxnorm.get_medication_info', return_value=mock_info) as mock_fn:
+            response = self.client.get(
+                reverse('medication_concept_detail', kwargs={'name': 'Aspirin'})
+            )
+        mock_fn.assert_called_once_with('Aspirin')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Aspirin')
+        self.assertContains(response, 'NSAID')
+
+    def test_detail_shows_user_schedules(self):
+        from unittest.mock import patch
+        MedicationSchedule.objects.create(
+            user=self.user,
+            medication_name='Aspirin',
+            dosage='81mg',
+            frequency='daily',
+            start_date=date.today(),
+            is_active=True,
+        )
+        with patch('tracker.rxnorm.get_medication_info', return_value={
+            'name': 'Aspirin', 'rxcui': '', 'drug_class': '',
+            'synonyms': [], 'indications': '', 'side_effects': '',
+            'warnings': '', 'dosage_forms': '', 'mechanism': '',
+            'external_ids': {}, 'source': 'rxnorm', 'last_enriched': None,
+        }):
+            response = self.client.get(
+                reverse('medication_concept_detail', kwargs={'name': 'Aspirin'})
+            )
+        self.assertContains(response, '81mg')
+
+    def test_detail_shows_interactions(self):
+        from unittest.mock import patch
+        PharmacologicalInteraction.objects.create(
+            user=self.user,
+            medication_a='Aspirin',
+            medication_b='Warfarin',
+            severity='high',
+            description='Increased bleeding risk.',
+        )
+        with patch('tracker.rxnorm.get_medication_info', return_value={
+            'name': 'Aspirin', 'rxcui': '', 'drug_class': '',
+            'synonyms': [], 'indications': '', 'side_effects': '',
+            'warnings': '', 'dosage_forms': '', 'mechanism': '',
+            'external_ids': {}, 'source': 'rxnorm', 'last_enriched': None,
+        }):
+            response = self.client.get(
+                reverse('medication_concept_detail', kwargs={'name': 'Aspirin'})
+            )
+        self.assertContains(response, 'Warfarin')
+
+    def test_detail_does_not_show_other_users_data(self):
+        from unittest.mock import patch
+        other = User.objects.create_user(username='otheruser2', password='testpass123')
+        MedicationSchedule.objects.create(
+            user=other,
+            medication_name='Aspirin',
+            dosage='500mg',
+            frequency='daily',
+            start_date=date.today(),
+        )
+        with patch('tracker.rxnorm.get_medication_info', return_value={
+            'name': 'Aspirin', 'rxcui': '', 'drug_class': '',
+            'synonyms': [], 'indications': '', 'side_effects': '',
+            'warnings': '', 'dosage_forms': '', 'mechanism': '',
+            'external_ids': {}, 'source': 'rxnorm', 'last_enriched': None,
+        }):
+            response = self.client.get(
+                reverse('medication_concept_detail', kwargs={'name': 'Aspirin'})
+            )
+        self.assertNotContains(response, '500mg')
+
+
+class GetMedicationInfoTests(TestCase):
+    """Unit tests for the get_medication_info enrichment function."""
+
+    def test_empty_name_returns_empty_dict(self):
+        from tracker.rxnorm import get_medication_info
+        self.assertEqual(get_medication_info(''), {})
+        self.assertEqual(get_medication_info('  '), {})
+
+    def test_returns_cached_concept_when_fresh(self):
+        """A recently enriched MedicationConcept is returned without API calls."""
+        from django.utils import timezone
+        from tracker.rxnorm import get_medication_info
+        from unittest.mock import patch
+
+        concept = MedicationConcept.objects.create(
+            name='Ibuprofen',
+            rxcui='5640',
+            drug_class='NSAID',
+            indications='Pain relief.',
+            side_effects='GI upset.',
+            warnings='',
+            dosage_forms='Tablet',
+            mechanism='COX inhibitor.',
+            external_ids={'pubchem_cid': 3672},
+            source='rxnorm',
+            last_enriched=timezone.now(),
+        )
+
+        with patch('tracker.rxnorm.requests.get') as mock_get:
+            result = get_medication_info('Ibuprofen', rxcui='5640')
+
+        mock_get.assert_not_called()
+        self.assertEqual(result['name'], 'Ibuprofen')
+        self.assertEqual(result['drug_class'], 'NSAID')
+
+    def test_enrichment_fields_populated_from_openfda(self):
+        """When all APIs return data, enriched fields are populated and saved."""
+        from tracker.rxnorm import get_medication_info
+        from unittest.mock import patch
+
+        with patch('tracker.rxnorm._get', return_value=None), \
+             patch('tracker.rxnorm._enrich_from_openfda', side_effect=lambda e: e.update({
+                 'indications': 'Pain relief.',
+                 'side_effects': 'Nausea.',
+                 'warnings': 'Do not use if pregnant.',
+                 'dosage_forms': 'Tablet 200mg',
+                 'mechanism': 'COX inhibitor.',
+                 'drug_class': 'NSAID',
+             })), \
+             patch('tracker.rxnorm._enrich_from_rxnorm'), \
+             patch('tracker.rxnorm._enrich_from_dailymed'), \
+             patch('tracker.rxnorm._enrich_from_pubchem'):
+            result = get_medication_info('Ibuprofen')
+
+        self.assertEqual(result['indications'], 'Pain relief.')
+        self.assertEqual(result['drug_class'], 'NSAID')
+        # Should also be saved to DB
+        concept = MedicationConcept.objects.filter(name__iexact='Ibuprofen').first()
+        self.assertIsNotNone(concept)
+        self.assertEqual(concept.drug_class, 'NSAID')
+
+    def test_enrichment_uses_cached_rxcui_from_db(self):
+        """When a MedicationConcept with the name exists, its rxcui is reused."""
+        from tracker.rxnorm import get_medication_info
+        from unittest.mock import patch
+
+        MedicationConcept.objects.create(name='Metformin', rxcui='6809', source='rxnorm')
+
+        with patch('tracker.rxnorm._enrich_from_rxnorm') as mock_rxnorm, \
+             patch('tracker.rxnorm._enrich_from_openfda'), \
+             patch('tracker.rxnorm._enrich_from_dailymed'), \
+             patch('tracker.rxnorm._enrich_from_pubchem'), \
+             patch('tracker.rxnorm.get_rxcui', return_value='6809'):
+            result = get_medication_info('Metformin')
+
+        self.assertEqual(result['rxcui'], '6809')
 # =============================================================================
 # Ingestion Service Tests (Phase 2)
 # =============================================================================

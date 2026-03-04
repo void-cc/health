@@ -251,3 +251,10 @@ DEXCOM_BASE_URL = os.environ.get("DEXCOM_BASE_URL", "https://sandbox-api.dexcom.
 # Samsung Health (https://developer.samsung.com/health)
 SAMSUNG_HEALTH_CLIENT_ID = os.environ.get("SAMSUNG_HEALTH_CLIENT_ID", "")
 SAMSUNG_HEALTH_CLIENT_SECRET = os.environ.get("SAMSUNG_HEALTH_CLIENT_SECRET", "")
+
+# Drug API configuration
+DRUG_API_TIMEOUT = int(os.environ.get("DRUG_API_TIMEOUT", "5"))  # seconds
+DRUG_PROVIDER_OPENFDA_ENABLED = os.environ.get("DRUG_PROVIDER_OPENFDA_ENABLED", "true").lower() != "false"
+DRUG_PROVIDER_DAILYMED_ENABLED = os.environ.get("DRUG_PROVIDER_DAILYMED_ENABLED", "true").lower() != "false"
+DRUG_PROVIDER_WIKIDATA_ENABLED = os.environ.get("DRUG_PROVIDER_WIKIDATA_ENABLED", "true").lower() != "false"
+DRUG_PROVIDER_PUBCHEM_ENABLED = os.environ.get("DRUG_PROVIDER_PUBCHEM_ENABLED", "true").lower() != "false"

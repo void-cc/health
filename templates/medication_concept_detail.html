@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2><i class="fas fa-pills"></i> {{ info.name }}</h2>
+  <a href="{% url 'medication_schedule_list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back to Schedules
+  </a>
+</div>
+
+<!-- Quick actions -->
+<div class="row g-2 mb-4">
+  <div class="col-auto">
+    <a href="{% url 'medication_schedule_add' %}" class="btn btn-primary btn-sm">
+      <i class="fas fa-plus me-1"></i>Add to My Schedule
+    </a>
+  </div>
+  <div class="col-auto">
+    <a href="{% url 'interaction_dashboard' %}" class="btn btn-outline-warning btn-sm">
+      <i class="fas fa-exchange-alt me-1"></i>Interaction Dashboard
+    </a>
+  </div>
+</div>
+
+<!-- Identity card -->
+<div class="card mb-4 shadow-sm">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <h5 class="card-title mb-3"><i class="fas fa-id-card me-2 text-primary"></i>Drug Identity</h5>
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Name</dt>
+          <dd class="col-sm-8">{{ info.name }}</dd>
+
+          {% if info.rxcui %}
+          <dt class="col-sm-4">RxCUI</dt>
+          <dd class="col-sm-8">
+            <a href="https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm={{ info.rxcui }}"
+               target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+              {{ info.rxcui }} <i class="fas fa-external-link-alt fa-xs"></i>
+            </a>
+          </dd>
+          {% endif %}
+
+          {% if info.drug_class %}
+          <dt class="col-sm-4">Drug Class</dt>
+          <dd class="col-sm-8">{{ info.drug_class }}</dd>
+          {% endif %}
+
+          {% if info.source %}
+          <dt class="col-sm-4">Source</dt>
+          <dd class="col-sm-8"><span class="badge bg-secondary">{{ info.source }}</span></dd>
+          {% endif %}
+        </dl>
+      </div>
+
+      {% if info.synonyms %}
+      <div class="col-md-6">
+        <h6 class="text-muted mb-2"><i class="fas fa-tags me-1"></i>Also Known As</h6>
+        <div class="d-flex flex-wrap gap-1">
+          {% for syn in info.synonyms %}
+          <span class="badge bg-light text-dark border">{{ syn }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Clinical information row -->
+<div class="row g-4 mb-4">
+
+  {% if info.indications %}
+  <div class="col-md-6">
+    <div class="card h-100 border-start border-success border-3">
+      <div class="card-body">
+        <h5 class="card-title"><i class="fas fa-stethoscope me-2 text-success"></i>Indications & Usage</h5>
+        <p class="card-text small">{{ info.indications|truncatechars:800 }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if info.mechanism %}
+  <div class="col-md-6">
+    <div class="card h-100 border-start border-primary border-3">
+      <div class="card-body">
+        <h5 class="card-title"><i class="fas fa-atom me-2 text-primary"></i>Mechanism of Action</h5>
+        <p class="card-text small">{{ info.mechanism|truncatechars:800 }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if info.dosage_forms %}
+  <div class="col-md-6">
+    <div class="card h-100 border-start border-info border-3">
+      <div class="card-body">
+        <h5 class="card-title"><i class="fas fa-capsules me-2 text-info"></i>Dosage Forms &amp; Strengths</h5>
+        <p class="card-text small">{{ info.dosage_forms|truncatechars:600 }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if info.side_effects %}
+  <div class="col-md-6">
+    <div class="card h-100 border-start border-warning border-3">
+      <div class="card-body">
+        <h5 class="card-title"><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Adverse Reactions</h5>
+        <p class="card-text small">{{ info.side_effects|truncatechars:600 }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if info.warnings %}
+  <div class="col-12">
+    <div class="card h-100 border-start border-danger border-3">
+      <div class="card-body">
+        <h5 class="card-title"><i class="fas fa-skull-crossbones me-2 text-danger"></i>Warnings &amp; Contraindications</h5>
+        <p class="card-text small">{{ info.warnings|truncatechars:800 }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- External references -->
+{% if info.external_ids %}
+<div class="card mb-4 shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title mb-3"><i class="fas fa-link me-2 text-secondary"></i>External References</h5>
+    <div class="row g-2">
+      {% if info.external_ids.fda_application_number %}
+      <div class="col-auto">
+        <a href="https://www.accessdata.fda.gov/scripts/cder/daf/index.cfm?event=overview.process&ApplNo={{ info.external_ids.fda_application_number }}"
+           target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
+          <i class="fas fa-prescription-bottle me-1"></i>FDA Drug Label ({{ info.external_ids.fda_application_number }})
+        </a>
+      </div>
+      {% endif %}
+      {% if info.external_ids.fda_spl_id %}
+      <div class="col-auto">
+        <a href="https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid={{ info.external_ids.fda_spl_id }}"
+           target="_blank" rel="noopener noreferrer" class="btn btn-outline-info btn-sm">
+          <i class="fas fa-file-medical me-1"></i>DailyMed
+        </a>
+      </div>
+      {% endif %}
+      {% if info.external_ids.pubchem_cid %}
+      <div class="col-auto">
+        <a href="https://pubchem.ncbi.nlm.nih.gov/compound/{{ info.external_ids.pubchem_cid }}"
+           target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-flask me-1"></i>PubChem CID {{ info.external_ids.pubchem_cid }}
+        </a>
+      </div>
+      {% endif %}
+      {% if info.rxcui %}
+      <div class="col-auto">
+        <a href="https://rxnav.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm={{ info.rxcui }}"
+           target="_blank" rel="noopener noreferrer" class="btn btn-outline-success btn-sm">
+          <i class="fas fa-book-medical me-1"></i>RxNav / RxNorm
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- User's schedules for this medication -->
+{% if schedules %}
+<div class="card mb-4 shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="fas fa-calendar-alt me-2 text-primary"></i>Your Schedules for {{ info.name }}</h5>
+    <a href="{% url 'medication_schedule_add' %}" class="btn btn-sm btn-primary">
+      <i class="fas fa-plus me-1"></i>Add
+    </a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Dosage</th>
+          <th>Frequency</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Status</th>
+          <th>Adherence</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in schedules %}
+        <tr>
+          <td>{{ s.dosage|default:"—" }}</td>
+          <td>{{ s.frequency|default:"—" }}</td>
+          <td>{{ s.start_date|date:"Y-m-d"|default:"—" }}</td>
+          <td>
+            {{ s.end_date|date:"Y-m-d"|default:"—" }}
+            {% if s.is_overdue %}<span class="badge bg-danger ms-1">Overdue</span>{% endif %}
+          </td>
+          <td>
+            {% if s.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.adherence_percent is not None %}
+              <span class="badge {% if s.adherence_percent >= 80 %}bg-success{% elif s.adherence_percent >= 60 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                {{ s.adherence_percent }}%
+              </span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <a href="{% url 'medication_schedule_edit' pk=s.id %}" class="btn btn-xs btn-outline-primary btn-sm">
+              <i class="fas fa-edit"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>
+  You don't have a schedule for <strong>{{ info.name }}</strong> yet.
+  <a href="{% url 'medication_schedule_add' %}" class="alert-link">Add one now</a>.
+</div>
+{% endif %}
+
+<!-- Known interactions -->
+{% if interactions %}
+<div class="card mb-4 shadow-sm">
+  <div class="card-header">
+    <h5 class="mb-0"><i class="fas fa-exchange-alt me-2 text-warning"></i>Known Interactions</h5>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Severity</th>
+          <th>Interacts with</th>
+          <th>Description</th>
+          <th>Detected</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for interaction in interactions %}
+        <tr>
+          <td>
+            {% if interaction.severity == 'critical' %}
+              <span class="badge bg-danger">Critical</span>
+            {% elif interaction.severity == 'high' %}
+              <span class="badge bg-danger">High</span>
+            {% elif interaction.severity == 'moderate' %}
+              <span class="badge bg-warning text-dark">Moderate</span>
+            {% else %}
+              <span class="badge bg-info text-dark">Low</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if interaction.medication_a|lower == info.name|lower %}
+              <strong>{{ interaction.medication_b }}</strong>
+            {% else %}
+              <strong>{{ interaction.medication_a }}</strong>
+            {% endif %}
+          </td>
+          <td class="small">{{ interaction.description|default:"—"|truncatechars:200 }}</td>
+          <td class="text-muted small">{{ interaction.detected_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Disclaimer -->
+<div class="mt-4 text-muted small">
+  <i class="fas fa-info-circle me-1"></i>
+  Drug information is sourced from
+  <a href="https://rxnav.nlm.nih.gov/" target="_blank" rel="noopener noreferrer">RxNav (NIH/NLM)</a>,
+  <a href="https://open.fda.gov/" target="_blank" rel="noopener noreferrer">openFDA</a>,
+  <a href="https://dailymed.nlm.nih.gov/" target="_blank" rel="noopener noreferrer">DailyMed</a>, and
+  <a href="https://pubchem.ncbi.nlm.nih.gov/" target="_blank" rel="noopener noreferrer">PubChem</a>.
+  This is for informational purposes only and does not replace professional medical advice.
+  {% if info.last_enriched %}
+  <span class="ms-2">Last updated: {{ info.last_enriched|slice:":10" }}</span>
+  {% endif %}
+</div>
+{% endblock %}
