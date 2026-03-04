@@ -3224,13 +3224,17 @@ def practitioner_portal(request):
                 practitioner_email=email, access_status='approved'
             )
             if entries.exists():
+                # Only include patients who explicitly authorized access (non-null patient FK).
+                # Entries without a patient association (legacy records) are intentionally
+                # excluded to prevent unscoped data exposure.
+                patient_ids = entries.exclude(patient__isnull=True).values_list('patient', flat=True)
                 data = {
-                    'blood_tests': list(BloodTest.objects.all().order_by('-date')[:20].values(
+                    'blood_tests': list(BloodTest.objects.filter(user__in=patient_ids).order_by('-date')[:20].values(
                         'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max')),
-                    'vitals': list(VitalSign.objects.all().order_by('-date')[:20].values(
+                    'vitals': list(VitalSign.objects.filter(user__in=patient_ids).order_by('-date')[:20].values(
                         'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt',
                         'respiratory_rate', 'spo2')),
-                    'medications': list(MedicationSchedule.objects.all().order_by('-start_date')[:20].values(
+                    'medications': list(MedicationSchedule.objects.filter(user__in=patient_ids).order_by('-start_date')[:20].values(
                         'medication_name', 'dosage', 'frequency', 'start_date', 'end_date')),
                 }
                 context['access_entries'] = entries
@@ -4119,6 +4123,7 @@ practitioner_access_list = _practitioner_access['list']
 practitioner_access_add = _practitioner_access['add']
 practitioner_access_delete = _practitioner_access['delete']
 
+@login_required
 def practitioner_access_edit(request, pk):
     entry = get_object_or_404(PractitionerAccess, id=pk)
     if request.method == 'POST':
@@ -4129,6 +4134,10 @@ def practitioner_access_edit(request, pk):
             new_status = request.POST.get('access_status', entry.access_status)
             if new_status == 'approved' and entry.access_status != 'approved':
                 entry.granted_at = timezone.now()
+                # Only set the patient if not already linked to prevent overwriting
+                # an existing patient association by a different logged-in user.
+                if entry.patient is None:
+                    entry.patient = request.user
             entry.access_status = new_status
             entry.save()
             messages.success(request, 'Practitioner access updated!')
