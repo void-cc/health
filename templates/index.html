@@ -1,206 +1,323 @@
 {% extends 'base.html' %}
 {% load json_filters %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Dashboard</h2>
-  <div class="d-flex gap-2">
-    <button class="btn btn-outline-secondary btn-sm" onclick="exportDashboardPDF()">
-      <i class="fas fa-download"></i> <span class="d-none d-sm-inline">Export PDF</span>
+
+<!-- Page Header -->
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Dashboard</h1>
+    <p class="page-header-subtitle">Your health overview at a glance</p>
+  </div>
+  <div class="page-header-actions">
+    <button class="toolbar-btn" onclick="exportDashboardPDF()">
+      <i class="fas fa-download" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Export</span>
     </button>
-    <a href="{% url 'bulk_edit' %}" class="btn btn-outline-secondary btn-sm">
-      <i class="fas fa-table"></i> <span class="d-none d-sm-inline">Bulk Edit</span>
+    <a href="{% url 'bulk_edit' %}" class="toolbar-btn">
+      <i class="fas fa-table" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Bulk Edit</span>
     </a>
-    <a href="{% url 'customize_dashboard' %}" class="btn btn-outline-secondary btn-sm">
-      <i class="fas fa-sliders-h"></i> <span class="d-none d-sm-inline">Customize</span>
+    <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
+      <i class="fas fa-plus" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Add Test</span>
     </a>
   </div>
 </div>
 
 <div id="dashboard-content">
-{% for widget in widgets %}
-{% if widget.visible %}
+{% for widget in widgets %}{% if widget.visible %}
 
 {% if widget.widget_type == 'summary_cards' %}
-<!-- Summary Cards Widget -->
-<div class="dashboard-widget" data-widget="{{ widget.widget_type }}">
-<div class="row mb-4 g-3">
-  <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="text-muted small text-uppercase mb-1"><i class="fas fa-vial me-1" aria-hidden="true"></i>Total Tests Recorded</div>
-        <h3 class="mb-0">{{ total_tests }}</h3>
-      </div>
+<!-- KPI Row -->
+<div class="kpi-grid mb-6">
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Total Tests</span>
+      <span class="kpi-card-icon icon-primary"><i class="fas fa-vial"></i></span>
+    </div>
+    <div class="kpi-card-value">{{ total_tests }}</div>
+    <div class="kpi-card-footer">
+      <a href="{% url 'history' %}">View history</a>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card h-100{% if out_of_range > 0 %} border-danger{% endif %}">
-      <div class="card-body">
-        <div class="text-muted small text-uppercase mb-1"><i class="fas fa-exclamation-circle me-1{% if out_of_range > 0 %} text-danger{% endif %}" aria-hidden="true"></i>Out of Range</div>
-        <h3 class="mb-0{% if out_of_range > 0 %} text-danger{% endif %}">{{ out_of_range }}</h3>
-      </div>
+
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Out of Range</span>
+      <span class="kpi-card-icon {% if out_of_range > 0 %}icon-error{% else %}icon-success{% endif %}">
+        <i class="fas {% if out_of_range > 0 %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
+      </span>
+    </div>
+    <div class="kpi-card-value {% if out_of_range > 0 %}value-danger{% endif %}">{{ out_of_range }}</div>
+    <div class="kpi-card-footer">
+      {% if out_of_range > 0 %}
+        <span style="color:var(--color-error);">Requires attention</span>
+      {% else %}
+        All values in range
+      {% endif %}
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="text-muted small text-uppercase mb-1"><i class="fas fa-heartbeat me-1" aria-hidden="true"></i>Latest Vitals {% if latest_vitals %}({{ latest_vitals.date|date:"Y-m-d" }}){% endif %}</div>
-        {% if latest_vitals %}
-          <p class="mb-1"><strong>Weight:</strong> {% if latest_vitals.weight %}{{ latest_vitals.weight }}{% else %}N/A{% endif %} kg</p>
-          <p class="mb-1"><strong>HR:</strong> {% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }}{% else %}N/A{% endif %} bpm</p>
-          <p class="mb-0"><strong>BP:</strong> {% if latest_vitals.systolic_bp and latest_vitals.diastolic_bp %}{{ latest_vitals.systolic_bp }} / {{ latest_vitals.diastolic_bp }}{% else %}N/A{% endif %} mmHg</p>
-        {% else %}
-          <p class="text-muted mb-0">No vitals recorded.</p>
-        {% endif %}
-      </div>
+
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Latest Vitals</span>
+      <span class="kpi-card-icon icon-primary"><i class="fas fa-heartbeat"></i></span>
     </div>
+    {% if latest_vitals %}
+      <div class="kpi-card-value" style="font-size:1.25rem;">
+        {% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }} bpm{% else %}—{% endif %}
+      </div>
+      <div class="kpi-card-footer">
+        {{ latest_vitals.date|date:"M j, Y" }} &nbsp;·&nbsp;
+        <a href="{% url 'vitals' %}">View all vitals</a>
+      </div>
+    {% else %}
+      <div class="kpi-card-value" style="font-size:1.25rem;">—</div>
+      <div class="kpi-card-footer"><a href="{% url 'add_vitals' %}">Record vitals</a></div>
+    {% endif %}
   </div>
-</div>
 </div>
 {% endif %}
 
 {% if widget.widget_type == 'recent_results' %}
-<!-- Recent Results Widget -->
-<div class="dashboard-widget" data-widget="{{ widget.widget_type }}">
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h3 class="mb-0">Recent Blood Results</h3>
-  <div class="d-flex gap-1">
-    <a href="{% url 'comparative_bar_charts' %}" class="btn btn-sm btn-outline-secondary">
-      <i class="fas fa-chart-bar"></i> <span class="d-none d-md-inline">Compare</span>
-    </a>
-    <a href="{% url 'blood_tests_boxplots' %}" class="btn btn-sm btn-outline-secondary">
-      <i class="fas fa-box"></i> <span class="d-none d-md-inline">Boxplots</span>
-    </a>
-    <a href="{% url 'blood_tests_charts' %}" class="btn btn-sm btn-outline-secondary">
-      <i class="fas fa-chart-line"></i> <span class="d-none d-md-inline">Charts</span>
-    </a>
-  </div>
-</div>
+<!-- Main dashboard grid -->
+<div class="dashboard-grid">
+  <!-- Left column: blood test results -->
+  <div>
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <h2 style="font-size:1rem; font-weight:700; color:var(--text-primary); margin:0;">Recent Blood Results</h2>
+      <div class="d-flex gap-2">
+        <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn">
+          <i class="fas fa-chart-bar"></i>
+          <span class="d-none d-md-inline">Compare</span>
+        </a>
+        <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn">
+          <i class="fas fa-chart-line"></i>
+          <span class="d-none d-md-inline">Charts</span>
+        </a>
+      </div>
+    </div>
 
-{% if tests_by_category %}
-  {% for category, cat_tests in tests_by_category.items %}
-    <h4 class="mt-4 mb-3 text-secondary border-bottom pb-2">{{ category }}</h4>
-    <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
-      {% for test in cat_tests %}
-      <div class="col">
-        <div class="card h-100">
-          <div class="card-header d-flex justify-content-between ">
-            <h5 class="card-title" style="display: inline">{{ test.test_name }}</h5>
-          {% if test.normal_min is not None and test.normal_max is not None %}
-                {% if test.normal_min <= test.value and test.value <= test.normal_max %}
-                  <span class="badge bg-success align-right align-self-start">Normal</span>
-                {% else %}
-                  <span class="badge bg-danger align-self-start">Out of Range</span>
-                {% endif %}
-              {% else %}
-                N/A
-              {% endif %}
-          </div>
-        <div class="card-body">
-            <p class="card-text">
-              <span class="text-muted align-self-start"><i class="far fa-calendar-alt"></i> {{ test.date|date:"Y-m-d" }}</span><br>
-              <strong>Value:</strong> {{ test.value }} {{ test.unit }}<br>
-              <strong>Normal Range:</strong>
-              {% if test.normal_min is not None and test.normal_max is not None %}
-                {{ test.normal_min }} - {{ test.normal_max }} {{ test.unit }}
-              {% else %}
-                {{ test.unit }}
-              {% endif %}
-            </p>
-            <!-- Annotations -->
-            {% for annotation in test.annotations.all %}
-              <div class="alert alert-info py-1 px-2 mb-1 d-flex justify-content-between align-items-center">
-                <small><i class="fas fa-sticky-note"></i> {{ annotation.note }}</small>
-                <form action="{% url 'delete_annotation' annotation_id=annotation.id %}" method="post" class="d-inline">
-                  {% csrf_token %}
-                  <input type="hidden" name="next" value="{% url 'index' %}">
-                  <button type="submit" class="btn btn-sm btn-link text-danger p-0" aria-label="Delete note" title="Delete note"><i class="fas fa-times"></i></button>
-                </form>
-              </div>
-            {% endfor %}
-            <form action="{% url 'add_annotation' model_type='blood_test' object_id=test.id %}" method="post" class="mt-2">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{% url 'index' %}">
-              <div class="input-group input-group-sm">
-                <input type="text" name="note" class="form-control" placeholder="Add a note...">
-                <button type="submit" class="btn btn-outline-secondary btn-sm" aria-label="Add note" title="Add note"><i class="fas fa-plus"></i></button>
-              </div>
-            </form>
-          </div>
-        {% with test_bar=bars|lookup:test.id %}
-        {% if test_bar %}
-        <div style="position: relative; margin-bottom: 25px; margin-top: 25px; height: 20px; padding: 0 15px;">
-            <div class="progress" style="height: 10px; position: absolute; top: 5px; width: calc(100% - 30px); border-radius: 0;">
-              <!-- Low Zone -->
-              <div class="progress-bar bg-danger" role="progressbar" style="width: {{ test_bar.low_width }}%; opacity: 0.8;" aria-valuenow="{{ test_bar.low_width }}" aria-valuemin="0" aria-valuemax="100"></div>
-
-              <!-- Normal Zone -->
-              <div class="progress-bar bg-success" role="progressbar" style="width: {{ test_bar.normal_width }}%; opacity: 0.8;" aria-valuenow="{{ test_bar.normal_width }}" aria-valuemin="0" aria-valuemax="100"></div>
-
-              <!-- High Zone -->
-              <div class="progress-bar bg-warning" role="progressbar" style="width: {{ test_bar.high_width }}%; opacity: 0.8;" aria-valuenow="{{ test_bar.high_width }}" aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
-
-            <!-- The Value Indicator -->
-            <div style="position: absolute; left: calc(15px + (100% - 30px) * ({{ test_bar.value_pos }} / 100)); top: 0; bottom: 0; width: 4px; background-color: #000; z-index: 10; transform: translateX(-50%);"></div>
-
-            <!-- The Value Bubble -->
-            <div style="position: absolute; left: calc(15px + (100% - 30px) * ({{ test_bar.value_pos }} / 100)); top: -20px; transform: translateX(-50%); background: black; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; line-height: 1; z-index: 11; white-space: nowrap;">
-                {{ test_bar.value }} {{ test_bar.unit }}
-                <!-- Little arrow pointing down -->
-                <div style="position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid black;"></div>
-            </div>
+    {% if tests_by_category %}
+      {% for category, cat_tests in tests_by_category.items %}
+      <div class="category-section">
+        <div class="category-section-header">
+          <span class="category-section-title">{{ category }}</span>
+          <span class="text-muted" style="font-size:0.75rem;">{{ cat_tests|length }} result{{ cat_tests|length|pluralize }}</span>
         </div>
-        {% endif %}
-        {% endwith %}
-          <div class="card-footer d-flex justify-content-between align-items-center">
-              <a href="{% url 'chart' test_name=test.test_name %}" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-chart-line"></i> Graph
+
+        <div class="result-list">
+          {% for test in cat_tests %}
+          <div class="result-item">
+            <div>
+              <div class="result-item-title">{{ test.test_name }}</div>
+              <div class="result-item-meta">
+                <i class="far fa-calendar-alt me-1"></i>{{ test.date|date:"M j, Y" }}
+                {% if test.normal_min is not None and test.normal_max is not None %}
+                  &nbsp;·&nbsp; Range: {{ test.normal_min }}–{{ test.normal_max }} {{ test.unit }}
+                {% endif %}
+              </div>
+
+              <!-- Mini range bar -->
+              {% with test_bar=bars|lookup:test.id %}
+              {% if test_bar %}
+              <div class="mini-range-bar" style="margin-top:6px; width:160px;">
+                <div class="mini-range-bar-fill zone-low" style="left:0; width:{{ test_bar.low_width }}%;"></div>
+                <div class="mini-range-bar-fill zone-normal" style="left:{{ test_bar.low_width }}%; width:{{ test_bar.normal_width }}%;"></div>
+                <div class="mini-range-bar-fill zone-high" style="left:calc({{ test_bar.low_width }}% + {{ test_bar.normal_width }}%); width:{{ test_bar.high_width }}%;"></div>
+                <div class="mini-range-bar-indicator" style="left:{{ test_bar.value_pos }}%;"></div>
+              </div>
+              {% endif %}
+              {% endwith %}
+            </div>
+
+            <div style="text-align:right;">
+              <div class="result-item-value">
+                {{ test.value }}<span class="result-item-unit">{{ test.unit }}</span>
+              </div>
+              {% if test.normal_min is not None and test.normal_max is not None %}
+                {% if test.normal_min <= test.value and test.value <= test.normal_max %}
+                  <span class="status-badge badge-success mt-1">Normal</span>
+                {% else %}
+                  <span class="status-badge badge-danger mt-1">Out of range</span>
+                {% endif %}
+              {% endif %}
+            </div>
+
+            <div class="result-item-actions">
+              <a href="{% url 'chart' test_name=test.test_name %}" class="toolbar-btn" title="View chart">
+                <i class="fas fa-chart-line"></i>
               </a>
               <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">
+                <button class="toolbar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">
                   <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                   <li>
-                    <a href="{% url 'edit_test' test_id=test.id %}" class="dropdown-item"><i class="fas fa-edit me-2"></i>Edit</a>
+                    <a href="{% url 'edit_test' test_id=test.id %}" class="dropdown-item">
+                      <i class="fas fa-edit me-2"></i>Edit
+                    </a>
                   </li>
                   <li>
-                    <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ test.id }}"><i class="fas fa-trash-alt me-2"></i>Delete</button>
+                    <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ test.id }}">
+                      <i class="fas fa-trash-alt me-2"></i>Delete
+                    </button>
                   </li>
                 </ul>
               </div>
-              <div class="modal fade" id="deleteModal{{ test.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ test.id }}" aria-hidden="true">
-                  <div class="modal-dialog">
-                    <div class="modal-content">
-                      <div class="modal-header">
-                        <h5 class="modal-title" id="deleteModalLabel{{ test.id }}">Delete Confirmation</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                      </div>
-                      <div class="modal-body">
-                        Are you sure you want to delete this item?
-                      </div>
-                      <div class="modal-footer">
-                        <form action="{% url 'delete_test' test_id=test.id %}" method="post">
-                          {% csrf_token %}
-                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                          <button type="submit" class="btn btn-danger">Delete</button>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+
+              <!-- Annotations toggle -->
+              <button class="toolbar-btn" type="button" data-bs-toggle="collapse" data-bs-target="#notes{{ test.id }}" aria-expanded="false" title="Notes">
+                <i class="fas fa-sticky-note"></i>
+              </button>
+            </div>
           </div>
+
+          <!-- Notes / Annotations collapse -->
+          <div class="collapse" id="notes{{ test.id }}">
+            <div style="padding: var(--space-3) var(--space-4); background:var(--bg-tertiary); border: 1px solid var(--border-color); border-top:none; border-radius: 0 0 var(--radius-md) var(--radius-md);">
+              {% for annotation in test.annotations.all %}
+                <div class="d-flex align-items-center justify-content-between py-1">
+                  <small class="text-muted"><i class="fas fa-sticky-note me-1"></i>{{ annotation.note }}</small>
+                  <form action="{% url 'delete_annotation' annotation_id=annotation.id %}" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'index' %}">
+                    <button type="submit" class="btn btn-sm btn-link text-danger p-0" aria-label="Delete note"><i class="fas fa-times"></i></button>
+                  </form>
+                </div>
+              {% endfor %}
+              <form action="{% url 'add_annotation' model_type='blood_test' object_id=test.id %}" method="post" class="mt-2">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'index' %}">
+                <div class="input-group input-group-sm">
+                  <input type="text" name="note" class="form-control" placeholder="Add a note…">
+                  <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fas fa-plus"></i></button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Delete Modal -->
+          <div class="modal fade" id="deleteModal{{ test.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ test.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="deleteModalLabel{{ test.id }}">Delete Test Result</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <p>Are you sure you want to delete <strong>{{ test.test_name }}</strong> from {{ test.date|date:"M j, Y" }}? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                  <form action="{% url 'delete_test' test_id=test.id %}" method="post">
+                    {% csrf_token %}
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
         </div>
       </div>
       {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-vial"></i></div>
+        <div class="empty-state-title">No blood tests yet</div>
+        <div class="empty-state-description">Add your first blood test result to start tracking your health markers.</div>
+        <a href="{% url 'add_test' %}" class="btn btn-primary">
+          <i class="fas fa-plus me-1"></i> Add Blood Test
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Right column: quick info panel -->
+  <div>
+    <!-- Latest Vitals Panel -->
+    {% if latest_vitals %}
+    <div class="vitals-summary mb-4">
+      <div class="vitals-summary-title">Latest Vitals — {{ latest_vitals.date|date:"M j, Y" }}</div>
+      <div class="vital-row">
+        <span class="vital-row-label"><i class="fas fa-weight me-1"></i> Weight</span>
+        <span class="vital-row-value">{% if latest_vitals.weight %}{{ latest_vitals.weight }} kg{% else %}—{% endif %}</span>
+      </div>
+      <div class="vital-row">
+        <span class="vital-row-label"><i class="fas fa-heartbeat me-1"></i> Heart Rate</span>
+        <span class="vital-row-value">{% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }} bpm{% else %}—{% endif %}</span>
+      </div>
+      <div class="vital-row">
+        <span class="vital-row-label"><i class="fas fa-tachometer-alt me-1"></i> Blood Pressure</span>
+        <span class="vital-row-value">
+          {% if latest_vitals.systolic_bp and latest_vitals.diastolic_bp %}
+            {{ latest_vitals.systolic_bp }}/{{ latest_vitals.diastolic_bp }}
+          {% else %}—{% endif %}
+        </span>
+      </div>
+      <div class="vital-row">
+        <span class="vital-row-label"><i class="fas fa-lungs me-1"></i> SpO2</span>
+        <span class="vital-row-value">{% if latest_vitals.spo2 %}{{ latest_vitals.spo2 }}%{% else %}—{% endif %}</span>
+      </div>
+      <div class="vital-row">
+        <span class="vital-row-label"><i class="fas fa-thermometer-half me-1"></i> BBT</span>
+        <span class="vital-row-value">{% if latest_vitals.bbt %}{{ latest_vitals.bbt }}°C{% else %}—{% endif %}</span>
+      </div>
+      <div class="mt-3">
+        <a href="{% url 'vitals' %}" class="toolbar-btn w-100 justify-content-center" style="display:flex;">
+          <i class="fas fa-list me-1"></i> View all vitals
+        </a>
+      </div>
     </div>
-  {% endfor %}
-{% else %}
-    <div id="no-tests" class="alert alert-info">
-    <p>No tests available.</p>
-    <a class="btn btn-primary btn-lg" href="{% url 'add_test' %}">Add a new test</a>
+    {% endif %}
+
+    <!-- Quick Actions Panel -->
+    <div class="quick-actions-panel mb-4">
+      <div class="quick-actions-panel-title">Quick Actions</div>
+      <a href="{% url 'add_test' %}" class="quick-action-item">
+        <i class="fas fa-plus-circle"></i>
+        <span>Add Blood Test</span>
+      </a>
+      <a href="{% url 'add_vitals' %}" class="quick-action-item">
+        <i class="fas fa-heartbeat"></i>
+        <span>Record Vitals</span>
+      </a>
+      <a href="{% url 'blood_tests_charts' %}" class="quick-action-item">
+        <i class="fas fa-chart-line"></i>
+        <span>View Charts</span>
+      </a>
+      <a href="{% url 'comparative_bar_charts' %}" class="quick-action-item">
+        <i class="fas fa-chart-bar"></i>
+        <span>Compare to Normal</span>
+      </a>
+      <a href="{% url 'history' %}" class="quick-action-item">
+        <i class="fas fa-clock"></i>
+        <span>Full History</span>
+      </a>
+      <a href="{% url 'import_data' %}" class="quick-action-item">
+        <i class="fas fa-file-upload"></i>
+        <span>Import Data</span>
+      </a>
     </div>
-{% endif %}
+
+    <!-- Analytics shortcuts -->
+    <div class="quick-actions-panel">
+      <div class="quick-actions-panel-title">Analytics</div>
+      <a href="{% url 'blood_tests_boxplots' %}" class="quick-action-item">
+        <i class="fas fa-chart-bar"></i>
+        <span>Boxplots</span>
+      </a>
+      <a href="{% url 'scatter_plots' %}" class="quick-action-item">
+        <i class="fas fa-project-diagram"></i>
+        <span>Scatter Plots</span>
+      </a>
+      <a href="{% url 'vitals_charts' %}" class="quick-action-item">
+        <i class="fas fa-chart-area"></i>
+        <span>Vitals Trends</span>
+      </a>
+    </div>
+  </div>
 </div>
 {% endif %}
 
@@ -221,7 +338,6 @@ function exportDashboardPDF() {
     var pageHeight = 297;
     var position = 0;
     var imgData = canvas.toDataURL('image/png');
-
     pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
     var heightLeft = imgHeight - pageHeight;
     while (heightLeft > 0) {

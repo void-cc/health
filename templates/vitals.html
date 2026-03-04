@@ -1,71 +1,82 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Your Vital Signs</h2>
+
+<div class="page-header">
   <div>
-    <a href="{% url 'vitals_charts' %}" class="btn btn-sm btn-outline-secondary me-2">
-      <i class="fas fa-chart-line"></i> View Charts
+    <h1 class="page-header-title">Vital Signs</h1>
+    <p class="page-header-subtitle">Your recorded vital measurements</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'vitals_charts' %}" class="toolbar-btn">
+      <i class="fas fa-chart-line" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Charts</span>
     </a>
-    <a href="{% url 'add_vitals' %}" class="btn btn-sm btn-primary">Add Vitals</a>
+    <a href="{% url 'add_vitals' %}" class="toolbar-btn toolbar-btn-primary">
+      <i class="fas fa-plus" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Add Vitals</span>
+    </a>
   </div>
 </div>
 
 {% if vitals %}
 <div class="table-responsive">
-  <table class="table table-striped table-hover align-middle">
+  <table class="table table-hover align-middle">
     <thead>
       <tr>
         <th>Date</th>
-        <th>Weight (kg)</th>
-        <th>Heart Rate (bpm)</th>
-        <th>Blood Pressure (mmHg)</th>
-        <th>BBT (°C)</th>
-        <th>SpO2 (%)</th>
-        <th>Resp. Rate (/min)</th>
-        <th>Actions</th>
+        <th>Weight</th>
+        <th>Heart Rate</th>
+        <th>Blood Pressure</th>
+        <th>BBT</th>
+        <th>SpO2</th>
+        <th>Resp. Rate</th>
+        <th style="width:56px;"></th>
       </tr>
     </thead>
     <tbody>
       {% for vital in vitals %}
       <tr>
-        <td>{{ vital.date|date:"Y-m-d" }}</td>
-        <td>{% if vital.weight is not None %}{{ vital.weight }}{% else %}-{% endif %}</td>
-        <td>{% if vital.heart_rate is not None %}{{ vital.heart_rate }}{% else %}-{% endif %}</td>
+        <td><span style="font-weight:500;">{{ vital.date|date:"M j, Y" }}</span></td>
+        <td>{% if vital.weight is not None %}<span class="fw-medium">{{ vital.weight }}</span> <span class="text-muted">kg</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        <td>{% if vital.heart_rate is not None %}<span class="fw-medium">{{ vital.heart_rate }}</span> <span class="text-muted">bpm</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
         <td>
           {% if vital.systolic_bp is not None and vital.diastolic_bp is not None %}
-            {{ vital.systolic_bp }} / {{ vital.diastolic_bp }}
+            <span class="fw-medium">{{ vital.systolic_bp }}/{{ vital.diastolic_bp }}</span> <span class="text-muted">mmHg</span>
           {% else %}
-            -
+            <span class="text-muted">—</span>
           {% endif %}
         </td>
-        <td>{% if vital.bbt is not None %}{{ vital.bbt }}{% else %}-{% endif %}</td>
-        <td>{% if vital.spo2 is not None %}{{ vital.spo2 }}{% else %}-{% endif %}</td>
-        <td>{% if vital.respiratory_rate is not None %}{{ vital.respiratory_rate }}{% else %}-{% endif %}</td>
+        <td>{% if vital.bbt is not None %}<span class="fw-medium">{{ vital.bbt }}</span> <span class="text-muted">°C</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        <td>{% if vital.spo2 is not None %}<span class="fw-medium">{{ vital.spo2 }}</span> <span class="text-muted">%</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        <td>{% if vital.respiratory_rate is not None %}<span class="fw-medium">{{ vital.respiratory_rate }}</span> <span class="text-muted">/min</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
         <td>
-          <div class="dropdown d-inline-block">
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+          <div class="dropdown">
+            <button class="toolbar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
               <i class="fas fa-ellipsis-v"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a href="{% url 'edit_vitals' vital_id=vital.id %}" class="dropdown-item"><i class="fas fa-edit me-2"></i>Edit</a>
+                <a href="{% url 'edit_vitals' vital_id=vital.id %}" class="dropdown-item">
+                  <i class="fas fa-edit me-2"></i>Edit
+                </a>
               </li>
               <li>
-                <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteVitalModal{{ vital.id }}"><i class="fas fa-trash-alt me-2"></i>Delete</button>
+                <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteVitalModal{{ vital.id }}">
+                  <i class="fas fa-trash-alt me-2"></i>Delete
+                </button>
               </li>
             </ul>
           </div>
 
-          <!-- Delete Modal -->
           <div class="modal fade" id="deleteVitalModal{{ vital.id }}" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h5 class="modal-title">Delete Confirmation</h5>
+                  <h5 class="modal-title">Delete Vital Entry</h5>
                   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                  Are you sure you want to delete this vital sign entry?
+                  <p>Are you sure you want to delete the vital signs entry from <strong>{{ vital.date|date:"M j, Y" }}</strong>? This action cannot be undone.</p>
                 </div>
                 <div class="modal-footer">
                   <form action="{% url 'delete_vitals' vital_id=vital.id %}" method="post">
@@ -84,9 +95,14 @@
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">
-  <p>No vital signs recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'add_vitals' %}">Record Your First Vitals</a>
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-heartbeat"></i></div>
+  <div class="empty-state-title">No vital signs recorded</div>
+  <div class="empty-state-description">Start tracking your daily vitals to monitor trends over time.</div>
+  <a href="{% url 'add_vitals' %}" class="btn btn-primary">
+    <i class="fas fa-plus me-1"></i> Record First Vitals
+  </a>
 </div>
 {% endif %}
+
 {% endblock %}
