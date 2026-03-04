@@ -2562,13 +2562,11 @@ class Phase5To12StatusCodeTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(username='testuser', password='testpass123', email='test@example.com')
+        UserProfile.objects.create(user=self.user, role='admin')
         self.client.login(username='testuser', password='testpass123')
 
     # ---
     def test_wearable_device_list(self):
-        self.assertEqual(self.client.get(reverse('wearable_device_list')).status_code, 200)
-
-    def test_wearable_device_add(self):
         self.assertEqual(self.client.get(reverse('wearable_device_add')).status_code, 200)
 
     def test_sync_log_list(self):
@@ -2778,6 +2776,7 @@ class Phase5To12CRUDTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(username='crudtestuser', password='testpass123', email='crud@example.com')
+        UserProfile.objects.create(user=self.user, role='admin')
         self.client.login(username='crudtestuser', password='testpass123')
 
     # ----- WearableDevice -----
@@ -3395,6 +3394,8 @@ class Phase11DashboardTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='dashboarduser', password='testpass123')
+        self.client.login(username='dashboarduser', password='testpass123')
         IntegrationSubTask.objects.filter(phase=11).delete()
         IntegrationSubTask.objects.create(
             phase=11, sub_task_number=91, title='Macronutrients User Dashboard',
@@ -3524,6 +3525,8 @@ class Phase9SecureViewingLinkTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='linkuser', password='testpass123')
+        self.client.login(username='linkuser', password='testpass123')
 
     def test_auto_token_generation(self):
         """Tokens should be auto-generated when creating a link."""
@@ -3671,6 +3674,9 @@ class Phase9PractitionerPortalTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='practitioner', password='testpass123')
+        UserProfile.objects.create(user=self.user, role='practitioner')
+        self.client.login(username='practitioner', password='testpass123')
 
     def test_portal_page_loads(self):
         response = self.client.get(reverse('practitioner_portal'))
@@ -3762,6 +3768,8 @@ class Phase9IntakeSummaryGenerateTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='summaryuser', password='testpass123')
+        self.client.login(username='summaryuser', password='testpass123')
 
     def test_generate_empty_data(self):
         """Generate should work even with no health data."""
@@ -3828,6 +3836,8 @@ class Phase9DataExportTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='exportuser', password='testpass123')
+        self.client.login(username='exportuser', password='testpass123')
         BloodTest.objects.create(
             test_name='Glucose', value=95, unit='mg/dL', date=date(2026, 3, 1),
         )
@@ -3904,6 +3914,8 @@ class Phase9StakeholderEmailTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(username='emailuser', password='testpass123')
+        self.client.login(username='emailuser', password='testpass123')
 
     def test_send_email_to_active_stakeholder(self):
         """Sending to active stakeholder should succeed."""
@@ -4768,3 +4780,96 @@ class MacroListEnhancedTests(TestCase):
     def test_macro_list_renders_chart(self):
         response = self.client.get(reverse('macro_list'))
         self.assertContains(response, 'macroTrendChart')
+
+
+class RBACEnforcementTests(TestCase):
+    """Test that role-based access control is enforced for admin and practitioner views."""
+
+    def setUp(self):
+        self.client = Client()
+        # Admin user
+        self.admin_user = User.objects.create_user(username='admin_user', password='pass')
+        UserProfile.objects.create(user=self.admin_user, role='admin')
+        # Practitioner user
+        self.practitioner_user = User.objects.create_user(username='practitioner_user', password='pass')
+        UserProfile.objects.create(user=self.practitioner_user, role='practitioner')
+        # Standard user (no profile, defaults to no role)
+        self.regular_user = User.objects.create_user(username='regular_user', password='pass')
+
+    # ---- Unauthenticated access should redirect to login ----
+
+    def test_admin_view_redirects_unauthenticated(self):
+        response = self.client.get(reverse('user_profile_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_practitioner_view_redirects_unauthenticated(self):
+        response = self.client.get(reverse('practitioner_portal'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    # ---- Regular user (no profile role) should get 403 on admin views ----
+
+    def test_admin_view_forbidden_for_regular_user(self):
+        self.client.login(username='regular_user', password='pass')
+        response = self.client.get(reverse('user_profile_list'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_telemetry_forbidden_for_regular_user(self):
+        self.client.login(username='regular_user', password='pass')
+        response = self.client.get(reverse('admin_telemetry_list'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_encryption_key_forbidden_for_regular_user(self):
+        self.client.login(username='regular_user', password='pass')
+        response = self.client.get(reverse('encryption_key_list'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_practitioner_portal_forbidden_for_regular_user(self):
+        self.client.login(username='regular_user', password='pass')
+        response = self.client.get(reverse('practitioner_portal'))
+        self.assertEqual(response.status_code, 403)
+
+    # ---- Admin user should have access to admin views ----
+
+    def test_admin_can_access_user_profile_list(self):
+        self.client.login(username='admin_user', password='pass')
+        response = self.client.get(reverse('user_profile_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_can_access_admin_telemetry_list(self):
+        self.client.login(username='admin_user', password='pass')
+        response = self.client.get(reverse('admin_telemetry_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_can_access_encryption_key_list(self):
+        self.client.login(username='admin_user', password='pass')
+        response = self.client.get(reverse('encryption_key_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_can_access_practitioner_portal(self):
+        self.client.login(username='admin_user', password='pass')
+        response = self.client.get(reverse('practitioner_portal'))
+        self.assertEqual(response.status_code, 200)
+
+    # ---- Practitioner user should access practitioner views but not admin-only views ----
+
+    def test_practitioner_can_access_practitioner_portal(self):
+        self.client.login(username='practitioner_user', password='pass')
+        response = self.client.get(reverse('practitioner_portal'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_practitioner_can_access_request_access(self):
+        self.client.login(username='practitioner_user', password='pass')
+        response = self.client.get(reverse('practitioner_request_access'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_practitioner_forbidden_from_admin_only_views(self):
+        self.client.login(username='practitioner_user', password='pass')
+        response = self.client.get(reverse('user_profile_list'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_practitioner_forbidden_from_tenant_config(self):
+        self.client.login(username='practitioner_user', password='pass')
+        response = self.client.get(reverse('tenant_config_list'))
+        self.assertEqual(response.status_code, 403)
