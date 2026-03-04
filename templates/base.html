@@ -122,7 +122,7 @@
           <i class="fas fa-plus" aria-hidden="true"></i>
           <span class="d-none d-sm-inline">Quick Entry</span>
         </button>
-        <button class="toolbar-btn" id="voice-global-btn" aria-label="Voice input">
+        <button class="toolbar-btn" id="voice-input-btn" aria-label="Voice search">
           <i class="fas fa-microphone" aria-hidden="true"></i>
         </button>
         <button class="toolbar-btn" id="dark-mode-toggle" aria-label="Toggle dark mode">
@@ -159,7 +159,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="quickEntryModalLabel">
-            <i class="fas fa-heartbeat me-2 text-primary"></i>Quick Vital Entry
+            <i class="fas fa-heartbeat me-2 text-primary"></i>Quick Vital Sign Entry
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -177,7 +177,7 @@
                 <input type="number" step="0.1" class="form-control" id="qe-weight" name="weight" min="20" max="300" placeholder="70.0" />
               </div>
               <div class="col-6">
-                <label for="qe-hr" class="form-label">Heart Rate <span class="text-muted">(bpm)</span></label>
+                <label for="qe-hr" class="form-label" data-medical-tooltip="Resting heart rate">Heart Rate <span class="text-muted">(bpm)</span></label>
                 <input type="number" class="form-control" id="qe-hr" name="heart_rate" min="30" max="250" placeholder="72" />
               </div>
               <div class="col-6">
@@ -189,7 +189,7 @@
                 <input type="number" class="form-control" id="qe-diastolic" name="diastolic_bp" min="30" max="200" placeholder="80" />
               </div>
               <div class="col-6">
-                <label for="qe-spo2" class="form-label">SpO2 <span class="text-muted">(%)</span></label>
+                <label for="qe-spo2" class="form-label" data-medical-tooltip="Blood oxygen saturation">SpO2 <span class="text-muted">(%)</span></label>
                 <input type="number" step="0.1" class="form-control" id="qe-spo2" name="spo2" min="50" max="100" placeholder="98" />
               </div>
               <div class="col-6">
