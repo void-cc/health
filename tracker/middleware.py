@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.shortcuts import redirect
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.contrib.auth import logout
 
 from .models import UserSession
@@ -46,6 +46,32 @@ class SessionActivityMiddleware:
                     session_key=session_key,
                     is_active=True
                 ).update(last_activity=now)
+
+        response = self.get_response(request)
+        return response
+
+
+class LanguagePreferenceMiddleware:
+    """Activate the language stored in the authenticated user's profile.
+
+    This middleware runs after ``LocaleMiddleware`` so that a user's explicit
+    preference takes priority over the Accept-Language header or the session
+    language set by Django's ``set_language`` view.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.user.is_authenticated:
+            try:
+                language = request.user.profile.language
+                if language:
+                    translation.activate(language)
+                    request.LANGUAGE_CODE = language
+            except AttributeError:
+                # User has no profile yet; fall back to default language detection
+                pass
 
         response = self.get_response(request)
         return response

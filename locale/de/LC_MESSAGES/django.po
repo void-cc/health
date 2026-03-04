@@ -1,0 +1,92 @@
+# German translations for Health Tracker.
+#
+# Translators:
+# Health Tracker Team
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Health Tracker 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-04 00:00+0000\n"
+"PO-Revision-Date: 2026-03-04 00:00+0000\n"
+"Last-Translator: Health Tracker Team\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Health Tracker"
+msgstr "Gesundheits-Tracker"
+
+msgid "Search..."
+msgstr "Suchen..."
+
+msgid "Quick Entry"
+msgstr "Schnelleingabe"
+
+msgid "Toggle navigation"
+msgstr "Navigation umschalten"
+
+msgid "Toggle dark mode"
+msgstr "Dunkelmodus umschalten"
+
+msgid "Start guided tour"
+msgstr "Geführte Tour starten"
+
+msgid "Quick Vital Sign Entry"
+msgstr "Schnelleingabe Vitalzeichen"
+
+msgid "Record your daily vitals. Fill in only what you have measured today."
+msgstr "Erfassen Sie Ihre täglichen Vitalwerte. Füllen Sie nur das aus, was Sie heute gemessen haben."
+
+msgid "Date"
+msgstr "Datum"
+
+msgid "Weight"
+msgstr "Gewicht"
+
+msgid "Cardiovascular"
+msgstr "Herz-Kreislauf"
+
+msgid "Heart Rate"
+msgstr "Herzfrequenz"
+
+msgid "Systolic BP"
+msgstr "Systolischer Blutdruck"
+
+msgid "Diastolic BP"
+msgstr "Diastolischer Blutdruck"
+
+msgid "Temperature & Respiratory"
+msgstr "Temperatur & Atmung"
+
+msgid "Resp. Rate"
+msgstr "Atemfrequenz"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Save Vitals"
+msgstr "Vitalwerte Speichern"
+
+msgid "Language"
+msgstr "Sprache"
+
+msgid "English"
+msgstr "Englisch"
+
+msgid "French"
+msgstr "Französisch"
+
+msgid "German"
+msgstr "Deutsch"
+
+msgid "Spanish"
+msgstr "Spanisch"
+
+msgid "%(count)d blood test recorded"
+msgid_plural "%(count)d blood tests recorded"
+msgstr[0] "%(count)d Bluttest aufgezeichnet"
+msgstr[1] "%(count)d Bluttests aufgezeichnet"

@@ -2440,6 +2440,7 @@ def user_profile_add(request):
             UserProfile.objects.create(
                 user=user,
                 role=request.POST.get('role', 'user'),
+                language=request.POST.get('language', 'en'),
             )
             messages.success(request, 'User profile added!')
             return redirect('user_profile_list')
@@ -2457,6 +2458,7 @@ def user_profile_edit(request, pk):
             entry.user.is_active = request.POST.get('is_active') == 'on'
             entry.user.save()
             entry.role = request.POST.get('role', '')
+            entry.language = request.POST.get('language', 'en')
             entry.save()
             messages.success(request, 'User profile updated!')
             return redirect('user_profile_list')
