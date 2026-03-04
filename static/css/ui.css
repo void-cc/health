@@ -1656,3 +1656,96 @@
 .category-border-6 { border-color: var(--category-color-6); }
 .category-border-7 { border-color: var(--category-color-7); }
 .category-border-8 { border-color: var(--category-color-8); }
+
+/* ==========================================================================
+   15. Medication Section — Tabs & KPI Cards
+   ========================================================================== */
+
+/* Unified tab bar for medication sub-pages */
+.med-tabs {
+  border-bottom: 1px solid var(--border-color);
+  gap: var(--space-1);
+}
+
+.med-tabs .nav-link {
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-4);
+  border-radius: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.med-tabs .nav-link:hover {
+  color: var(--text-primary);
+  border-bottom-color: var(--gray-300);
+  background: transparent;
+}
+
+.med-tabs .nav-link.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: transparent;
+}
+
+/* KPI cards — neutral, data-driven */
+.med-kpi-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  transition: box-shadow 0.15s;
+}
+
+.med-kpi-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.med-kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* Small colored dots for status indicators */
+.med-kpi-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.med-kpi-dot--success { background-color: var(--color-success); }
+.med-kpi-dot--warning { background-color: var(--color-warning); }
+.med-kpi-dot--error   { background-color: var(--color-error); }
+.med-kpi-dot--neutral { background-color: var(--gray-300); }
+
+/* Dark-mode overrides for medication section */
+[data-theme="dark"] .med-tabs .nav-link {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .med-tabs .nav-link:hover {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .med-tabs .nav-link.active {
+  color: #60a5fa;
+  border-bottom-color: #60a5fa;
+}
+
+[data-theme="dark"] .med-kpi-card {
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .med-kpi-icon {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}

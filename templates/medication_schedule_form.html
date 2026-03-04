@@ -1,51 +1,73 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container my-5">
-  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Medication Schedule</h2>
-  <form method="POST" id="medScheduleForm">
-    {% csrf_token %}
-    {# Hidden field to carry the resolved RxCUI back to the server #}
-    <input type="hidden" id="rxcui" name="rxcui" value="{% if editing %}{{ entry.rxcui }}{% endif %}">
-    <div class="mb-3 position-relative">
-      <label for="medication_name" class="form-label">Medication Name:</label>
-      <input type="text" class="form-control" id="medication_name" name="medication_name"
-             value="{% if editing %}{{ entry.medication_name }}{% endif %}"
-             autocomplete="off" required>
-      <ul id="med-autocomplete-list" class="list-group position-absolute w-100 shadow" style="z-index:1000;display:none;"></ul>
+<div class="container" style="max-width:640px;">
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'medication_schedule_list' %}" class="btn btn-outline-secondary btn-sm" aria-label="Back">
+      <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
+    </a>
+    <h2 class="mb-0 fw-semibold" style="font-size:1.125rem;">{% if editing %}Edit{% else %}Add{% endif %} Medication Schedule</h2>
+  </div>
+  <div class="card" style="border:1px solid var(--border-color);">
+    <div class="card-body">
+      <form method="POST" id="medScheduleForm">
+        {% csrf_token %}
+        <input type="hidden" id="rxcui" name="rxcui" value="{% if editing %}{{ entry.rxcui }}{% endif %}">
+
+        <!-- Medication details -->
+        <div class="mb-3 position-relative">
+          <label for="medication_name" class="form-label" style="font-size:0.8125rem;">Medication Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control form-control-sm" id="medication_name" name="medication_name"
+                 value="{% if editing %}{{ entry.medication_name }}{% endif %}"
+                 autocomplete="off" required>
+          <ul id="med-autocomplete-list" class="list-group position-absolute w-100 shadow" style="z-index:1000;display:none;"></ul>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label for="dosage" class="form-label" style="font-size:0.8125rem;">Dosage</label>
+            <input type="text" class="form-control form-control-sm" id="dosage" name="dosage" value="{% if editing %}{{ entry.dosage }}{% endif %}" placeholder="e.g. 500mg">
+          </div>
+          <div class="col-md-6">
+            <label for="frequency" class="form-label" style="font-size:0.8125rem;">Frequency</label>
+            <input type="text" class="form-control form-control-sm" id="frequency" name="frequency" value="{% if editing %}{{ entry.frequency }}{% endif %}" placeholder="e.g. Once daily">
+          </div>
+        </div>
+
+        <!-- Schedule dates -->
+        <hr class="my-3" style="border-color:var(--border-color);">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="start_date" class="form-label" style="font-size:0.8125rem;">Start Date <span class="text-danger">*</span></label>
+            <input type="date" class="form-control form-control-sm" id="start_date" name="start_date" value="{% if editing %}{{ entry.start_date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required>
+          </div>
+          <div class="col-md-4">
+            <label for="end_date" class="form-label" style="font-size:0.8125rem;">End Date</label>
+            <input type="date" class="form-control form-control-sm" id="end_date" name="end_date" value="{% if editing and entry.end_date %}{{ entry.end_date|date:'Y-m-d' }}{% endif %}">
+          </div>
+          <div class="col-md-4">
+            <label for="time_of_day" class="form-label" style="font-size:0.8125rem;">Time of Day</label>
+            <input type="time" class="form-control form-control-sm" id="time_of_day" name="time_of_day" value="{% if editing and entry.time_of_day is not None %}{{ entry.time_of_day|time:'H:i' }}{% endif %}">
+          </div>
+        </div>
+
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" name="is_active" id="is_active" {% if editing and entry.is_active %}checked{% elif not editing %}checked{% endif %}>
+          <label class="form-check-label" for="is_active" style="font-size:0.8125rem;">Active</label>
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-3">
+          <label for="notes" class="form-label" style="font-size:0.8125rem;">Notes</label>
+          <textarea class="form-control form-control-sm" id="notes" name="notes" rows="3" placeholder="Optional notes about this schedule…">{% if editing %}{{ entry.notes }}{% endif %}</textarea>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <a href="{% url 'medication_schedule_list' %}" class="btn btn-secondary btn-sm">Cancel</a>
+          <button type="submit" class="btn btn-primary btn-sm">{% if editing %}Update{% else %}Save{% endif %}</button>
+        </div>
+      </form>
     </div>
-    <div class="mb-3">
-      <label for="dosage" class="form-label">Dosage:</label>
-      <input type="text" class="form-control" id="dosage" name="dosage" value="{% if editing %}{{ entry.dosage }}{% endif %}">
-    </div>
-    <div class="mb-3">
-      <label for="frequency" class="form-label">Frequency:</label>
-      <input type="text" class="form-control" id="frequency" name="frequency" value="{% if editing %}{{ entry.frequency }}{% endif %}">
-    </div>
-    <div class="mb-3">
-      <label for="start_date" class="form-label">Start Date:</label>
-      <input type="date" class="form-control" id="start_date" name="start_date" value="{% if editing %}{{ entry.start_date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required>
-    </div>
-    <div class="mb-3">
-      <label for="end_date" class="form-label">End Date:</label>
-      <input type="date" class="form-control" id="end_date" name="end_date" value="{% if editing and entry.end_date %}{{ entry.end_date|date:'Y-m-d' }}{% endif %}">
-    </div>
-    <div class="mb-3">
-      <label for="time_of_day" class="form-label">Time of Day:</label>
-      <input type="time" class="form-control" id="time_of_day" name="time_of_day" value="{% if editing and entry.time_of_day is not None %}{{ entry.time_of_day|time:'H:i' }}{% endif %}">
-    </div>
-    <div class="mb-3 form-check">
-      <input type="checkbox" class="form-check-input" name="is_active" id="is_active" {% if editing and entry.is_active %}checked{% elif not editing %}checked{% endif %}>
-      <label class="form-check-label" for="is_active">Active</label>
-    </div>
-    <div class="mb-3">
-      <label for="notes" class="form-label">Notes:</label>
-      <textarea class="form-control" id="notes" name="notes" rows="3">{% if editing %}{{ entry.notes }}{% endif %}</textarea>
-    </div>
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
-      <a href="{% url 'medication_schedule_list' %}" class="btn btn-secondary">Cancel</a>
-    </div>
-  </form>
+  </div>
 </div>
 
 <script>
