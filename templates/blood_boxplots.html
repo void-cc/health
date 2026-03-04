@@ -23,18 +23,24 @@
   <div id="charts-container" class="row g-4">
     {% for test_name, test_info in boxplots_data.items %}
     <div class="col-md-6">
-      <div class="card" style="padding: var(--space-4);">
-        <div class="mb-3">
-          <h2 class="results-section-title">
-            {{ test_name }}
-            <span class="text-muted fw-normal" style="font-size:0.875rem;">({{ test_info.unit }})</span>
-          </h2>
-          {% if test_info.normal_min is not None and test_info.normal_max is not None %}
-            <p class="text-muted small mb-0">Normal range: {{ test_info.normal_min }}–{{ test_info.normal_max }} {{ test_info.unit }}</p>
-          {% endif %}
+      <div class="chart-card h-100">
+        <div class="chart-card-header">
+          <div class="chart-card-header-text">
+            <h2 class="chart-card-title">
+              {{ test_name }}
+              <span class="fw-normal text-muted" style="font-size:0.8125rem;">({{ test_info.unit }})</span>
+            </h2>
+            {% if test_info.normal_min is not None and test_info.normal_max is not None %}
+              <p class="chart-card-subtitle">Normal range: {{ test_info.normal_min }}–{{ test_info.normal_max }} {{ test_info.unit }}</p>
+            {% else %}
+              <p class="chart-card-subtitle">Value distribution</p>
+            {% endif %}
+          </div>
         </div>
-        <div style="position: relative; height: 240px; width: 100%;">
-          <canvas id="chart-{{ forloop.counter }}"></canvas>
+        <div class="chart-card-body">
+          <div class="chart-canvas-wrapper" style="height:240px;">
+            <canvas id="chart-{{ forloop.counter }}"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -63,11 +69,12 @@
         labels: ['{{ test_name }}'],
         datasets: [{
           label: '{{ test_name }} Distribution',
-          backgroundColor: 'rgba(37, 99, 235, 0.15)',
+          backgroundColor: 'rgba(37, 99, 235, 0.12)',
           borderColor: 'rgba(37, 99, 235, 1)',
-          borderWidth: 1,
+          borderWidth: 1.5,
           outlierColor: 'rgba(220, 38, 38, 0.8)',
-          padding: 10,
+          outlierRadius: 3,
+          padding: 12,
           itemRadius: 2,
           data: [{{ test_info.data|tojson|safe }}]
         }]
@@ -75,7 +82,21 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false }, title: { display: false } }
+        plugins: {
+          legend: { display: false },
+          title: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(17,24,39,0.92)',
+            titleColor: '#9ca3af',
+            bodyColor: '#f9fafb',
+            cornerRadius: 6,
+            padding: 10
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { color: '#6b7280', font: { family: "'Inter', system-ui, sans-serif", size: 11 } } },
+          y: { grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { color: '#6b7280', font: { family: "'Inter', system-ui, sans-serif", size: 11 } } }
+        }
       }
     });
   })();

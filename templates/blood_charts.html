@@ -21,7 +21,7 @@
 
 {% if charts_data %}
   <!-- Filters toolbar -->
-  <div class="chart-filters-bar mb-5">
+  <div class="chart-filters-bar">
     <div class="d-flex flex-wrap align-items-end gap-3">
       <div>
         <label for="startDate" class="form-label">From</label>
@@ -50,18 +50,22 @@
 
   <div id="charts-container">
     {% for test_name, test_info in charts_data.items %}
-    <div class="chart-section mb-6">
-      <div class="chart-section-header mb-3">
-        <div>
-          <h2 class="results-section-title">{{ test_name }} <span class="text-muted fw-normal" style="font-size:0.875rem;">({{ test_info.unit }})</span></h2>
-          {% if test_info.normal_min is not None and test_info.normal_max is not None %}
-            <p class="text-muted small mb-0">Normal range: {{ test_info.normal_min }}–{{ test_info.normal_max }} {{ test_info.unit }}</p>
-          {% endif %}
+    <div class="chart-section">
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div class="chart-card-header-text">
+            <h2 class="chart-card-title">{{ test_name }} <span class="fw-normal text-muted" style="font-size:0.8125rem;">({{ test_info.unit }})</span></h2>
+            {% if test_info.normal_min is not None and test_info.normal_max is not None %}
+              <p class="chart-card-subtitle">Normal range: {{ test_info.normal_min }}–{{ test_info.normal_max }} {{ test_info.unit }}</p>
+            {% else %}
+              <p class="chart-card-subtitle">Trend over time</p>
+            {% endif %}
+          </div>
         </div>
-      </div>
-      <div class="card" style="padding: var(--space-4);">
-        <div style="position: relative; height: 280px; width: 100%;">
-          <canvas id="chart-{{ forloop.counter }}"></canvas>
+        <div class="chart-card-body">
+          <div class="chart-canvas-wrapper" style="height:280px;">
+            <canvas id="chart-{{ forloop.counter }}"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -82,16 +86,42 @@
   var allChartsData = {};
   var chartInstances = {};
 
+  Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
+  Chart.defaults.global.defaultFontSize = 11;
+  Chart.defaults.global.defaultFontColor = '#6b7280';
+
+  var gridColor = 'rgba(0,0,0,0.05)';
   var chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: { padding: { top: 8, right: 8, bottom: 0, left: 0 } },
+    legend: { display: false },
     scales: {
       xAxes: [{
         type: 'time',
-        time: { parser: 'YYYY-MM-DD', tooltipFormat: 'll', unit: 'day' },
-        scaleLabel: { display: true, labelString: 'Date' }
+        time: { parser: 'YYYY-MM-DD', tooltipFormat: 'MMM D, YYYY', unit: 'day' },
+        scaleLabel: { display: false },
+        gridLines: { color: gridColor, drawBorder: false, zeroLineColor: gridColor },
+        ticks: { padding: 8, autoSkipPadding: 16 }
       }],
-      yAxes: [{ ticks: { beginAtZero: false } }]
+      yAxes: [{
+        ticks: { beginAtZero: false, padding: 12 },
+        gridLines: { color: gridColor, drawBorder: false, zeroLineColor: 'rgba(0,0,0,0.08)' }
+      }]
+    },
+    tooltips: {
+      backgroundColor: 'rgba(17,24,39,0.92)',
+      titleFontSize: 11,
+      titleFontColor: '#9ca3af',
+      bodyFontSize: 13,
+      bodyFontStyle: '600',
+      bodyFontColor: '#f9fafb',
+      cornerRadius: 6,
+      xPadding: 12,
+      yPadding: 10,
+      displayColors: true,
+      mode: 'index',
+      intersect: false
     }
   };
 
