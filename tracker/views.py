@@ -5211,3 +5211,108 @@ reminder_list = _reminder['list']
 reminder_add = _reminder['add']
 reminder_edit = _reminder['edit']
 reminder_delete = _reminder['delete']
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 – Timeline & Labs Dashboard
+# ---------------------------------------------------------------------------
+
+@login_required
+def timeline(request):
+    """Chronological feed of recent health events with insight cards."""
+    from tracker.services.analytics.labs import (
+        build_timeline_events, build_lab_insights, compute_derived_ratios,
+    )
+
+    events = build_timeline_events(request.user, limit=50)
+
+    # Build quick insight cards from blood tests
+    blood_tests = BloodTest.objects.filter(user=request.user).order_by('-date')
+    insights = build_lab_insights(blood_tests)
+
+    # Top insight cards: out-of-range and large deltas
+    insight_cards = []
+    for ins in insights:
+        card = None
+        if ins['flag'] in ('high', 'low'):
+            label = 'above' if ins['flag'] == 'high' else 'below'
+            card = {
+                'title': ins['test_name'],
+                'message': f"{ins['latest_value']} {ins['unit']} — {label} normal range",
+                'severity': 'warning',
+                'icon': 'fa-exclamation-triangle',
+            }
+        elif ins['delta'] and abs(ins['delta']['pct']) >= 15:
+            arrow = '↑' if ins['delta']['direction'] == 'up' else '↓'
+            card = {
+                'title': ins['test_name'],
+                'message': f"{arrow} {abs(ins['delta']['pct'])}% since last reading",
+                'severity': 'info',
+                'icon': 'fa-chart-line',
+            }
+        if card:
+            insight_cards.append(card)
+
+    context = {
+        'events': events,
+        'insight_cards': insight_cards[:8],
+    }
+    return render(request, 'timeline.html', context)
+
+
+@login_required
+def labs_dashboard(request):
+    """Labs dashboard with latest values, deltas, derived metrics, and charts."""
+    from tracker.services.analytics.labs import (
+        build_lab_insights, compute_derived_ratios,
+    )
+
+    blood_tests = BloodTest.objects.filter(user=request.user).order_by('-date')
+    insights = build_lab_insights(blood_tests)
+
+    # Build latest-by-name mapping for derived ratios
+    latest_by_name = {}
+    for ins in insights:
+        latest_by_name[ins['test_name']] = ins['latest_value']
+
+    ratios = compute_derived_ratios(latest_by_name)
+
+    # Group insights by category — build lookup dict to avoid N+1 queries
+    category_by_name = {}
+    for bt in blood_tests:
+        if bt.test_name not in category_by_name:
+            category_by_name[bt.test_name] = bt.category or 'Uncategorized'
+
+    categories: dict[str, list] = {}
+    for ins in insights:
+        cat = category_by_name.get(ins['test_name'], 'Uncategorized')
+        categories.setdefault(cat, []).append(ins)
+
+    # Chart data for each test (time-series)
+    charts_data = {}
+    for bt in blood_tests.order_by('date'):
+        if bt.test_name not in charts_data:
+            charts_data[bt.test_name] = {
+                'unit': bt.unit,
+                'data': [],
+                'normal_min': bt.normal_min,
+                'normal_max': bt.normal_max,
+            }
+        charts_data[bt.test_name]['data'].append({
+            'x': bt.date.strftime('%Y-%m-%d'),
+            'y': bt.value,
+        })
+
+    # Summary statistics
+    total_biomarkers = len(insights)
+    out_of_range_count = sum(1 for i in insights if i['flag'] in ('high', 'low'))
+
+    context = {
+        'insights': insights,
+        'ratios': ratios,
+        'categories': categories,
+        'charts_data': charts_data,
+        'total_biomarkers': total_biomarkers,
+        'out_of_range_count': out_of_range_count,
+    }
+    return render(request, 'labs_dashboard.html', context)

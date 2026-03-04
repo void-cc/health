@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load json_filters %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-header-title">Labs Dashboard</h1>
+    <p class="page-header-subtitle">Biomarker overview, trends, and derived insights</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'timeline' %}" class="toolbar-btn">
+      <i class="fas fa-stream" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Timeline</span>
+    </a>
+    <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn">
+      <i class="fas fa-chart-line" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Charts</span>
+    </a>
+  </div>
+</div>
+
+<!-- KPI Summary -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-primary">{{ total_biomarkers }}</div>
+        <small class="text-muted">Biomarkers Tracked</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold {% if out_of_range_count %}text-danger{% else %}text-success{% endif %}">{{ out_of_range_count }}</div>
+        <small class="text-muted">Out of Range</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-info">{{ ratios|length }}</div>
+        <small class="text-muted">Derived Ratios</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="fs-2 fw-bold text-secondary">{{ categories|length }}</div>
+        <small class="text-muted">Categories</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if ratios %}
+<!-- Derived Ratios -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Derived Ratios</h5>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% for ratio in ratios %}
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="border rounded p-3 h-100">
+          <div class="text-muted small mb-1">{{ ratio.name }}</div>
+          <div class="fs-4 fw-bold">{{ ratio.value }}</div>
+          <span class="badge {% if ratio.interpretation == 'optimal' or ratio.interpretation == 'normal' %}bg-success{% elif ratio.interpretation == 'elevated' %}bg-warning text-dark{% else %}bg-info{% endif %}">
+            {{ ratio.interpretation }}
+          </span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Biomarker Results by Category -->
+{% for cat_name, cat_insights in categories.items %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">{{ cat_name }}</h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Biomarker</th>
+            <th class="text-end">Latest Value</th>
+            <th class="text-end">Reference Range</th>
+            <th class="text-end">Change</th>
+            <th class="text-center">Status</th>
+            <th class="text-end">Rolling Avg (3)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ins in cat_insights %}
+          <tr>
+            <td>
+              <strong>{{ ins.test_name }}</strong>
+              <br><small class="text-muted">{{ ins.date }}</small>
+            </td>
+            <td class="text-end">{{ ins.latest_value }} {{ ins.unit }}</td>
+            <td class="text-end text-muted">
+              {% if ins.normal_min is not None and ins.normal_max is not None %}
+                {{ ins.normal_min }} – {{ ins.normal_max }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if ins.delta %}
+                <span class="{% if ins.delta.direction == 'up' %}text-danger{% elif ins.delta.direction == 'down' %}text-success{% else %}text-muted{% endif %}">
+                  {% if ins.delta.direction == 'up' %}↑{% elif ins.delta.direction == 'down' %}↓{% else %}→{% endif %}
+                  {{ ins.delta.pct }}%
+                </span>
+                <br><small class="text-muted">{{ ins.delta.abs }}</small>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if ins.flag == 'high' %}
+                <span class="badge bg-danger">High</span>
+              {% elif ins.flag == 'low' %}
+                <span class="badge bg-warning text-dark">Low</span>
+              {% elif ins.flag == 'normal' %}
+                <span class="badge bg-success">Normal</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if ins.rolling_avg is not None %}
+                {{ ins.rolling_avg }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% empty %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="fas fa-flask fa-2x mb-3"></i>
+    <p>No lab results recorded yet.</p>
+  </div>
+</div>
+{% endfor %}
+
+{% if charts_data %}
+<!-- Trend Charts -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Trend Charts</h5>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% for test_name, chart in charts_data.items %}
+      <div class="col-12 col-lg-6">
+        <h6>{{ test_name }} <small class="text-muted">({{ chart.unit }})</small></h6>
+        <canvas id="chart-{{ forloop.counter }}" height="200"></canvas>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var chartsData = {{ charts_data|tojson }};
+  var counter = 0;
+  for (var testName in chartsData) {
+    counter++;
+    var cd = chartsData[testName];
+    var ctx = document.getElementById('chart-' + counter);
+    if (!ctx) continue;
+    var datasets = [{
+      label: testName,
+      data: cd.data,
+      borderColor: '#2563eb',
+      backgroundColor: 'rgba(37,99,235,0.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 3,
+    }];
+    if (cd.normal_min !== null && cd.normal_max !== null) {
+      datasets.push({
+        label: 'Normal Min',
+        data: cd.data.map(function(d) { return {x: d.x, y: cd.normal_min}; }),
+        borderColor: 'rgba(40,167,69,0.4)',
+        borderDash: [4, 4],
+        fill: false,
+        pointRadius: 0,
+      });
+      datasets.push({
+        label: 'Normal Max',
+        data: cd.data.map(function(d) { return {x: d.x, y: cd.normal_max}; }),
+        borderColor: 'rgba(40,167,69,0.4)',
+        borderDash: [4, 4],
+        fill: false,
+        pointRadius: 0,
+      });
+    }
+    new Chart(ctx, {
+      type: 'line',
+      data: { datasets: datasets },
+      options: {
+        responsive: true,
+        scales: {
+          xAxes: [{ type: 'time', time: { unit: 'day' } }],
+          yAxes: [{ ticks: { beginAtZero: false } }]
+        },
+        legend: { display: false },
+      }
+    });
+  }
+});
+</script>
+{% endif %}
+
+{% endblock %}

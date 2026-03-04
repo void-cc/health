@@ -15,9 +15,9 @@ SIDEBAR_CONFIG = [
         "category": "Overview",
         "items": [
             {"label": "Dashboard", "icon": "fa-th-large", "url_name": "index", "match": ["index"]},
-            {"label": "History", "icon": "fa-clock", "url_name": "history", "match": ["history"]},
+            {"label": "Timeline", "icon": "fa-stream", "url_name": "timeline", "match": ["timeline"]},
+            {"label": "Labs", "icon": "fa-flask", "url_name": "labs_dashboard", "match": ["labs_dashboard"]},
             {"label": "Vitals", "icon": "fa-heartbeat", "url_name": "vitals", "match": ["vitals", "add_vitals", "edit_vitals"]},
-            {"label": "Add Test", "icon": "fa-plus-circle", "url_name": "add_test", "match": ["add_test"]},
         ],
     },
     {
@@ -123,7 +123,10 @@ SIDEBAR_CONFIG = [
     {
         "category": "Administration",
         "collapsible": True,
+        "staff_only": True,
         "items": [
+            {"label": "History", "icon": "fa-clock", "url_name": "history", "match": ["history"]},
+            {"label": "Add Test", "icon": "fa-plus-circle", "url_name": "add_test", "match": ["add_test"]},
             {"label": "User Profiles", "icon": "fa-users", "url_name": "user_profile_list", "match": ["user_profile"]},
             {"label": "Family Accounts", "icon": "fa-home", "url_name": "family_account_list", "match": ["family_account"]},
             {"label": "Consent Logs", "icon": "fa-handshake", "url_name": "consent_log_list", "match": ["consent_log"]},
@@ -152,13 +155,19 @@ def sidebar_nav(request):
     Categories with ``"collapsible": True`` are rendered as toggleable
     groups in the sidebar template.  They are auto-expanded when one of
     their items is active.
+
+    Categories with ``"staff_only": True`` are hidden from non-staff users.
     """
     current_url_name = ""
     if hasattr(request, "resolver_match") and request.resolver_match:
         current_url_name = request.resolver_match.url_name or ""
 
+    is_staff = hasattr(request, "user") and request.user.is_authenticated and request.user.is_staff
+
     nav = []
     for section in SIDEBAR_CONFIG:
+        if section.get("staff_only") and not is_staff:
+            continue
         resolved_items = []
         section_has_active = False
         for item in section["items"]:
