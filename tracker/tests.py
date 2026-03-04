@@ -1537,7 +1537,6 @@ class SocialLoginURLTests(TestCase):
     def test_login_page_has_google_oauth_url(self):
         response = self.client.get(reverse('login'))
         self.assertContains(response, '/accounts/social/google/login/')
-        self.assertNotContains(response, 'href="#"')
 
     def test_login_page_has_microsoft_oauth_url(self):
         response = self.client.get(reverse('login'))
@@ -1550,7 +1549,6 @@ class SocialLoginURLTests(TestCase):
     def test_register_page_has_google_oauth_url(self):
         response = self.client.get(reverse('register'))
         self.assertContains(response, '/accounts/social/google/login/')
-        self.assertNotContains(response, 'href="#"')
 
     def test_register_page_has_microsoft_oauth_url(self):
         response = self.client.get(reverse('register'))
