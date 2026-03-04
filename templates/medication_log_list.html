@@ -1,41 +1,70 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2><i class="fas fa-clipboard-check"></i> Dose Log</h2>
-  <a href="{% url 'medication_log_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Log Dose</a>
+<!-- Medication section header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="mb-0 fw-semibold" style="font-size:1.25rem;">Medications</h2>
+  <a href="{% url 'medication_log_add' %}" class="btn btn-primary btn-sm">Log Dose</a>
 </div>
 
-<!-- Summary Cards -->
+<!-- Unified tab navigation -->
+<ul class="nav nav-tabs med-tabs mb-4" role="tablist">
+  <li class="nav-item" role="presentation">
+    <a class="nav-link" href="{% url 'medication_schedule_list' %}">Schedules</a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link active" href="{% url 'medication_log_list' %}">Dose Log</a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link" href="{% url 'medication_inventory_list' %}">Inventory</a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link" href="{% url 'pharmacological_interaction_list' %}">Interactions</a>
+  </li>
+</ul>
+
+<!-- Summary cards -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
-    <div class="card text-center border-primary">
-      <div class="card-body py-2">
-        <div class="text-muted small">Total Logged</div>
-        <div class="h4 mb-0">{{ total_count }}</div>
+    <div class="card med-kpi-card">
+      <div class="card-body py-3 px-3">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <span class="med-kpi-icon" aria-hidden="true"><i data-lucide="list" style="width:16px;height:16px;"></i></span>
+          <span class="text-muted" style="font-size:0.75rem;">Total Logged</span>
+        </div>
+        <div class="fw-semibold" style="font-size:1.5rem;line-height:1.2;">{{ total_count }}</div>
       </div>
     </div>
   </div>
   <div class="col-6 col-md-3">
-    <div class="card text-center border-success">
-      <div class="card-body py-2">
-        <div class="text-muted small">Taken</div>
-        <div class="h4 mb-0 text-success">{{ taken_count }}</div>
+    <div class="card med-kpi-card">
+      <div class="card-body py-3 px-3">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <span class="med-kpi-dot med-kpi-dot--success"></span>
+          <span class="text-muted" style="font-size:0.75rem;">Taken</span>
+        </div>
+        <div class="fw-semibold" style="font-size:1.5rem;line-height:1.2;">{{ taken_count }}</div>
       </div>
     </div>
   </div>
   <div class="col-6 col-md-3">
-    <div class="card text-center border-danger">
-      <div class="card-body py-2">
-        <div class="text-muted small">Skipped</div>
-        <div class="h4 mb-0 {% if skipped_count %}text-danger{% endif %}">{{ skipped_count }}</div>
+    <div class="card med-kpi-card">
+      <div class="card-body py-3 px-3">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <span class="med-kpi-dot med-kpi-dot--error"></span>
+          <span class="text-muted" style="font-size:0.75rem;">Skipped</span>
+        </div>
+        <div class="fw-semibold {% if skipped_count %}text-danger{% endif %}" style="font-size:1.5rem;line-height:1.2;">{{ skipped_count }}</div>
       </div>
     </div>
   </div>
   <div class="col-6 col-md-3">
-    <div class="card text-center border-info">
-      <div class="card-body py-2">
-        <div class="text-muted small">Adherence</div>
-        <div class="h4 mb-0 {% if adherence_pct %}{% if adherence_pct >= 80 %}text-success{% elif adherence_pct >= 60 %}text-warning{% else %}text-danger{% endif %}{% endif %}">
+    <div class="card med-kpi-card">
+      <div class="card-body py-3 px-3">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <span class="med-kpi-icon" aria-hidden="true"><i data-lucide="activity" style="width:16px;height:16px;"></i></span>
+          <span class="text-muted" style="font-size:0.75rem;">Adherence</span>
+        </div>
+        <div class="fw-semibold {% if adherence_pct %}{% if adherence_pct >= 80 %}text-success{% elif adherence_pct >= 60 %}text-warning{% else %}text-danger{% endif %}{% endif %}" style="font-size:1.5rem;line-height:1.2;">
           {% if adherence_pct is not None %}{{ adherence_pct }}%{% else %}—{% endif %}
         </div>
       </div>
@@ -44,47 +73,48 @@
 </div>
 
 {% if schedule %}
-<div class="alert alert-info mb-3">
-  <i class="fas fa-filter"></i> Showing doses for <strong>{{ schedule.medication_name }}</strong>.
-  <a href="{% url 'medication_log_list' %}" class="alert-link ms-2">Clear filter</a>
+<div class="alert alert-info d-flex align-items-center gap-2 py-2" style="font-size:0.8125rem;">
+  <i data-lucide="filter" style="width:16px;height:16px;flex-shrink:0;"></i>
+  <span>Showing doses for <strong>{{ schedule.medication_name }}</strong>.
+  <a href="{% url 'medication_log_list' %}" class="alert-link ms-1">Clear filter</a></span>
 </div>
 {% endif %}
 
-<!-- Search & Filter -->
-<form method="get" class="row g-2 mb-4 align-items-end">
+<!-- Search & filter bar -->
+<form method="get" class="d-flex flex-wrap gap-2 mb-4 align-items-end">
   {% if selected_schedule_id %}<input type="hidden" name="schedule" value="{{ selected_schedule_id }}">{% endif %}
-  <div class="col-auto">
+  <div>
     <label for="searchQuery" class="form-label small mb-0">Search</label>
-    <input type="text" class="form-control form-control-sm" id="searchQuery" name="q" value="{{ search_query }}" placeholder="Medication name...">
+    <input type="text" class="form-control form-control-sm" id="searchQuery" name="q" value="{{ search_query }}" placeholder="Medication name…" style="min-width:180px;">
   </div>
-  <div class="col-auto">
+  <div>
     <label for="statusFilter" class="form-label small mb-0">Status</label>
-    <select class="form-select form-select-sm" id="statusFilter" name="status">
+    <select class="form-select form-select-sm" id="statusFilter" name="status" style="min-width:110px;">
       <option value="">All</option>
       {% for val, label in status_choices %}
       <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </div>
-  <div class="col-auto">
+  <div>
     <label for="scheduleFilter" class="form-label small mb-0">Schedule</label>
-    <select class="form-select form-select-sm" id="scheduleFilter" name="schedule">
+    <select class="form-select form-select-sm" id="scheduleFilter" name="schedule" style="min-width:160px;">
       <option value="">All schedules</option>
       {% for s in schedules %}
       <option value="{{ s.id }}" {% if selected_schedule_id == s.id|stringformat:"s" %}selected{% endif %}>{{ s.medication_name }} ({{ s.dosage }})</option>
       {% endfor %}
     </select>
   </div>
-  <div class="col-auto">
-    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-filter"></i> Filter</button>
-    <a href="{% url 'medication_log_list' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i> Clear</a>
+  <div class="d-flex gap-1">
+    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    <a href="{% url 'medication_log_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
   </div>
 </form>
 
 {% if entries %}
 <div class="table-responsive">
-  <table class="table table-striped table-hover align-middle">
-    <thead>
+  <table class="table table-hover align-middle" style="font-size:0.8125rem;">
+    <thead class="table-light">
       <tr>
         <th scope="col">Medication</th>
         <th scope="col">Dosage</th>
@@ -99,8 +129,8 @@
     <tbody>
       {% for entry in entries %}
       <tr>
-        <td><strong>{{ entry.medication_name }}</strong></td>
-        <td>{% if entry.dosage %}{{ entry.dosage }}{% else %}-{% endif %}</td>
+        <td class="fw-medium">{{ entry.medication_name }}</td>
+        <td>{{ entry.dosage|default:"—" }}</td>
         <td>
           {% if entry.status == 'taken' %}
             <span class="badge bg-success">Taken</span>
@@ -115,20 +145,20 @@
           {% endif %}
         </td>
         <td>{{ entry.taken_at|date:"Y-m-d H:i" }}</td>
-        <td>{% if entry.skip_reason %}{{ entry.skip_reason|truncatewords:6 }}{% else %}-{% endif %}</td>
-        <td>{% if entry.side_effects %}{{ entry.side_effects|truncatewords:6 }}{% else %}-{% endif %}</td>
-        <td>{% if entry.notes %}{{ entry.notes|truncatewords:6 }}{% else %}-{% endif %}</td>
-        <td>
+        <td>{{ entry.skip_reason|truncatewords:6|default:"—" }}</td>
+        <td>{{ entry.side_effects|truncatewords:6|default:"—" }}</td>
+        <td>{{ entry.notes|truncatewords:6|default:"—" }}</td>
+        <td class="text-end">
           <div class="dropdown d-inline-block">
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
-              <i class="fas fa-ellipsis-v"></i>
+            <button class="btn btn-sm btn-outline-secondary border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+              <i data-lucide="more-vertical" style="width:16px;height:16px;"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a href="{% url 'medication_log_edit' pk=entry.id %}" class="dropdown-item"><i class="fas fa-edit me-2"></i>Edit</a>
+                <a href="{% url 'medication_log_edit' pk=entry.id %}" class="dropdown-item">Edit</a>
               </li>
               <li>
-                <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}"><i class="fas fa-trash-alt me-2"></i>Delete</button>
+                <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">Delete</button>
               </li>
             </ul>
           </div>
@@ -137,7 +167,7 @@
             <div class="modal-dialog">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h5 class="modal-title">Delete Confirmation</h5>
+                  <h5 class="modal-title">Delete Dose Log</h5>
                   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -163,9 +193,9 @@
 {% include 'includes/pagination.html' %}
 
 {% else %}
-<div class="alert alert-info">
-  <p>No dose logs recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'medication_log_add' %}">Log Your First Dose</a>
+<div class="text-center py-5">
+  <p class="text-muted mb-3">No dose logs recorded yet.</p>
+  <a class="btn btn-primary btn-sm" href="{% url 'medication_log_add' %}">Log Your First Dose</a>
 </div>
 {% endif %}
 {% endblock %}

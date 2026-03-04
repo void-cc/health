@@ -33,6 +33,7 @@ SIDEBAR_CONFIG = [
     {
         "category": "Tracking",
         "collapsible": True,
+        "staff_only": True,
         "items": [
             {"label": "Body Composition", "icon": "fa-weight", "url_name": "body_composition_list", "match": ["body_composition"]},
             {"label": "Hydration", "icon": "fa-tint", "url_name": "hydration_list", "match": ["hydration"]},
@@ -50,6 +51,7 @@ SIDEBAR_CONFIG = [
     {
         "category": "Sleep & Nutrition",
         "collapsible": True,
+        "staff_only": True,
         "items": [
             {"label": "Sleep Tracking", "icon": "fa-bed", "url_name": "sleep_list", "match": ["sleep"]},
             {"label": "Circadian Rhythm", "icon": "fa-clock", "url_name": "circadian_list", "match": ["circadian"]},
@@ -64,6 +66,7 @@ SIDEBAR_CONFIG = [
     {
         "category": "Medications",
         "collapsible": True,
+        "staff_only": True,
         "items": [
             {"label": "Schedules", "icon": "fa-pills", "url_name": "medication_schedule_list", "match": ["medication_schedule"]},
             {"label": "Dose Log", "icon": "fa-clipboard-check", "url_name": "medication_log_list", "match": ["medication_log"]},
@@ -74,6 +77,7 @@ SIDEBAR_CONFIG = [
     {
         "category": "Intelligence",
         "collapsible": True,
+        "staff_only": True,
         "items": [
             {"label": "Health Goals", "icon": "fa-bullseye", "url_name": "health_goal_list", "match": ["health_goal"]},
             {"label": "Critical Alerts", "icon": "fa-exclamation-triangle", "url_name": "critical_alert_list", "match": ["critical_alert"]},
@@ -86,6 +90,7 @@ SIDEBAR_CONFIG = [
     {
         "category": "Devices",
         "collapsible": True,
+        "staff_only": True,
         "items": [
             {"label": "Wearable Devices", "icon": "fa-mobile-alt", "url_name": "wearable_device_list", "match": ["wearable_device"]},
             {"label": "Sync Logs", "icon": "fa-sync-alt", "url_name": "sync_log_list", "match": ["sync_log"]},
@@ -96,6 +101,7 @@ SIDEBAR_CONFIG = [
     {
         "category": "Sharing",
         "collapsible": True,
+        "staff_only": True,
         "items": [
             {"label": "Secure Links", "icon": "fa-link", "url_name": "secure_viewing_link_list", "match": ["secure_viewing_link"]},
             {"label": "Practitioner Access", "icon": "fa-user-md", "url_name": "practitioner_access_list", "match": ["practitioner_access", "practitioner_portal"]},
@@ -115,8 +121,6 @@ SIDEBAR_CONFIG = [
             {"label": "Import Data", "icon": "fa-file-upload", "url_name": "import_data", "match": ["import_data"]},
             {"label": "Export Data", "icon": "fa-file-download", "url_name": "export_data", "match": ["export_data"]},
             {"label": "Customize Dashboard", "icon": "fa-cog", "url_name": "customize_dashboard", "match": ["customize_dashboard"]},
-            {"label": "Add Test Info", "icon": "fa-info-circle", "url_name": "add_test_info", "match": ["add_test_info"]},
-            {"label": "Bulk Edit", "icon": "fa-table", "url_name": "bulk_edit", "match": ["bulk_edit"]},
             {"label": "Logout", "icon": "fa-sign-out-alt", "url_name": "logout", "match": []},
         ],
     },
@@ -127,6 +131,8 @@ SIDEBAR_CONFIG = [
         "items": [
             {"label": "History", "icon": "fa-clock", "url_name": "history", "match": ["history"]},
             {"label": "Add Test", "icon": "fa-plus-circle", "url_name": "add_test", "match": ["add_test"]},
+            {"label": "Add Test Info", "icon": "fa-info-circle", "url_name": "add_test_info", "match": ["add_test_info"]},
+            {"label": "Bulk Edit", "icon": "fa-table", "url_name": "bulk_edit", "match": ["bulk_edit"]},
             {"label": "User Profiles", "icon": "fa-users", "url_name": "user_profile_list", "match": ["user_profile"]},
             {"label": "Family Accounts", "icon": "fa-home", "url_name": "family_account_list", "match": ["family_account"]},
             {"label": "Consent Logs", "icon": "fa-handshake", "url_name": "consent_log_list", "match": ["consent_log"]},
