@@ -115,42 +115,91 @@ def index(request):
 
 @login_required
 def history(request):
-    tests = BloodTest.objects.all().order_by('-date')
-    vitals = VitalSign.objects.all().order_by('-date')
+    # Read filter parameters
+    type_filter = request.GET.get('type', '')
+    status_filter = request.GET.get('status', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    search = request.GET.get('search', '').strip()
 
     history_items = []
-    for test in tests:
-        history_items.append({
-            'type': 'Blood Test',
-            'date': test.date,
-            'name': test.test_name,
-            'value': f"{test.value} {test.unit}",
-            'notes': f"Range: {test.normal_min} - {test.normal_max} {test.unit}" if test.normal_min is not None and test.normal_max is not None else "",
-            'status': 'Normal' if test.normal_min is not None and test.normal_max is not None and test.normal_min <= test.value <= test.normal_max else ('Out of Range' if test.normal_min is not None and test.normal_max is not None else 'N/A')
-        })
 
-    for vital in vitals:
-        bp_str = f"{vital.systolic_bp}/{vital.diastolic_bp} mmHg" if vital.systolic_bp is not None and vital.diastolic_bp is not None else ""
-        hr_str = f"{vital.heart_rate} bpm" if vital.heart_rate is not None else ""
-        weight_str = f"{vital.weight} kg" if vital.weight is not None else ""
-        bbt_str = f"BBT: {vital.bbt}°C" if vital.bbt is not None else ""
-        spo2_str = f"SpO2: {vital.spo2}%" if vital.spo2 is not None else ""
-        rr_str = f"RR: {vital.respiratory_rate}/min" if vital.respiratory_rate is not None else ""
+    # Build blood test items unless filtered to Vitals only
+    if type_filter != 'Vitals':
+        tests = BloodTest.objects.all().order_by('-date')
+        if date_from:
+            try:
+                tests = tests.filter(date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+            except ValueError:
+                pass
+        if date_to:
+            try:
+                tests = tests.filter(date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+            except ValueError:
+                pass
+        if search:
+            tests = tests.filter(test_name__icontains=search)
+        for test in tests:
+            item_status = (
+                'Normal' if test.normal_min is not None and test.normal_max is not None and test.normal_min <= test.value <= test.normal_max
+                else ('Out of Range' if test.normal_min is not None and test.normal_max is not None else 'N/A')
+            )
+            if status_filter and item_status != status_filter:
+                continue
+            history_items.append({
+                'type': 'Blood Test',
+                'date': test.date,
+                'name': test.test_name,
+                'value': f"{test.value} {test.unit}",
+                'notes': f"Range: {test.normal_min} - {test.normal_max} {test.unit}" if test.normal_min is not None and test.normal_max is not None else "",
+                'status': item_status,
+            })
 
-        details = [val for val in [weight_str, hr_str, bp_str, bbt_str, spo2_str, rr_str] if val]
-
-        history_items.append({
-            'type': 'Vitals',
-            'date': vital.date,
-            'name': 'Vital Signs',
-            'value': ", ".join(details),
-            'notes': '',
-            'status': 'N/A'
-        })
+    # Build vitals items unless filtered to Blood Test only
+    if type_filter != 'Blood Test':
+        vitals = VitalSign.objects.all().order_by('-date')
+        if date_from:
+            try:
+                vitals = vitals.filter(date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+            except ValueError:
+                pass
+        if date_to:
+            try:
+                vitals = vitals.filter(date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+            except ValueError:
+                pass
+        # Vitals status is always N/A; skip if a specific non-N/A status is requested
+        if not status_filter or status_filter == 'N/A':
+            for vital in vitals:
+                bp_str = f"{vital.systolic_bp}/{vital.diastolic_bp} mmHg" if vital.systolic_bp is not None and vital.diastolic_bp is not None else ""
+                hr_str = f"{vital.heart_rate} bpm" if vital.heart_rate is not None else ""
+                weight_str = f"{vital.weight} kg" if vital.weight is not None else ""
+                bbt_str = f"BBT: {vital.bbt}°C" if vital.bbt is not None else ""
+                spo2_str = f"SpO2: {vital.spo2}%" if vital.spo2 is not None else ""
+                rr_str = f"RR: {vital.respiratory_rate}/min" if vital.respiratory_rate is not None else ""
+                details = [v for v in [weight_str, hr_str, bp_str, bbt_str, spo2_str, rr_str] if v]
+                # Apply name search to vitals (match against the display name "Vital Signs")
+                if search and search.lower() not in 'vital signs':
+                    continue
+                history_items.append({
+                    'type': 'Vitals',
+                    'date': vital.date,
+                    'name': 'Vital Signs',
+                    'value': ", ".join(details),
+                    'notes': '',
+                    'status': 'N/A',
+                })
 
     history_items.sort(key=lambda x: x['date'], reverse=True)
 
-    return render(request, 'history.html', {'history': history_items})
+    filters = {
+        'type': type_filter,
+        'status': status_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'search': search,
+    }
+    return render(request, 'history.html', {'history': history_items, 'filters': filters})
 
 
 @login_required
