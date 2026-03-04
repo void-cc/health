@@ -9,6 +9,10 @@
     <p class="page-header-subtitle">Your health overview at a glance</p>
   </div>
   <div class="page-header-actions">
+    <a href="{% url 'customize_dashboard' %}" class="toolbar-btn">
+      <i class="fas fa-sliders-h" aria-hidden="true"></i>
+      <span class="d-none d-sm-inline">Customize</span>
+    </a>
     <button class="toolbar-btn" onclick="exportDashboardPDF()">
       <i class="fas fa-download" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Export PDF</span>
@@ -28,53 +32,68 @@
 {% for widget in widgets %}{% if widget.visible %}
 
 {% if widget.widget_type == 'summary_cards' %}
-<!-- KPI Row -->
-<div class="kpi-grid mb-6">
+<!-- KPI Row — 2 focused, info-dense cards with micro-charts -->
+<div class="kpi-grid kpi-grid-2 mb-6">
   <div class="kpi-card">
     <div class="kpi-card-header">
       <span class="kpi-card-label">Total Tests</span>
       <span class="kpi-card-icon icon-primary"><i class="fas fa-vial"></i></span>
     </div>
     <div class="kpi-card-value">{{ total_tests }}</div>
+    {% if cat_bar_data %}
+    <div class="kpi-mini-bars" aria-hidden="true">
+      {% for cat in cat_bar_data %}
+      <div class="kpi-mini-bar-row">
+        <span class="kpi-mini-bar-label">{{ cat.name }}</span>
+        <div class="kpi-mini-bar-track">
+          <div class="kpi-mini-bar-fill" style="width:{{ cat.pct }}%;"></div>
+        </div>
+        <span class="kpi-mini-bar-count">{{ cat.count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="kpi-card-trend">
+      <span class="kpi-card-trend-text">{{ categories_tracked }} categor{{ categories_tracked|pluralize:"y,ies" }} tracked</span>
+    </div>
+    {% endif %}
     <div class="kpi-card-footer">
-      <a href="{% url 'history' %}">View history</a>
+      <a href="{% url 'history' %}">View history <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
     </div>
   </div>
 
   <div class="kpi-card">
     <div class="kpi-card-header">
-      <span class="kpi-card-label">Out of Range</span>
-      <span class="kpi-card-icon {% if out_of_range > 0 %}icon-error{% else %}icon-success{% endif %}">
-        <i class="fas {% if out_of_range > 0 %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
-      </span>
-    </div>
-    <div class="kpi-card-value {% if out_of_range > 0 %}value-danger{% endif %}">{{ out_of_range }}</div>
-    <div class="kpi-card-footer">
+      <span class="kpi-card-label">Health Status</span>
       {% if out_of_range > 0 %}
-        <span class="text-requires-attention">Requires attention</span>
+        <span class="kpi-card-icon icon-error"><i class="fas fa-exclamation-circle"></i></span>
       {% else %}
-        All values in range
+        <span class="kpi-card-icon icon-success"><i class="fas fa-check-circle"></i></span>
       {% endif %}
     </div>
-  </div>
-
-  <div class="kpi-card">
-    <div class="kpi-card-header">
-      <span class="kpi-card-label">Latest Vitals</span>
-      <span class="kpi-card-icon icon-primary"><i class="fas fa-heartbeat"></i></span>
+    <div class="kpi-card-value-row">
+      <div class="kpi-card-value">{{ in_range_pct }}<span class="kpi-card-value-unit">%</span></div>
+      {% if total_tests > 0 %}
+      <div class="kpi-mini-doughnut" aria-hidden="true">
+        <svg viewBox="0 0 36 36" class="kpi-doughnut-svg">
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--gray-200)" stroke-width="3"/>
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--color-success)" stroke-width="3" stroke-dasharray="{{ in_range_pct }} {{ out_of_range_pct }}" stroke-dashoffset="25" stroke-linecap="round"/>
+        </svg>
+      </div>
+      {% endif %}
     </div>
-    {% if latest_vitals %}
-      <div class="kpi-card-value kpi-card-value-sm">
-        {% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }} bpm{% else %}—{% endif %}
-      </div>
-      <div class="kpi-card-footer">
-        {{ latest_vitals.date|date:"M j, Y" }} &nbsp;·&nbsp;
-        <a href="{% url 'vitals' %}">View all vitals</a>
-      </div>
-    {% else %}
-      <div class="kpi-card-value kpi-card-value-sm">—</div>
-      <div class="kpi-card-footer"><a href="{% url 'add_vitals' %}">Record vitals</a></div>
-    {% endif %}
+    <div class="kpi-card-trend">
+      {% if out_of_range > 0 %}
+        <span class="kpi-status-dot kpi-status-dot-error"></span>
+        <span class="kpi-card-trend-text text-requires-attention">{{ out_of_range }} out of range — {{ in_range }} of {{ total_tests }} normal</span>
+      {% else %}
+        <span class="kpi-status-dot kpi-status-dot-success"></span>
+        <span class="kpi-card-trend-text">All {{ total_tests }} values in range</span>
+      {% endif %}
+    </div>
+    <div class="kpi-card-footer">
+      <a href="{% url 'comparative_bar_charts' %}">Compare results <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+    </div>
   </div>
 </div>
 {% endif %}
@@ -84,14 +103,14 @@
 <div class="dashboard-grid">
   <!-- Left column: blood test results -->
   <div>
-    <div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="section-header-bar">
       <h2 class="results-section-title">Recent Blood Results</h2>
-      <div class="d-flex gap-2">
-        <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn">
+      <div class="section-header-actions">
+        <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn toolbar-btn-sm">
           <i class="fas fa-chart-bar"></i>
           <span class="d-none d-md-inline">Compare</span>
         </a>
-        <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn">
+        <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn toolbar-btn-sm">
           <i class="fas fa-chart-line"></i>
           <span class="d-none d-md-inline">Charts</span>
         </a>
@@ -99,8 +118,27 @@
     </div>
 
     {% if tests_by_category %}
+      <!-- Filter bar -->
+      <div class="results-filter-bar" id="resultsFilterBar">
+        <div class="filter-group">
+          <label class="filter-label" for="filterCategory"><i class="fas fa-filter"></i> Category</label>
+          <select class="filter-select" id="filterCategory">
+            <option value="all">All categories</option>
+            {% for category in tests_by_category.keys %}
+            <option value="{{ category }}">{{ category }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-pills" id="filterStatus">
+          <button type="button" class="filter-pill active" data-filter="all">All</button>
+          <button type="button" class="filter-pill" data-filter="normal">Normal</button>
+          <button type="button" class="filter-pill" data-filter="out-of-range">Out of range</button>
+        </div>
+        <span class="filter-count" id="filterCount"></span>
+      </div>
+
       {% for category, cat_tests in tests_by_category.items %}
-      <div class="category-section">
+      <div class="category-section" data-category="{{ category }}">
         <div class="category-section-header">
           <span class="category-section-title">{{ category }}</span>
           <span class="category-count">{{ cat_tests|length }} result{{ cat_tests|length|pluralize }}</span>
@@ -108,13 +146,14 @@
 
         <div class="result-list">
           {% for test in cat_tests %}
-          <div class="result-item">
-            <div>
+          <div class="result-item" data-category="{{ category }}" data-status="{% if test.normal_min is not None and test.normal_max is not None %}{% if test.normal_min <= test.value and test.value <= test.normal_max %}normal{% else %}out-of-range{% endif %}{% else %}unknown{% endif %}">
+            <div class="result-item-body">
               <div class="result-item-title">{{ test.test_name }}</div>
               <div class="result-item-meta">
-                <i class="far fa-calendar-alt me-1"></i>{{ test.date|date:"M j, Y" }}
+                <span class="result-item-meta-date"><i class="far fa-calendar-alt"></i> {{ test.date|date:"M j, Y" }}</span>
                 {% if test.normal_min is not None and test.normal_max is not None %}
-                  &nbsp;·&nbsp; Range: {{ test.normal_min }}–{{ test.normal_max }} {{ test.unit }}
+                  <span class="result-item-meta-sep">&middot;</span>
+                  <span>Range: {{ test.normal_min }}–{{ test.normal_max }} {{ test.unit }}</span>
                 {% endif %}
               </div>
 
@@ -132,24 +171,35 @@
             </div>
 
             <div class="result-item-value-wrapper">
-              <div class="result-item-value">
-                {{ test.value }}<span class="result-item-unit">{{ test.unit }}</span>
+              {% with sparkline=test_sparklines|lookup:test.id %}
+              {% if sparkline %}
+              <div class="result-sparkline" aria-hidden="true" title="Recent trend">
+                <svg viewBox="0 0 60 20" preserveAspectRatio="none" class="result-sparkline-svg">
+                  <polyline fill="none" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="{{ sparkline }}"/>
+                </svg>
               </div>
-              {% if test.normal_min is not None and test.normal_max is not None %}
-                {% if test.normal_min <= test.value and test.value <= test.normal_max %}
-                  <span class="status-badge badge-success mt-1">Normal</span>
+              {% endif %}
+              {% endwith %}
+              <div>
+                <div class="result-item-value">
+                  {{ test.value }}<span class="result-item-unit">{{ test.unit }}</span>
+                </div>
+                {% if test.normal_min is not None and test.normal_max is not None %}
+                  {% if test.normal_min <= test.value and test.value <= test.normal_max %}
+                    <span class="status-badge badge-success mt-1">Normal</span>
                 {% else %}
                   <span class="status-badge badge-danger mt-1">Out of range</span>
                 {% endif %}
               {% endif %}
+              </div>
             </div>
 
             <div class="result-item-actions">
-              <a href="{% url 'chart' test_name=test.test_name %}" class="toolbar-btn" title="View chart">
+              <a href="{% url 'chart' test_name=test.test_name %}" class="toolbar-btn toolbar-btn-icon" title="View chart">
                 <i class="fas fa-chart-line"></i>
               </a>
               <div class="dropdown">
-                <button class="toolbar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">
+                <button class="toolbar-btn toolbar-btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">
                   <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
@@ -159,17 +209,18 @@
                     </a>
                   </li>
                   <li>
+                    <button type="button" class="dropdown-item" data-bs-toggle="collapse" data-bs-target="#notes{{ test.id }}">
+                      <i class="fas fa-sticky-note me-2"></i>Notes
+                    </button>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
                     <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ test.id }}">
                       <i class="fas fa-trash-alt me-2"></i>Delete
                     </button>
                   </li>
                 </ul>
               </div>
-
-              <!-- Annotations toggle -->
-              <button class="toolbar-btn" type="button" data-bs-toggle="collapse" data-bs-target="#notes{{ test.id }}" aria-expanded="false" title="Notes">
-                <i class="fas fa-sticky-note"></i>
-              </button>
             </div>
           </div>
 
@@ -235,45 +286,59 @@
   </div>
 
   <!-- Right column: quick info panel -->
-  <div>
+  <div class="dashboard-sidebar">
     <!-- Latest Vitals Panel -->
     {% if latest_vitals %}
-    <div class="vitals-summary mb-4">
-      <div class="vitals-summary-title">Latest Vitals — {{ latest_vitals.date|date:"M j, Y" }}</div>
-      <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-weight me-1"></i> Weight</span>
-        <span class="vital-row-value">{% if latest_vitals.weight %}{{ latest_vitals.weight }} kg{% else %}—{% endif %}</span>
+    <div class="vitals-summary">
+      <div class="vitals-summary-header">
+        <span class="vitals-summary-title">Latest Vitals</span>
+        <span class="vitals-summary-date">{{ latest_vitals.date|date:"M j" }}</span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-heartbeat me-1"></i> Heart Rate</span>
-        <span class="vital-row-value">{% if latest_vitals.heart_rate %}{{ latest_vitals.heart_rate }} bpm{% else %}—{% endif %}</span>
+        <span class="vital-row-label"><i class="fas fa-weight"></i> Weight</span>
+        <span class="vital-row-value">{% if latest_vitals.weight %}{{ latest_vitals.weight }} <span class="vital-row-unit">kg</span>{% else %}—{% endif %}</span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-tachometer-alt me-1"></i> Blood Pressure</span>
+        <span class="vital-row-label"><i class="fas fa-heartbeat"></i> Heart Rate</span>
         <span class="vital-row-value">
-          {% if latest_vitals.systolic_bp and latest_vitals.diastolic_bp %}
-            {{ latest_vitals.systolic_bp }}/{{ latest_vitals.diastolic_bp }}
+          {% if latest_vitals.heart_rate %}
+            {% if hr_sparkline_points %}
+            <span class="vital-sparkline" aria-hidden="true">
+              <svg viewBox="0 0 80 24" preserveAspectRatio="none" class="vital-sparkline-svg">
+                <polyline fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="{{ hr_sparkline_points }}"/>
+              </svg>
+            </span>
+            {% endif %}
+            {{ latest_vitals.heart_rate }} <span class="vital-row-unit">bpm</span>
           {% else %}—{% endif %}
         </span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-lungs me-1"></i> SpO2</span>
-        <span class="vital-row-value">{% if latest_vitals.spo2 %}{{ latest_vitals.spo2 }}%{% else %}—{% endif %}</span>
+        <span class="vital-row-label"><i class="fas fa-tachometer-alt"></i> Blood Pressure</span>
+        <span class="vital-row-value">
+          {% if latest_vitals.systolic_bp and latest_vitals.diastolic_bp %}
+            {{ latest_vitals.systolic_bp }}/{{ latest_vitals.diastolic_bp }} <span class="vital-row-unit">mmHg</span>
+          {% else %}—{% endif %}
+        </span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-thermometer-half me-1"></i> BBT</span>
-        <span class="vital-row-value">{% if latest_vitals.bbt %}{{ latest_vitals.bbt }}°C{% else %}—{% endif %}</span>
+        <span class="vital-row-label"><i class="fas fa-lungs"></i> SpO2</span>
+        <span class="vital-row-value">{% if latest_vitals.spo2 %}{{ latest_vitals.spo2 }}<span class="vital-row-unit">%</span>{% else %}—{% endif %}</span>
       </div>
-      <div class="mt-3">
-        <a href="{% url 'vitals' %}" class="toolbar-btn toolbar-btn-full">
-          <i class="fas fa-list me-1"></i> View all vitals
+      <div class="vital-row">
+        <span class="vital-row-label"><i class="fas fa-thermometer-half"></i> BBT</span>
+        <span class="vital-row-value">{% if latest_vitals.bbt %}{{ latest_vitals.bbt }}<span class="vital-row-unit">°C</span>{% else %}—{% endif %}</span>
+      </div>
+      <div class="vital-row-actions">
+        <a href="{% url 'vitals' %}" class="toolbar-btn toolbar-btn-full toolbar-btn-sm">
+          View all vitals <i class="fas fa-arrow-right ms-1"></i>
         </a>
       </div>
     </div>
     {% endif %}
 
     <!-- Quick Actions Panel -->
-    <div class="quick-actions-panel mb-4">
+    <div class="quick-actions-panel">
       <div class="quick-actions-panel-title">Quick Actions</div>
       <a href="{% url 'add_test' %}" class="quick-action-item">
         <i class="fas fa-plus-circle"></i>
@@ -349,5 +414,62 @@ function exportDashboardPDF() {
     pdf.save('dashboard.pdf');
   });
 }
+
+/* ── Result filtering ──────────────────────────────────────────────────── */
+(function() {
+  var categorySelect = document.getElementById('filterCategory');
+  var statusPills = document.querySelectorAll('#filterStatus .filter-pill');
+  var countEl = document.getElementById('filterCount');
+  if (!categorySelect) return;
+
+  var activeStatus = 'all';
+
+  function applyFilters() {
+    var cat = categorySelect.value;
+    var items = document.querySelectorAll('.result-item[data-category]');
+    var sections = document.querySelectorAll('.category-section[data-category]');
+    var visible = 0;
+    var total = items.length;
+
+    items.forEach(function(item) {
+      var matchCat = (cat === 'all' || item.getAttribute('data-category') === cat);
+      var matchStatus = (activeStatus === 'all' || item.getAttribute('data-status') === activeStatus);
+      if (matchCat && matchStatus) {
+        item.style.display = '';
+        visible++;
+      } else {
+        item.style.display = 'none';
+      }
+    });
+
+    sections.forEach(function(section) {
+      var sectionCat = section.getAttribute('data-category');
+      var matchCat = (cat === 'all' || sectionCat === cat);
+      if (!matchCat) {
+        section.style.display = 'none';
+        return;
+      }
+      var visibleInSection = section.querySelectorAll('.result-item:not([style*="display: none"])').length;
+      section.style.display = visibleInSection > 0 ? '' : 'none';
+    });
+
+    if (cat !== 'all' || activeStatus !== 'all') {
+      countEl.textContent = visible + ' of ' + total;
+    } else {
+      countEl.textContent = '';
+    }
+  }
+
+  categorySelect.addEventListener('change', applyFilters);
+
+  statusPills.forEach(function(pill) {
+    pill.addEventListener('click', function() {
+      statusPills.forEach(function(p) { p.classList.remove('active'); });
+      pill.classList.add('active');
+      activeStatus = pill.getAttribute('data-filter');
+      applyFilters();
+    });
+  });
+})();
 </script>
 {% endblock %}
