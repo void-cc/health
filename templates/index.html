@@ -876,8 +876,14 @@ function exportDashboardPDF() {
     var n = data.length;
     var min = data[0], max = data[n - 1];
     var median = n % 2 === 0 ? (data[n/2 - 1] + data[n/2]) / 2 : data[Math.floor(n/2)];
-    var q1 = data[Math.floor(n * 0.25)];
-    var q3 = data[Math.floor(n * 0.75)];
+    function percentile(arr, p) {
+      var idx = (arr.length - 1) * p;
+      var lo = Math.floor(idx), hi = Math.ceil(idx);
+      if (lo === hi) return arr[lo];
+      return arr[lo] + (arr[hi] - arr[lo]) * (idx - lo);
+    }
+    var q1 = percentile(data, 0.25);
+    var q3 = percentile(data, 0.75);
     new Chart(el.getContext('2d'), {
       type: 'bar',
       data: {
