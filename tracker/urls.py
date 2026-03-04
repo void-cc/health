@@ -246,6 +246,18 @@ urlpatterns = [
     path('medications/edit/<int:pk>/', views.medication_schedule_edit, name='medication_schedule_edit'),
     path('medications/delete/<int:pk>/', views.medication_schedule_delete, name='medication_schedule_delete'),
 
+    # Medication Log (Dose Check-in)
+    path('medications/log/', views.medication_log_list, name='medication_log_list'),
+    path('medications/log/add/', views.medication_log_add, name='medication_log_add'),
+    path('medications/log/edit/<int:pk>/', views.medication_log_edit, name='medication_log_edit'),
+    path('medications/log/delete/<int:pk>/', views.medication_log_delete, name='medication_log_delete'),
+
+    # Medication Inventory
+    path('medications/inventory/', views.medication_inventory_list, name='medication_inventory_list'),
+    path('medications/inventory/add/', views.medication_inventory_add, name='medication_inventory_add'),
+    path('medications/inventory/edit/<int:pk>/', views.medication_inventory_edit, name='medication_inventory_edit'),
+    path('medications/inventory/delete/<int:pk>/', views.medication_inventory_delete, name='medication_inventory_delete'),
+
     # Pharmacological Interactions
     path('interactions/', views.pharmacological_interaction_list, name='pharmacological_interaction_list'),
     path('interactions/add/', views.pharmacological_interaction_add, name='pharmacological_interaction_add'),

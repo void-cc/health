@@ -2,7 +2,23 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2><i class="fas fa-pills"></i> Medication Schedules</h2>
-  <a href="{% url 'medication_schedule_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Entry</a>
+  <div class="d-flex gap-2">
+    <a href="{% url 'medication_log_add' %}" class="btn btn-outline-success btn-sm"><i class="fas fa-clipboard-check"></i> Log Dose</a>
+    <a href="{% url 'medication_schedule_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Schedule</a>
+  </div>
+</div>
+
+<!-- Quick Links -->
+<div class="row g-2 mb-4">
+  <div class="col-auto">
+    <a href="{% url 'medication_log_list' %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-clipboard-check me-1"></i>Dose Log</a>
+  </div>
+  <div class="col-auto">
+    <a href="{% url 'medication_inventory_list' %}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-boxes me-1"></i>Inventory</a>
+  </div>
+  <div class="col-auto">
+    <a href="{% url 'pharmacological_interaction_list' %}" class="btn btn-outline-warning btn-sm"><i class="fas fa-exclamation-circle me-1"></i>Interactions</a>
+  </div>
 </div>
 
 <!-- Summary Cards -->
@@ -71,7 +87,7 @@
         <th>End Date</th>
         <th>Time</th>
         <th>Active</th>
-        <th>Notes</th>
+        <th>Adherence</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -91,13 +107,26 @@
             <span class="badge bg-secondary">Inactive</span>
           {% endif %}
         </td>
-        <td>{% if entry.notes %}{{ entry.notes|truncatewords:8 }}{% else %}-{% endif %}</td>
+        <td>
+          {% if entry.adherence_percent is not None %}
+            <span class="badge {% if entry.adherence_percent >= 80 %}bg-success{% elif entry.adherence_percent >= 60 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ entry.adherence_percent }}%</span>
+          {% else %}
+            <span class="text-muted small">—</span>
+          {% endif %}
+        </td>
         <td>
           <div class="dropdown d-inline-block">
             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
               <i class="fas fa-ellipsis-v"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a href="{% url 'medication_log_add' %}?schedule={{ entry.id }}" class="dropdown-item"><i class="fas fa-clipboard-check me-2"></i>Log Dose</a>
+              </li>
+              <li>
+                <a href="{% url 'medication_log_list' %}?schedule={{ entry.id }}" class="dropdown-item"><i class="fas fa-history me-2"></i>View Doses</a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
               <li>
                 <a href="{% url 'medication_schedule_edit' pk=entry.id %}" class="dropdown-item"><i class="fas fa-edit me-2"></i>Edit</a>
               </li>

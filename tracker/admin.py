@@ -5,6 +5,7 @@ from .models import (
     ClinicalTrialMatch, HabitLog, Reminder,
     NotificationPreference, NotificationTemplate, NotificationTrigger,
     NotificationLog,
+    MedicationLog, MedicationInventory,
 )
 
 
@@ -108,3 +109,19 @@ class ReminderAdmin(admin.ModelAdmin):
     list_display = ('title', 'due_datetime', 'frequency', 'active')
     list_filter = ('frequency', 'active')
     search_fields = ('title', 'message')
+
+
+@admin.register(MedicationLog)
+class MedicationLogAdmin(admin.ModelAdmin):
+    list_display = ('medication_name', 'dosage', 'status', 'taken_at', 'user')
+    list_filter = ('status', 'taken_at')
+    search_fields = ('medication_name', 'notes', 'side_effects')
+    raw_id_fields = ('user', 'schedule')
+
+
+@admin.register(MedicationInventory)
+class MedicationInventoryAdmin(admin.ModelAdmin):
+    list_display = ('medication_name', 'current_count', 'refill_reminder_threshold', 'expiration_date', 'needs_refill', 'user')
+    list_filter = ('expiration_date',)
+    search_fields = ('medication_name', 'pharmacy_name', 'notes')
+    raw_id_fields = ('user', 'schedule')

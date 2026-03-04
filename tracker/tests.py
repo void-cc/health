@@ -6,6 +6,7 @@ from tracker.models import (
     UserProfile, SecurityLog, UserSession, PrivacyPreference,
     SecureViewingLink, PractitionerAccess, IntakeSummary,
     DataExportRequest, StakeholderEmail, MedicationSchedule, PharmacologicalInteraction,
+    MedicationLog, MedicationInventory,
     SleepLog, MacronutrientLog, FastingLog, MetabolicLog,
     HealthGoal, CriticalAlert, WearableDevice, WearableSyncLog,
     HealthReport, PredictiveBiomarker, BiologicalAgeCalculation,
@@ -5239,9 +5240,6 @@ class NotificationSystemTests(TestCase):
         self.assertTrue(len(settings.LOCALE_PATHS) > 0)
         for path in settings.LOCALE_PATHS:
             self.assertTrue(os.path.isdir(path), f"LOCALE_PATHS entry {path} does not exist")
-            username='notif_user', password='testpass123', email='notif@example.com'
-        )
-        self.client.login(username='notif_user', password='testpass123')
 
     # ---- Model tests ----
 
@@ -5685,3 +5683,325 @@ class ReminderTests(TestCase):
         self.client.logout()
         response = self.client.get(reverse('reminder_list'))
         self.assertEqual(response.status_code, 302)
+
+
+class MedicationLogModelTests(TestCase):
+    """Tests for MedicationLog model."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='medloguser', password='testpass123', email='medlog@example.com')
+        self.schedule = MedicationSchedule.objects.create(
+            user=self.user,
+            medication_name='Metformin',
+            dosage='500mg',
+            frequency='Twice daily',
+            start_date=date.today(),
+        )
+
+    def test_medication_log_str(self):
+        log = MedicationLog.objects.create(
+            user=self.user,
+            schedule=self.schedule,
+            medication_name='Metformin',
+            dosage='500mg',
+            status='taken',
+        )
+        self.assertIn('Metformin', str(log))
+        self.assertIn('Taken', str(log))
+
+    def test_medication_log_default_status(self):
+        log = MedicationLog.objects.create(
+            user=self.user,
+            medication_name='Aspirin',
+            dosage='100mg',
+        )
+        self.assertEqual(log.status, 'taken')
+
+    def test_adherence_percent_all_taken(self):
+        for _ in range(5):
+            MedicationLog.objects.create(
+                user=self.user,
+                schedule=self.schedule,
+                medication_name='Metformin',
+                status='taken',
+            )
+        self.schedule.refresh_from_db()
+        self.assertEqual(self.schedule.adherence_percent, 100.0)
+
+    def test_adherence_percent_mixed(self):
+        MedicationLog.objects.create(user=self.user, schedule=self.schedule, medication_name='Metformin', status='taken')
+        MedicationLog.objects.create(user=self.user, schedule=self.schedule, medication_name='Metformin', status='taken')
+        MedicationLog.objects.create(user=self.user, schedule=self.schedule, medication_name='Metformin', status='skipped')
+        MedicationLog.objects.create(user=self.user, schedule=self.schedule, medication_name='Metformin', status='skipped')
+        self.assertEqual(self.schedule.adherence_percent, 50.0)
+
+    def test_adherence_percent_no_logs(self):
+        self.assertIsNone(self.schedule.adherence_percent)
+
+    def test_medication_log_late_counts_toward_adherence(self):
+        MedicationLog.objects.create(user=self.user, schedule=self.schedule, medication_name='Metformin', status='late')
+        MedicationLog.objects.create(user=self.user, schedule=self.schedule, medication_name='Metformin', status='skipped')
+        self.assertEqual(self.schedule.adherence_percent, 50.0)
+
+
+class MedicationInventoryModelTests(TestCase):
+    """Tests for MedicationInventory model."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='inventoryuser', password='testpass123', email='inv@example.com')
+
+    def test_inventory_str(self):
+        inv = MedicationInventory.objects.create(
+            user=self.user,
+            medication_name='Atorvastatin',
+            current_count=30,
+        )
+        self.assertIn('Atorvastatin', str(inv))
+        self.assertIn('30', str(inv))
+
+    def test_needs_refill_when_below_threshold(self):
+        inv = MedicationInventory(medication_name='Metformin', current_count=3, refill_reminder_threshold=7)
+        self.assertTrue(inv.needs_refill)
+
+    def test_no_refill_when_above_threshold(self):
+        inv = MedicationInventory(medication_name='Metformin', current_count=30, refill_reminder_threshold=7)
+        self.assertFalse(inv.needs_refill)
+
+    def test_at_threshold_needs_refill(self):
+        inv = MedicationInventory(medication_name='Metformin', current_count=7, refill_reminder_threshold=7)
+        self.assertTrue(inv.needs_refill)
+
+    def test_is_expired_when_past(self):
+        inv = MedicationInventory(medication_name='Aspirin', expiration_date=date.today() - timedelta(days=1))
+        self.assertTrue(inv.is_expired)
+
+    def test_not_expired_when_future(self):
+        inv = MedicationInventory(medication_name='Aspirin', expiration_date=date.today() + timedelta(days=30))
+        self.assertFalse(inv.is_expired)
+
+    def test_not_expired_when_no_date(self):
+        inv = MedicationInventory(medication_name='Aspirin', expiration_date=None)
+        self.assertFalse(inv.is_expired)
+
+
+class MedicationLogViewTests(TestCase):
+    """Tests for MedicationLog views."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='logviewuser', password='testpass123', email='logview@example.com')
+        self.client.login(username='logviewuser', password='testpass123')
+        self.schedule = MedicationSchedule.objects.create(
+            user=self.user,
+            medication_name='Lisinopril',
+            dosage='10mg',
+            frequency='Daily',
+            start_date=date.today(),
+            is_active=True,
+        )
+
+    def test_medication_log_list_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('medication_log_list'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_medication_log_list_empty(self):
+        response = self.client.get(reverse('medication_log_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['total_count'], 0)
+
+    def test_medication_log_add_get(self):
+        response = self.client.get(reverse('medication_log_add'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Log Dose')
+
+    def test_medication_log_add_post(self):
+        response = self.client.post(reverse('medication_log_add'), {
+            'medication_name': 'Lisinopril',
+            'dosage': '10mg',
+            'taken_at': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+            'status': 'taken',
+            'side_effects': '',
+            'notes': '',
+            'skip_reason': '',
+        })
+        self.assertRedirects(response, reverse('medication_log_list'))
+        self.assertEqual(MedicationLog.objects.filter(user=self.user).count(), 1)
+
+    def test_medication_log_add_skipped(self):
+        response = self.client.post(reverse('medication_log_add'), {
+            'medication_name': 'Lisinopril',
+            'dosage': '10mg',
+            'taken_at': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+            'status': 'skipped',
+            'skip_reason': 'Forgot',
+            'side_effects': '',
+            'notes': '',
+        })
+        self.assertRedirects(response, reverse('medication_log_list'))
+        log = MedicationLog.objects.get(user=self.user)
+        self.assertEqual(log.status, 'skipped')
+        self.assertEqual(log.skip_reason, 'Forgot')
+
+    def test_medication_log_edit_get(self):
+        log = MedicationLog.objects.create(
+            user=self.user,
+            medication_name='Lisinopril',
+            status='taken',
+        )
+        response = self.client.get(reverse('medication_log_edit', kwargs={'pk': log.pk}))
+        self.assertEqual(response.status_code, 200)
+
+    def test_medication_log_edit_post(self):
+        log = MedicationLog.objects.create(
+            user=self.user,
+            medication_name='Lisinopril',
+            status='taken',
+        )
+        response = self.client.post(reverse('medication_log_edit', kwargs={'pk': log.pk}), {
+            'medication_name': 'Lisinopril',
+            'dosage': '20mg',
+            'taken_at': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+            'status': 'late',
+            'skip_reason': '',
+            'side_effects': 'mild headache',
+            'notes': '',
+        })
+        self.assertRedirects(response, reverse('medication_log_list'))
+        log.refresh_from_db()
+        self.assertEqual(log.dosage, '20mg')
+        self.assertEqual(log.status, 'late')
+        self.assertEqual(log.side_effects, 'mild headache')
+
+    def test_medication_log_delete_post(self):
+        log = MedicationLog.objects.create(
+            user=self.user,
+            medication_name='Lisinopril',
+            status='taken',
+        )
+        response = self.client.post(reverse('medication_log_delete', kwargs={'pk': log.pk}))
+        self.assertRedirects(response, reverse('medication_log_list'))
+        self.assertEqual(MedicationLog.objects.filter(user=self.user).count(), 0)
+
+    def test_medication_log_list_search(self):
+        MedicationLog.objects.create(user=self.user, medication_name='Lisinopril', status='taken')
+        MedicationLog.objects.create(user=self.user, medication_name='Metformin', status='skipped')
+        response = self.client.get(reverse('medication_log_list'), {'q': 'Lisin'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['total_count'], 1)
+
+    def test_medication_log_list_status_filter(self):
+        MedicationLog.objects.create(user=self.user, medication_name='Lisinopril', status='taken')
+        MedicationLog.objects.create(user=self.user, medication_name='Metformin', status='skipped')
+        response = self.client.get(reverse('medication_log_list'), {'status': 'taken'})
+        self.assertEqual(response.context['total_count'], 1)
+
+    def test_medication_log_list_adherence_summary(self):
+        MedicationLog.objects.create(user=self.user, medication_name='Lisinopril', status='taken')
+        MedicationLog.objects.create(user=self.user, medication_name='Lisinopril', status='skipped')
+        response = self.client.get(reverse('medication_log_list'))
+        self.assertEqual(response.context['taken_count'], 1)
+        self.assertEqual(response.context['skipped_count'], 1)
+        self.assertEqual(response.context['adherence_pct'], 50.0)
+
+    def test_medication_log_add_with_schedule_link(self):
+        response = self.client.post(reverse('medication_log_add'), {
+            'schedule': str(self.schedule.pk),
+            'medication_name': 'Lisinopril',
+            'dosage': '10mg',
+            'taken_at': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+            'status': 'taken',
+            'skip_reason': '',
+            'side_effects': '',
+            'notes': '',
+        })
+        self.assertRedirects(response, reverse('medication_log_list'))
+        log = MedicationLog.objects.get(user=self.user)
+        self.assertEqual(log.schedule, self.schedule)
+
+
+class MedicationInventoryViewTests(TestCase):
+    """Tests for MedicationInventory views."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='invviewuser', password='testpass123', email='invview@example.com')
+        self.client.login(username='invviewuser', password='testpass123')
+
+    def test_inventory_list_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse('medication_inventory_list'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_inventory_list_empty(self):
+        response = self.client.get(reverse('medication_inventory_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['total_count'], 0)
+
+    def test_inventory_add_get(self):
+        response = self.client.get(reverse('medication_inventory_add'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_inventory_add_post(self):
+        response = self.client.post(reverse('medication_inventory_add'), {
+            'medication_name': 'Atorvastatin',
+            'current_count': '60',
+            'units_per_dose': '1',
+            'refill_reminder_threshold': '7',
+            'last_refill_date': '',
+            'expiration_date': '',
+            'pharmacy_name': 'CVS',
+            'notes': '',
+        })
+        self.assertRedirects(response, reverse('medication_inventory_list'))
+        self.assertEqual(MedicationInventory.objects.filter(user=self.user).count(), 1)
+        inv = MedicationInventory.objects.get(user=self.user)
+        self.assertEqual(inv.current_count, 60)
+        self.assertEqual(inv.pharmacy_name, 'CVS')
+
+    def test_inventory_edit_post(self):
+        inv = MedicationInventory.objects.create(user=self.user, medication_name='Aspirin', current_count=30)
+        response = self.client.post(reverse('medication_inventory_edit', kwargs={'pk': inv.pk}), {
+            'medication_name': 'Aspirin',
+            'current_count': '15',
+            'units_per_dose': '1',
+            'refill_reminder_threshold': '5',
+            'last_refill_date': '',
+            'expiration_date': str(date.today() + timedelta(days=365)),
+            'pharmacy_name': '',
+            'notes': 'Updated',
+        })
+        self.assertRedirects(response, reverse('medication_inventory_list'))
+        inv.refresh_from_db()
+        self.assertEqual(inv.current_count, 15)
+        self.assertEqual(inv.refill_reminder_threshold, 5)
+        self.assertEqual(inv.notes, 'Updated')
+
+    def test_inventory_delete_post(self):
+        inv = MedicationInventory.objects.create(user=self.user, medication_name='Aspirin', current_count=30)
+        response = self.client.post(reverse('medication_inventory_delete', kwargs={'pk': inv.pk}))
+        self.assertRedirects(response, reverse('medication_inventory_list'))
+        self.assertEqual(MedicationInventory.objects.filter(user=self.user).count(), 0)
+
+    def test_inventory_list_refill_alert(self):
+        MedicationInventory.objects.create(user=self.user, medication_name='Aspirin', current_count=3, refill_reminder_threshold=7)
+        response = self.client.get(reverse('medication_inventory_list'))
+        self.assertEqual(response.context['refill_count'], 1)
+        self.assertContains(response, 'Refill Needed')
+
+    def test_inventory_list_expired_alert(self):
+        MedicationInventory.objects.create(
+            user=self.user,
+            medication_name='OldMed',
+            current_count=10,
+            expiration_date=date.today() - timedelta(days=1),
+        )
+        response = self.client.get(reverse('medication_inventory_list'))
+        self.assertEqual(response.context['expired_count'], 1)
+        self.assertContains(response, 'Expired')
+
+    def test_inventory_list_search(self):
+        MedicationInventory.objects.create(user=self.user, medication_name='Atorvastatin', current_count=30)
+        MedicationInventory.objects.create(user=self.user, medication_name='Metformin', current_count=60)
+        response = self.client.get(reverse('medication_inventory_list'), {'q': 'Atorva'})
+        self.assertEqual(response.context['total_count'], 1)

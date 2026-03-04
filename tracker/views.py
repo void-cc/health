@@ -22,6 +22,7 @@ from .models import (
     # Advanced Analytics & AI
     PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
+    MedicationLog, MedicationInventory,
     HealthGoal, CriticalAlert,
     # Export, Sharing & Practitioner Access
     SecureViewingLink, PractitionerAccess, IntakeSummary,
@@ -3070,7 +3071,249 @@ def medication_schedule_delete(request, pk):
     return redirect('medication_schedule_list')
 
 
-# ===== Health Goal =====
+# ===== Medication Log (Dose Check-in) =====
+
+@login_required
+def medication_log_list(request):
+    schedule_id = request.GET.get('schedule')
+    entries = MedicationLog.objects.filter(user=request.user).order_by('-taken_at')
+    schedule = None
+    if schedule_id:
+        schedule = get_object_or_404(MedicationSchedule, id=schedule_id)
+        entries = entries.filter(schedule=schedule)
+
+    search_query = request.GET.get('q', '')
+    if search_query:
+        entries = entries.filter(medication_name__icontains=search_query)
+
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        entries = entries.filter(status=status_filter)
+
+    total_count = entries.count()
+    taken_count = entries.filter(status__in=['taken', 'late']).count()
+    skipped_count = entries.filter(status='skipped').count()
+    adherence_pct = round(taken_count / total_count * 100, 1) if total_count > 0 else None
+
+    paginator = Paginator(entries, 25)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    schedules = MedicationSchedule.objects.filter(user=request.user, is_active=True).order_by('medication_name')
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'schedule': schedule,
+        'schedules': schedules,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'total_count': total_count,
+        'taken_count': taken_count,
+        'skipped_count': skipped_count,
+        'adherence_pct': adherence_pct,
+        'status_choices': MedicationLog.STATUS_CHOICES,
+        'selected_schedule_id': schedule_id or '',
+    }
+    return render(request, 'medication_log_list.html', context)
+
+
+@login_required
+def medication_log_add(request):
+    schedules = MedicationSchedule.objects.filter(user=request.user, is_active=True).order_by('medication_name')
+    schedule_id = request.GET.get('schedule') or request.POST.get('schedule')
+    preselected = None
+    if schedule_id:
+        preselected = MedicationSchedule.objects.filter(id=schedule_id, user=request.user).first()
+
+    if request.method == 'POST':
+        try:
+            sched_pk = request.POST.get('schedule') or None
+            schedule_obj = MedicationSchedule.objects.filter(id=sched_pk, user=request.user).first() if sched_pk else None
+            taken_at_str = request.POST.get('taken_at', '').strip()
+            scheduled_time_str = request.POST.get('scheduled_time', '').strip()
+            MedicationLog.objects.create(
+                user=request.user,
+                schedule=schedule_obj,
+                medication_name=request.POST.get('medication_name', '').strip(),
+                dosage=request.POST.get('dosage', '').strip(),
+                taken_at=datetime.strptime(taken_at_str, '%Y-%m-%dT%H:%M') if taken_at_str else timezone.now(),
+                scheduled_time=datetime.strptime(scheduled_time_str, '%Y-%m-%dT%H:%M') if scheduled_time_str else None,
+                status=request.POST.get('status', 'taken'),
+                skip_reason=request.POST.get('skip_reason', '').strip(),
+                side_effects=request.POST.get('side_effects', '').strip(),
+                notes=request.POST.get('notes', '').strip(),
+            )
+            messages.success(request, 'Dose logged successfully!')
+            return redirect('medication_log_list')
+        except Exception:
+            messages.error(request, 'Error logging dose.')
+
+    context = {
+        'schedules': schedules,
+        'preselected': preselected,
+        'status_choices': MedicationLog.STATUS_CHOICES,
+        'editing': False,
+        'now': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+    }
+    return render(request, 'medication_log_form.html', context)
+
+
+@login_required
+def medication_log_edit(request, pk):
+    entry = get_object_or_404(MedicationLog, id=pk, user=request.user)
+    schedules = MedicationSchedule.objects.filter(user=request.user, is_active=True).order_by('medication_name')
+
+    if request.method == 'POST':
+        try:
+            sched_pk = request.POST.get('schedule') or None
+            schedule_obj = MedicationSchedule.objects.filter(id=sched_pk, user=request.user).first() if sched_pk else None
+            taken_at_str = request.POST.get('taken_at', '').strip()
+            scheduled_time_str = request.POST.get('scheduled_time', '').strip()
+            entry.schedule = schedule_obj
+            entry.medication_name = request.POST.get('medication_name', '').strip()
+            entry.dosage = request.POST.get('dosage', '').strip()
+            entry.taken_at = datetime.strptime(taken_at_str, '%Y-%m-%dT%H:%M') if taken_at_str else entry.taken_at
+            entry.scheduled_time = datetime.strptime(scheduled_time_str, '%Y-%m-%dT%H:%M') if scheduled_time_str else None
+            entry.status = request.POST.get('status', 'taken')
+            entry.skip_reason = request.POST.get('skip_reason', '').strip()
+            entry.side_effects = request.POST.get('side_effects', '').strip()
+            entry.notes = request.POST.get('notes', '').strip()
+            entry.save()
+            messages.success(request, 'Dose log updated!')
+            return redirect('medication_log_list')
+        except Exception:
+            messages.error(request, 'Error updating dose log.')
+
+    context = {
+        'entry': entry,
+        'schedules': schedules,
+        'status_choices': MedicationLog.STATUS_CHOICES,
+        'editing': True,
+    }
+    return render(request, 'medication_log_form.html', context)
+
+
+@login_required
+def medication_log_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(MedicationLog, id=pk, user=request.user).delete()
+        messages.success(request, 'Dose log deleted!')
+    return redirect('medication_log_list')
+
+
+# ===== Medication Inventory =====
+
+@login_required
+def medication_inventory_list(request):
+    entries = MedicationInventory.objects.filter(user=request.user).order_by('medication_name')
+
+    search_query = request.GET.get('q', '')
+    if search_query:
+        entries = entries.filter(medication_name__icontains=search_query)
+
+    refill_filter = request.GET.get('refill', '')
+    if refill_filter == 'needed':
+        entries = [e for e in entries if e.needs_refill]
+    else:
+        entries = list(entries)
+
+    refill_count = sum(1 for e in entries if e.needs_refill)
+    expired_count = sum(1 for e in entries if e.is_expired)
+    total_count = len(entries)
+
+    paginator = Paginator(entries, 25)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'refill_filter': refill_filter,
+        'refill_count': refill_count,
+        'expired_count': expired_count,
+        'total_count': total_count,
+    }
+    return render(request, 'medication_inventory_list.html', context)
+
+
+@login_required
+def medication_inventory_add(request):
+    schedules = MedicationSchedule.objects.filter(user=request.user, is_active=True).order_by('medication_name')
+
+    if request.method == 'POST':
+        try:
+            sched_pk = request.POST.get('schedule') or None
+            schedule_obj = None
+            if sched_pk:
+                schedule_obj = MedicationSchedule.objects.filter(id=sched_pk, user=request.user).first()
+            last_refill_str = request.POST.get('last_refill_date', '').strip()
+            exp_str = request.POST.get('expiration_date', '').strip()
+            MedicationInventory.objects.create(
+                user=request.user,
+                schedule=schedule_obj,
+                medication_name=request.POST.get('medication_name', '').strip(),
+                current_count=int(request.POST.get('current_count', 0) or 0),
+                units_per_dose=float(request.POST.get('units_per_dose', 1.0) or 1.0),
+                refill_reminder_threshold=int(request.POST.get('refill_reminder_threshold', 7) or 7),
+                last_refill_date=datetime.strptime(last_refill_str, '%Y-%m-%d').date() if last_refill_str else None,
+                expiration_date=datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None,
+                pharmacy_name=request.POST.get('pharmacy_name', '').strip(),
+                notes=request.POST.get('notes', '').strip(),
+            )
+            messages.success(request, 'Inventory entry added!')
+            return redirect('medication_inventory_list')
+        except Exception:
+            messages.error(request, 'Error adding inventory entry.')
+
+    context = {
+        'schedules': schedules,
+        'editing': False,
+    }
+    return render(request, 'medication_inventory_form.html', context)
+
+
+@login_required
+def medication_inventory_edit(request, pk):
+    entry = get_object_or_404(MedicationInventory, id=pk, user=request.user)
+    schedules = MedicationSchedule.objects.filter(user=request.user, is_active=True).order_by('medication_name')
+
+    if request.method == 'POST':
+        try:
+            sched_pk = request.POST.get('schedule') or None
+            schedule_obj = MedicationSchedule.objects.filter(id=sched_pk, user=request.user).first() if sched_pk else None
+            last_refill_str = request.POST.get('last_refill_date', '').strip()
+            exp_str = request.POST.get('expiration_date', '').strip()
+            entry.schedule = schedule_obj
+            entry.medication_name = request.POST.get('medication_name', '').strip()
+            entry.current_count = int(request.POST.get('current_count', 0) or 0)
+            entry.units_per_dose = float(request.POST.get('units_per_dose', 1.0) or 1.0)
+            entry.refill_reminder_threshold = int(request.POST.get('refill_reminder_threshold', 7) or 7)
+            entry.last_refill_date = datetime.strptime(last_refill_str, '%Y-%m-%d').date() if last_refill_str else None
+            entry.expiration_date = datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None
+            entry.pharmacy_name = request.POST.get('pharmacy_name', '').strip()
+            entry.notes = request.POST.get('notes', '').strip()
+            entry.save()
+            messages.success(request, 'Inventory entry updated!')
+            return redirect('medication_inventory_list')
+        except Exception:
+            messages.error(request, 'Error updating inventory entry.')
+
+    context = {
+        'entry': entry,
+        'schedules': schedules,
+        'editing': True,
+    }
+    return render(request, 'medication_inventory_form.html', context)
+
+
+@login_required
+def medication_inventory_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(MedicationInventory, id=pk, user=request.user).delete()
+        messages.success(request, 'Inventory entry deleted!')
+    return redirect('medication_inventory_list')
+
+
+
 
 @login_required
 def health_goal_list(request):
