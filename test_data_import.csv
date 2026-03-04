@@ -1,0 +1,193 @@
+Date,Type,Name,Value,Unit,Normal Min,Normal Max
+2025-09-01,Vitals,,"75.2 kg, 68 bpm, 118/76 mmHg",,,
+2025-09-01,Blood Test,Hemoglobin,9.1,mmol/L,8.5,11.0
+2025-09-01,Blood Test,Hematocrit,0.44,L/L,0.41,0.51
+2025-09-01,Blood Test,Red Blood Cells,5.1,x10^12/L,4.5,5.9
+2025-09-01,Blood Test,White Blood Cells,6.5,x10^9/L,4.0,11.0
+2025-09-01,Blood Test,Platelets,245,x10^9/L,150,400
+2025-09-01,Blood Test,MCV,88,fL,80,100
+2025-09-01,Blood Test,MCH,1.95,fmol,1.7,2.2
+2025-09-01,Blood Test,MCHC,21.0,mmol/L,19,23
+2025-09-01,Blood Test,Total Cholesterol,4.8,mmol/L,0,5.0
+2025-09-01,Blood Test,HDL Cholesterol,1.3,mmol/L,1.0,2.0
+2025-09-01,Blood Test,LDL Cholesterol,2.8,mmol/L,0,3.0
+2025-09-01,Blood Test,Triglycerides,1.2,mmol/L,0.5,2.0
+2025-09-01,Blood Test,Glucose,5.2,mmol/L,4.0,6.0
+2025-09-01,Blood Test,HbA1c,36,mmol/mol,20,42
+2025-09-01,Blood Test,Creatinine,85,µmol/L,60,110
+2025-09-01,Blood Test,Urea,5.0,mmol/L,2.5,7.5
+2025-09-01,Blood Test,ALT,22,U/L,10,45
+2025-09-01,Blood Test,AST,20,U/L,10,35
+2025-09-01,Blood Test,Gamma-GT,28,U/L,5,55
+2025-09-01,Blood Test,Alkaline Phosphatase,75,U/L,40,120
+2025-09-01,Blood Test,Total Bilirubin,10,µmol/L,0,17
+2025-09-01,Blood Test,TSH,2.1,mU/L,0.4,4.0
+2025-09-01,Blood Test,Free T4,16,pmol/L,9,24
+2025-09-01,Blood Test,Vitamin D,68,nmol/L,50,150
+2025-09-01,Blood Test,Vitamin B12,380,pmol/L,140,650
+2025-09-01,Blood Test,Ferritin,95,µg/L,30,400
+2025-09-01,Blood Test,CRP,2.1,mg/L,0,10
+2025-09-08,Vitals,,"75.0 kg, 70 bpm, 119/77 mmHg",,,
+2025-09-15,Vitals,,"74.8 kg, 67 bpm, 116/74 mmHg",,,
+2025-09-22,Vitals,,"74.9 kg, 69 bpm, 120/78 mmHg",,,
+2025-10-01,Vitals,,"74.5 kg, 69 bpm, 119/77 mmHg",,,
+2025-10-01,Blood Test,Hemoglobin,9.3,mmol/L,8.5,11.0
+2025-10-01,Blood Test,Hematocrit,0.45,L/L,0.41,0.51
+2025-10-01,Blood Test,Red Blood Cells,5.2,x10^12/L,4.5,5.9
+2025-10-01,Blood Test,White Blood Cells,7.1,x10^9/L,4.0,11.0
+2025-10-01,Blood Test,Platelets,258,x10^9/L,150,400
+2025-10-01,Blood Test,Glucose,5.4,mmol/L,4.0,6.0
+2025-10-01,Blood Test,HbA1c,37,mmol/mol,20,42
+2025-10-01,Blood Test,Total Cholesterol,4.9,mmol/L,0,5.0
+2025-10-01,Blood Test,HDL Cholesterol,1.4,mmol/L,1.0,2.0
+2025-10-01,Blood Test,LDL Cholesterol,2.9,mmol/L,0,3.0
+2025-10-01,Blood Test,Triglycerides,1.3,mmol/L,0.5,2.0
+2025-10-01,Blood Test,Creatinine,82,µmol/L,60,110
+2025-10-01,Blood Test,Urea,5.2,mmol/L,2.5,7.5
+2025-10-01,Blood Test,ALT,25,U/L,10,45
+2025-10-01,Blood Test,AST,22,U/L,10,35
+2025-10-01,Blood Test,TSH,1.9,mU/L,0.4,4.0
+2025-10-01,Blood Test,Free T4,17,pmol/L,9,24
+2025-10-01,Blood Test,Vitamin D,72,nmol/L,50,150
+2025-10-01,Blood Test,Vitamin B12,410,pmol/L,140,650
+2025-10-01,Blood Test,Ferritin,102,µg/L,30,400
+2025-10-01,Blood Test,CRP,1.8,mg/L,0,10
+2025-10-08,Vitals,,"74.3 kg, 71 bpm, 121/79 mmHg",,,
+2025-10-15,Vitals,,"74.2 kg, 68 bpm, 117/75 mmHg",,,
+2025-10-22,Vitals,,"74.4 kg, 66 bpm, 115/73 mmHg",,,
+2025-11-01,Vitals,,"74.0 kg, 70 bpm, 118/76 mmHg",,,
+2025-11-01,Blood Test,Hemoglobin,9.0,mmol/L,8.5,11.0
+2025-11-01,Blood Test,Hematocrit,0.43,L/L,0.41,0.51
+2025-11-01,Blood Test,Red Blood Cells,5.0,x10^12/L,4.5,5.9
+2025-11-01,Blood Test,White Blood Cells,8.2,x10^9/L,4.0,11.0
+2025-11-01,Blood Test,Platelets,230,x10^9/L,150,400
+2025-11-01,Blood Test,MCV,86,fL,80,100
+2025-11-01,Blood Test,MCH,1.90,fmol,1.7,2.2
+2025-11-01,Blood Test,MCHC,20.5,mmol/L,19,23
+2025-11-01,Blood Test,Glucose,5.6,mmol/L,4.0,6.0
+2025-11-01,Blood Test,HbA1c,38,mmol/mol,20,42
+2025-11-01,Blood Test,Total Cholesterol,5.1,mmol/L,0,5.0
+2025-11-01,Blood Test,HDL Cholesterol,1.2,mmol/L,1.0,2.0
+2025-11-01,Blood Test,LDL Cholesterol,3.1,mmol/L,0,3.0
+2025-11-01,Blood Test,Triglycerides,1.5,mmol/L,0.5,2.0
+2025-11-01,Blood Test,Creatinine,88,µmol/L,60,110
+2025-11-01,Blood Test,Urea,5.8,mmol/L,2.5,7.5
+2025-11-01,Blood Test,ALT,30,U/L,10,45
+2025-11-01,Blood Test,AST,26,U/L,10,35
+2025-11-01,Blood Test,Gamma-GT,32,U/L,5,55
+2025-11-01,Blood Test,Alkaline Phosphatase,80,U/L,40,120
+2025-11-01,Blood Test,Total Bilirubin,12,µmol/L,0,17
+2025-11-01,Blood Test,Albumin,44,g/L,35,50
+2025-11-01,Blood Test,TSH,2.4,mU/L,0.4,4.0
+2025-11-01,Blood Test,Free T4,15,pmol/L,9,24
+2025-11-01,Blood Test,Vitamin D,58,nmol/L,50,150
+2025-11-01,Blood Test,Vitamin B12,350,pmol/L,140,650
+2025-11-01,Blood Test,Ferritin,88,µg/L,30,400
+2025-11-01,Blood Test,CRP,3.5,mg/L,0,10
+2025-11-08,Vitals,,"73.8 kg, 72 bpm, 122/80 mmHg",,,
+2025-11-15,Vitals,,"73.9 kg, 69 bpm, 119/77 mmHg",,,
+2025-11-22,Vitals,,"73.7 kg, 71 bpm, 120/78 mmHg",,,
+2025-12-01,Vitals,,"73.5 kg, 68 bpm, 117/75 mmHg",,,
+2025-12-01,Blood Test,Hemoglobin,8.8,mmol/L,8.5,11.0
+2025-12-01,Blood Test,Hematocrit,0.42,L/L,0.41,0.51
+2025-12-01,Blood Test,Red Blood Cells,4.9,x10^12/L,4.5,5.9
+2025-12-01,Blood Test,White Blood Cells,9.0,x10^9/L,4.0,11.0
+2025-12-01,Blood Test,Platelets,210,x10^9/L,150,400
+2025-12-01,Blood Test,Glucose,5.8,mmol/L,4.0,6.0
+2025-12-01,Blood Test,HbA1c,39,mmol/mol,20,42
+2025-12-01,Blood Test,Total Cholesterol,5.3,mmol/L,0,5.0
+2025-12-01,Blood Test,HDL Cholesterol,1.1,mmol/L,1.0,2.0
+2025-12-01,Blood Test,LDL Cholesterol,3.4,mmol/L,0,3.0
+2025-12-01,Blood Test,Triglycerides,1.7,mmol/L,0.5,2.0
+2025-12-01,Blood Test,Creatinine,91,µmol/L,60,110
+2025-12-01,Blood Test,Urea,6.1,mmol/L,2.5,7.5
+2025-12-01,Blood Test,ALT,35,U/L,10,45
+2025-12-01,Blood Test,AST,29,U/L,10,35
+2025-12-01,Blood Test,Gamma-GT,38,U/L,5,55
+2025-12-01,Blood Test,TSH,2.7,mU/L,0.4,4.0
+2025-12-01,Blood Test,Free T4,14,pmol/L,9,24
+2025-12-01,Blood Test,Vitamin D,52,nmol/L,50,150
+2025-12-01,Blood Test,Vitamin B12,295,pmol/L,140,650
+2025-12-01,Blood Test,Ferritin,75,µg/L,30,400
+2025-12-01,Blood Test,CRP,4.2,mg/L,0,10
+2025-12-08,Vitals,,"73.3 kg, 73 bpm, 124/82 mmHg",,,
+2025-12-15,Vitals,,"73.2 kg, 70 bpm, 120/79 mmHg",,,
+2025-12-22,Vitals,,"73.0 kg, 69 bpm, 118/76 mmHg",,,
+2026-01-01,Vitals,,"72.8 kg, 67 bpm, 116/74 mmHg",,,
+2026-01-01,Blood Test,Hemoglobin,9.2,mmol/L,8.5,11.0
+2026-01-01,Blood Test,Hematocrit,0.44,L/L,0.41,0.51
+2026-01-01,Blood Test,Red Blood Cells,5.1,x10^12/L,4.5,5.9
+2026-01-01,Blood Test,White Blood Cells,7.5,x10^9/L,4.0,11.0
+2026-01-01,Blood Test,Platelets,240,x10^9/L,150,400
+2026-01-01,Blood Test,MCV,89,fL,80,100
+2026-01-01,Blood Test,MCH,1.98,fmol,1.7,2.2
+2026-01-01,Blood Test,MCHC,21.5,mmol/L,19,23
+2026-01-01,Blood Test,Glucose,5.3,mmol/L,4.0,6.0
+2026-01-01,Blood Test,HbA1c,37,mmol/mol,20,42
+2026-01-01,Blood Test,Total Cholesterol,4.9,mmol/L,0,5.0
+2026-01-01,Blood Test,HDL Cholesterol,1.3,mmol/L,1.0,2.0
+2026-01-01,Blood Test,LDL Cholesterol,3.0,mmol/L,0,3.0
+2026-01-01,Blood Test,Triglycerides,1.4,mmol/L,0.5,2.0
+2026-01-01,Blood Test,Creatinine,84,µmol/L,60,110
+2026-01-01,Blood Test,Urea,5.5,mmol/L,2.5,7.5
+2026-01-01,Blood Test,ALT,28,U/L,10,45
+2026-01-01,Blood Test,AST,24,U/L,10,35
+2026-01-01,Blood Test,Gamma-GT,30,U/L,5,55
+2026-01-01,Blood Test,Alkaline Phosphatase,78,U/L,40,120
+2026-01-01,Blood Test,Total Bilirubin,9,µmol/L,0,17
+2026-01-01,Blood Test,Albumin,46,g/L,35,50
+2026-01-01,Blood Test,TSH,2.2,mU/L,0.4,4.0
+2026-01-01,Blood Test,Free T4,16,pmol/L,9,24
+2026-01-01,Blood Test,Free T3,5.5,pmol/L,3.5,7.8
+2026-01-01,Blood Test,Vitamin D,65,nmol/L,50,150
+2026-01-01,Blood Test,Vitamin B12,420,pmol/L,140,650
+2026-01-01,Blood Test,Ferritin,110,µg/L,30,400
+2026-01-01,Blood Test,Serum Iron,20,µmol/L,14,28
+2026-01-01,Blood Test,CRP,2.0,mg/L,0,10
+2026-01-01,Blood Test,Sodium,140,mmol/L,135,145
+2026-01-01,Blood Test,Potassium,4.2,mmol/L,3.5,5.0
+2026-01-01,Blood Test,Calcium,2.40,mmol/L,2.20,2.65
+2026-01-01,Blood Test,Magnesium,0.85,mmol/L,0.7,1.0
+2026-01-08,Vitals,,"72.6 kg, 66 bpm, 115/73 mmHg",,,
+2026-01-15,Vitals,,"72.5 kg, 68 bpm, 117/75 mmHg",,,
+2026-01-22,Vitals,,"72.4 kg, 70 bpm, 119/77 mmHg",,,
+2026-02-01,Vitals,,"72.2 kg, 69 bpm, 118/76 mmHg",,,
+2026-02-01,Blood Test,Hemoglobin,9.4,mmol/L,8.5,11.0
+2026-02-01,Blood Test,Hematocrit,0.46,L/L,0.41,0.51
+2026-02-01,Blood Test,Red Blood Cells,5.3,x10^12/L,4.5,5.9
+2026-02-01,Blood Test,White Blood Cells,6.8,x10^9/L,4.0,11.0
+2026-02-01,Blood Test,Platelets,262,x10^9/L,150,400
+2026-02-01,Blood Test,MCV,90,fL,80,100
+2026-02-01,Blood Test,MCH,2.01,fmol,1.7,2.2
+2026-02-01,Blood Test,MCHC,22.0,mmol/L,19,23
+2026-02-01,Blood Test,Glucose,5.1,mmol/L,4.0,6.0
+2026-02-01,Blood Test,HbA1c,36,mmol/mol,20,42
+2026-02-01,Blood Test,Total Cholesterol,4.6,mmol/L,0,5.0
+2026-02-01,Blood Test,HDL Cholesterol,1.4,mmol/L,1.0,2.0
+2026-02-01,Blood Test,LDL Cholesterol,2.7,mmol/L,0,3.0
+2026-02-01,Blood Test,Triglycerides,1.1,mmol/L,0.5,2.0
+2026-02-01,Blood Test,Creatinine,80,µmol/L,60,110
+2026-02-01,Blood Test,Urea,5.0,mmol/L,2.5,7.5
+2026-02-01,Blood Test,ALT,21,U/L,10,45
+2026-02-01,Blood Test,AST,19,U/L,10,35
+2026-02-01,Blood Test,Gamma-GT,26,U/L,5,55
+2026-02-01,Blood Test,Alkaline Phosphatase,72,U/L,40,120
+2026-02-01,Blood Test,Total Bilirubin,8,µmol/L,0,17
+2026-02-01,Blood Test,Albumin,47,g/L,35,50
+2026-02-01,Blood Test,TSH,2.0,mU/L,0.4,4.0
+2026-02-01,Blood Test,Free T4,17,pmol/L,9,24
+2026-02-01,Blood Test,Free T3,5.8,pmol/L,3.5,7.8
+2026-02-01,Blood Test,Vitamin D,70,nmol/L,50,150
+2026-02-01,Blood Test,Vitamin B12,445,pmol/L,140,650
+2026-02-01,Blood Test,Ferritin,118,µg/L,30,400
+2026-02-01,Blood Test,Serum Iron,22,µmol/L,14,28
+2026-02-01,Blood Test,CRP,1.5,mg/L,0,10
+2026-02-01,Blood Test,Sodium,141,mmol/L,135,145
+2026-02-01,Blood Test,Potassium,4.3,mmol/L,3.5,5.0
+2026-02-01,Blood Test,Calcium,2.42,mmol/L,2.20,2.65
+2026-02-01,Blood Test,Magnesium,0.88,mmol/L,0.7,1.0
+2026-02-01,Blood Test,Uric Acid,310,µmol/L,150,400
+2026-02-01,Blood Test,LDH,185,U/L,120,250
+2026-02-08,Vitals,,"72.0 kg, 67 bpm, 116/74 mmHg",,,
+2026-02-15,Vitals,,"71.9 kg, 68 bpm, 117/75 mmHg",,,
+2026-02-22,Vitals,,"71.8 kg, 69 bpm, 118/76 mmHg",,,
