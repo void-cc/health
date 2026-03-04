@@ -40,7 +40,7 @@
             {% endif %}
           </div>
           {% if sleep_stats.avg_duration %}
-          <small class="text-muted">{{ sleep_stats.avg_duration|floatformat:0|divisibleby:60 }}
+          <small class="text-muted">
             ~{{ sleep_stats.avg_duration|floatformat:0 }} min/night
           </small>
           {% endif %}

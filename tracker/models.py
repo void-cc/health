@@ -1,7 +1,9 @@
 from django.db import models
+from django.db.models import Avg, Count, Min, Max, Sum
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from django.utils import timezone
+from datetime import timedelta
 
 
 class BloodTest(models.Model):
@@ -536,6 +538,8 @@ class SleepLog(models.Model):
     IDEAL_DEEP_SLEEP_RATIO = 0.20  # Ideal deep sleep as fraction of total sleep
     IDEAL_REM_RATIO = 0.25  # Ideal REM as fraction of total sleep
     AWAKE_PENALTY_THRESHOLD_MINUTES = 60.0  # Minutes of awake time for full penalty
+    EARLY_MORNING_THRESHOLD_MINUTES = 360  # 6 AM in minutes; times before this are treated as next-day
+    MINUTES_PER_DAY = 1440
 
     date = models.DateField()
     bedtime = models.TimeField(null=True, blank=True)
@@ -627,12 +631,17 @@ class SleepLog(models.Model):
             return 'declining'
         return 'stable'
 
+    CONSISTENCY_STD_DEV_THRESHOLD = 120  # Minutes of std dev at which consistency score = 0
+
     @classmethod
     def sleep_consistency_score(cls, num_days=14):
         """Calculate how consistent sleep/wake times are over recent entries (0-100).
 
         Lower standard deviation in bedtime and wake time = higher consistency.
         A perfectly consistent schedule scores 100; high variance scores lower.
+
+        Returns None when there are fewer than 3 entries with valid bedtime
+        and wake time data.
         """
         import math
         recent = list(cls.objects.filter(
@@ -643,8 +652,8 @@ class SleepLog(models.Model):
 
         def time_to_minutes(t):
             mins = t.hour * 60 + t.minute
-            if mins < 360:  # Before 6 AM = next-day
-                mins += 1440
+            if mins < cls.EARLY_MORNING_THRESHOLD_MINUTES:
+                mins += cls.MINUTES_PER_DAY
             return mins
 
         bed_mins = [time_to_minutes(r.bedtime) for r in recent]
@@ -657,9 +666,8 @@ class SleepLog(models.Model):
 
         bed_std = std_dev(bed_mins)
         wake_std = std_dev(wake_mins)
-        # Average std in minutes; 0 min std = 100, 120+ min std = 0
         avg_std = (bed_std + wake_std) / 2
-        score = max(0, 100 - (avg_std / 120) * 100)
+        score = max(0, 100 - (avg_std / cls.CONSISTENCY_STD_DEV_THRESHOLD) * 100)
         return round(score, 1)
 
     @classmethod
@@ -682,8 +690,6 @@ class SleepLog(models.Model):
     @classmethod
     def weekly_summary(cls):
         """Return a summary dict of the last 7 days of sleep data."""
-        from datetime import timedelta
-        from django.db.models import Avg, Count, Min, Max
         cutoff = timezone.now().date() - timedelta(days=7)
         qs = cls.objects.filter(date__gte=cutoff)
         stats = qs.aggregate(
@@ -772,6 +778,14 @@ class DreamJournal(models.Model):
 
 
 class MacronutrientLog(models.Model):
+    CALORIE_TREND_THRESHOLD = 50  # Minimum kcal difference to indicate a trend
+    DEFAULT_CALORIE_TARGET = 2000  # Daily calorie target for nutrition scoring
+    PROTEIN_TARGET_GRAMS = 50.0  # Daily protein target for nutrition scoring
+    FIBER_TARGET_GRAMS = 25.0  # Daily fiber target for nutrition scoring
+    IDEAL_PROTEIN_PCT = 30  # Ideal protein percentage of total calories
+    IDEAL_CARB_PCT = 40  # Ideal carbohydrate percentage of total calories
+    IDEAL_FAT_PCT = 30  # Ideal fat percentage of total calories
+
     date = models.DateField()
     protein_grams = models.FloatField(null=True, blank=True)
     carbohydrate_grams = models.FloatField(null=True, blank=True)
@@ -815,8 +829,6 @@ class MacronutrientLog(models.Model):
     @classmethod
     def weekly_summary(cls):
         """Return a summary dict of the last 7 days of nutrition data."""
-        from datetime import timedelta
-        from django.db.models import Avg, Sum, Count, Min, Max
         cutoff = timezone.now().date() - timedelta(days=7)
         qs = cls.objects.filter(date__gte=cutoff)
         stats = qs.aggregate(
@@ -838,6 +850,7 @@ class MacronutrientLog(models.Model):
 
         Returns 'increasing', 'decreasing', or 'stable' based on
         comparison of recent half vs older half averages.
+        Returns None when there are fewer than 4 entries with calorie data.
         """
         recent = list(cls.objects.filter(
             calories__isnull=False,
@@ -850,9 +863,9 @@ class MacronutrientLog(models.Model):
         recent_avg = sum(r.calories for r in recent_half) / len(recent_half)
         older_avg = sum(r.calories for r in older_half) / len(older_half)
         diff = recent_avg - older_avg
-        if diff > 50:
+        if diff > cls.CALORIE_TREND_THRESHOLD:
             return 'increasing'
-        elif diff < -50:
+        elif diff < -cls.CALORIE_TREND_THRESHOLD:
             return 'decreasing'
         return 'stable'
 
@@ -861,34 +874,33 @@ class MacronutrientLog(models.Model):
         """Score 0-100 for this day's nutrition based on balance and adequacy.
 
         Factors:
-        - Calorie adequacy (40%): How close to 2000 kcal target
-        - Protein adequacy (25%): >= 50g target
-        - Fiber adequacy (15%): >= 25g target
-        - Macro balance (20%): How close to 30/40/30 protein/carb/fat split
+        - Calorie adequacy (40%): How close to DEFAULT_CALORIE_TARGET
+        - Protein adequacy (25%): >= PROTEIN_TARGET_GRAMS target
+        - Fiber adequacy (15%): >= FIBER_TARGET_GRAMS target
+        - Macro balance (20%): How close to IDEAL_PROTEIN/CARB/FAT_PCT split
         """
         score = 0.0
+        target_cal = self.DEFAULT_CALORIE_TARGET
         cals = self.calories or self.calculated_calories
         if cals and cals > 0:
-            # Calorie adequacy: 2000 target, penalize deviation
-            cal_ratio = min(cals, 2000) / 2000 if cals <= 2000 else 2000 / cals
+            cal_ratio = min(cals, target_cal) / target_cal if cals <= target_cal else target_cal / cals
             score += cal_ratio * 40.0
 
         protein = self.protein_grams or 0
         if protein > 0:
-            protein_score = min(protein / 50.0, 1.0)
+            protein_score = min(protein / self.PROTEIN_TARGET_GRAMS, 1.0)
             score += protein_score * 25.0
 
         fiber = self.fiber_grams or 0
         if fiber > 0:
-            fiber_score = min(fiber / 25.0, 1.0)
+            fiber_score = min(fiber / self.FIBER_TARGET_GRAMS, 1.0)
             score += fiber_score * 15.0
 
         ratios = self.macro_ratios
         if ratios:
-            # Ideal: 30% protein, 40% carbs, 30% fat
-            p_diff = abs(ratios['protein_pct'] - 30)
-            c_diff = abs(ratios['carb_pct'] - 40)
-            f_diff = abs(ratios['fat_pct'] - 30)
+            p_diff = abs(ratios['protein_pct'] - self.IDEAL_PROTEIN_PCT)
+            c_diff = abs(ratios['carb_pct'] - self.IDEAL_CARB_PCT)
+            f_diff = abs(ratios['fat_pct'] - self.IDEAL_FAT_PCT)
             avg_diff = (p_diff + c_diff + f_diff) / 3
             balance_score = max(0, 1 - avg_diff / 30)
             score += balance_score * 20.0

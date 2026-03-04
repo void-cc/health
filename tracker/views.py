@@ -51,8 +51,9 @@ import io
 import json
 import re
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Q as models_Q, Avg, Count, Case, When, Value, IntegerField
+from django.db.models import Q as models_Q, Avg, Count, Case, When, Value, IntegerField, Min, Max, Sum
 from django.core.paginator import Paginator
+from datetime import timedelta
 import functools
 
 
@@ -2225,9 +2226,6 @@ def dream_delete(request, pk):
 @staff_only
 def sleep_dashboard(request):
     """Consolidated sleep analytics dashboard combining sleep, circadian, and dream data."""
-    from datetime import timedelta
-    from django.db.models import Min, Max
-
     # Date range
     period = request.GET.get('period', '30')
     try:
@@ -2317,9 +2315,6 @@ def sleep_dashboard(request):
 @staff_only
 def nutrition_dashboard(request):
     """Consolidated nutrition analytics dashboard combining macros, food, fasting, and hydration."""
-    from datetime import timedelta
-    from django.db.models import Min, Max, Sum
-
     # Date range
     period = request.GET.get('period', '30')
     try:
