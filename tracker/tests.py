@@ -1528,6 +1528,39 @@ class Phase4LoginTests(TestCase):
         self.assertContains(response, 'timed out')
 
 
+class SocialLoginURLTests(TestCase):
+    """Test that social login buttons link to proper OAuth URLs."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_login_page_has_google_oauth_url(self):
+        response = self.client.get(reverse('login'))
+        self.assertContains(response, '/accounts/social/google/login/')
+        self.assertNotContains(response, 'href="#"')
+
+    def test_login_page_has_microsoft_oauth_url(self):
+        response = self.client.get(reverse('login'))
+        self.assertContains(response, '/accounts/social/microsoft/login/')
+
+    def test_login_page_has_apple_oauth_url(self):
+        response = self.client.get(reverse('login'))
+        self.assertContains(response, '/accounts/social/apple/login/')
+
+    def test_register_page_has_google_oauth_url(self):
+        response = self.client.get(reverse('register'))
+        self.assertContains(response, '/accounts/social/google/login/')
+        self.assertNotContains(response, 'href="#"')
+
+    def test_register_page_has_microsoft_oauth_url(self):
+        response = self.client.get(reverse('register'))
+        self.assertContains(response, '/accounts/social/microsoft/login/')
+
+    def test_register_page_has_apple_oauth_url(self):
+        response = self.client.get(reverse('register'))
+        self.assertContains(response, '/accounts/social/apple/login/')
+
+
 class Phase4LogoutTests(TestCase):
     def setUp(self):
         self.client = Client()
