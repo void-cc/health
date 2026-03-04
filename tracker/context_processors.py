@@ -53,9 +53,11 @@ SIDEBAR_CONFIG = [
         "collapsible": True,
         "staff_only": True,
         "items": [
+            {"label": "Sleep Analytics", "icon": "fa-chart-bar", "url_name": "sleep_dashboard", "match": ["sleep_dashboard"]},
             {"label": "Sleep Tracking", "icon": "fa-bed", "url_name": "sleep_list", "match": ["sleep"]},
             {"label": "Circadian Rhythm", "icon": "fa-clock", "url_name": "circadian_list", "match": ["circadian"]},
             {"label": "Dream Journal", "icon": "fa-cloud-moon", "url_name": "dream_list", "match": ["dream"]},
+            {"label": "Nutrition Analytics", "icon": "fa-chart-area", "url_name": "nutrition_dashboard", "match": ["nutrition_dashboard"]},
             {"label": "Macronutrients", "icon": "fa-drumstick-bite", "url_name": "macro_list", "match": ["macro"]},
             {"label": "Micronutrients", "icon": "fa-capsules", "url_name": "micro_list", "match": ["micro"]},
             {"label": "Food Entries", "icon": "fa-utensils", "url_name": "food_list", "match": ["food"]},

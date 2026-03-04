@@ -51,8 +51,9 @@ import io
 import json
 import re
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Q as models_Q, Avg, Count, Case, When, Value, IntegerField
+from django.db.models import Q as models_Q, Avg, Count, Case, When, Value, IntegerField, Min, Max, Sum
 from django.core.paginator import Paginator
+from datetime import timedelta
 import functools
 
 
@@ -2218,6 +2219,210 @@ def dream_delete(request, pk):
         get_object_or_404(DreamJournal, id=pk).delete()
         messages.success(request, 'Dream journal entry deleted!')
     return redirect('dream_list')
+
+
+# ===== Sleep Dashboard (Consolidated Analytics) =====
+
+@staff_only
+def sleep_dashboard(request):
+    """Consolidated sleep analytics dashboard combining sleep, circadian, and dream data."""
+    # Date range
+    period = request.GET.get('period', '30')
+    try:
+        days = int(period)
+    except (ValueError, TypeError):
+        days = 30
+    cutoff = timezone.now().date() - timedelta(days=days)
+
+    sleep_entries = SleepLog.objects.filter(date__gte=cutoff).order_by('-date')
+    circadian_entries = CircadianRhythmLog.objects.filter(date__gte=cutoff).order_by('-date')
+    dream_entries = DreamJournal.objects.filter(date__gte=cutoff).order_by('-date')
+
+    # Sleep stats
+    sleep_stats = sleep_entries.aggregate(
+        avg_duration=Avg('total_sleep_minutes'),
+        avg_quality=Avg('sleep_quality_score'),
+        avg_deep=Avg('deep_sleep_minutes'),
+        avg_rem=Avg('rem_minutes'),
+        avg_light=Avg('light_sleep_minutes'),
+        avg_awake=Avg('awake_minutes'),
+        total_entries=Count('id'),
+        min_duration=Min('total_sleep_minutes'),
+        max_duration=Max('total_sleep_minutes'),
+    )
+
+    # Automated insights
+    consistency_score = SleepLog.sleep_consistency_score(num_days=days)
+    sleep_debt = SleepLog.sleep_debt_hours(num_days=min(days, 7))
+    weekly_summary = SleepLog.weekly_summary()
+
+    # Sleep architecture breakdown for doughnut chart
+    arch_data = {
+        'deep': round(sleep_stats['avg_deep'] or 0, 1),
+        'rem': round(sleep_stats['avg_rem'] or 0, 1),
+        'light': round(sleep_stats['avg_light'] or 0, 1),
+        'awake': round(sleep_stats['avg_awake'] or 0, 1),
+    }
+
+    # Trend chart data
+    chart_entries = sleep_entries.order_by('date')
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_quality = [e.sleep_quality_score for e in chart_entries if e.sleep_quality_score is not None]
+    chart_duration = [e.total_sleep_minutes for e in chart_entries if e.total_sleep_minutes is not None]
+
+    # Circadian insights
+    circadian_stats = circadian_entries.aggregate(
+        avg_light_exposure=Avg('light_exposure_minutes'),
+        total_circadian=Count('id'),
+    )
+    # Get optimal sleep window from most recent circadian entry
+    optimal_window = None
+    latest_circadian = circadian_entries.first()
+    if latest_circadian:
+        optimal_window = latest_circadian.optimal_sleep_window
+
+    # Dream stats
+    dream_stats = dream_entries.aggregate(
+        avg_lucidity=Avg('lucidity_level'),
+        total_dreams=Count('id'),
+    )
+
+    # Recent entries for quick view
+    recent_sleep = sleep_entries[:5]
+    recent_dreams = dream_entries[:3]
+
+    context = {
+        'sleep_stats': sleep_stats,
+        'consistency_score': consistency_score,
+        'sleep_debt': sleep_debt,
+        'weekly_summary': weekly_summary,
+        'arch_data': json.dumps(arch_data),
+        'chart_dates': json.dumps(chart_dates),
+        'chart_quality': json.dumps(chart_quality),
+        'chart_duration': json.dumps(chart_duration),
+        'circadian_stats': circadian_stats,
+        'optimal_window': optimal_window,
+        'dream_stats': dream_stats,
+        'recent_sleep': recent_sleep,
+        'recent_dreams': recent_dreams,
+        'period': period,
+    }
+    return render(request, 'sleep_dashboard.html', context)
+
+
+# ===== Nutrition Dashboard (Consolidated Analytics) =====
+
+@staff_only
+def nutrition_dashboard(request):
+    """Consolidated nutrition analytics dashboard combining macros, food, fasting, and hydration."""
+    # Date range
+    period = request.GET.get('period', '30')
+    try:
+        days = int(period)
+    except (ValueError, TypeError):
+        days = 30
+    cutoff = timezone.now().date() - timedelta(days=days)
+
+    macro_entries = MacronutrientLog.objects.filter(date__gte=cutoff).order_by('-date')
+    food_entries = FoodEntry.objects.filter(date__gte=cutoff).order_by('-date')
+    fasting_entries = FastingLog.objects.filter(date__gte=cutoff).order_by('-date')
+    hydration_entries = HydrationLog.objects.filter(date__gte=cutoff).order_by('-date')
+    caffeine_entries = CaffeineAlcoholLog.objects.filter(date__gte=cutoff).order_by('-date')
+
+    # Macro stats
+    macro_stats = macro_entries.aggregate(
+        avg_calories=Avg('calories'),
+        avg_protein=Avg('protein_grams'),
+        avg_carbs=Avg('carbohydrate_grams'),
+        avg_fat=Avg('fat_grams'),
+        avg_fiber=Avg('fiber_grams'),
+        total_entries=Count('id'),
+        total_calories=Sum('calories'),
+    )
+
+    # Calorie trend
+    calorie_trend = MacronutrientLog.calorie_trend(num_days=days)
+    weekly_nutrition = MacronutrientLog.weekly_summary()
+
+    # Average macro ratios for doughnut chart
+    avg_protein = macro_stats.get('avg_protein') or 0
+    avg_carbs = macro_stats.get('avg_carbs') or 0
+    avg_fat = macro_stats.get('avg_fat') or 0
+    macro_doughnut = {
+        'protein': round(avg_protein, 1),
+        'carbs': round(avg_carbs, 1),
+        'fat': round(avg_fat, 1),
+    }
+
+    # Calorie trend chart data
+    chart_entries = macro_entries.order_by('date')
+    chart_dates = [e.date.isoformat() for e in chart_entries]
+    chart_calories = [e.calories for e in chart_entries if e.calories is not None]
+    chart_protein = [e.protein_grams for e in chart_entries if e.protein_grams is not None]
+
+    # Fasting stats
+    fasting_stats = fasting_entries.aggregate(
+        avg_duration=Avg('actual_hours'),
+        total_fasts=Count('id'),
+    )
+    fasts_with_goal = fasting_entries.filter(
+        target_hours__isnull=False, actual_hours__isnull=False,
+    )
+    fasting_goals_met = sum(
+        1 for f in fasts_with_goal
+        if f.actual_hours and f.target_hours and f.actual_hours >= f.target_hours
+    )
+
+    # Hydration stats
+    hydration_stats = hydration_entries.aggregate(
+        avg_intake=Avg('fluid_intake_ml'),
+        avg_goal=Avg('goal_ml'),
+        total_entries=Count('id'),
+    )
+    hydration_goal_pct = None
+    if hydration_stats['avg_intake'] and hydration_stats['avg_goal'] and hydration_stats['avg_goal'] > 0:
+        hydration_goal_pct = round(
+            (hydration_stats['avg_intake'] / hydration_stats['avg_goal']) * 100, 1
+        )
+
+    # Food entries summary
+    food_stats = food_entries.aggregate(
+        total_foods=Count('id'),
+        avg_food_calories=Avg('calories'),
+    )
+
+    # Caffeine stats
+    caffeine_only = caffeine_entries.filter(substance='caffeine')
+    caffeine_stats = caffeine_only.aggregate(
+        avg_caffeine=Avg('amount_mg'),
+        total_caffeine_logs=Count('id'),
+    )
+
+    # Nutrition scores for recent entries
+    recent_macros = macro_entries[:7]
+    nutrition_scores = [
+        {'date': e.date.isoformat(), 'score': e.nutrition_score}
+        for e in recent_macros
+    ]
+
+    context = {
+        'macro_stats': macro_stats,
+        'calorie_trend': calorie_trend,
+        'weekly_nutrition': weekly_nutrition,
+        'macro_doughnut': json.dumps(macro_doughnut),
+        'chart_dates': json.dumps(chart_dates),
+        'chart_calories': json.dumps(chart_calories),
+        'chart_protein': json.dumps(chart_protein),
+        'fasting_stats': fasting_stats,
+        'fasting_goals_met': fasting_goals_met,
+        'hydration_stats': hydration_stats,
+        'hydration_goal_pct': hydration_goal_pct,
+        'food_stats': food_stats,
+        'caffeine_stats': caffeine_stats,
+        'nutrition_scores': json.dumps(nutrition_scores),
+        'period': period,
+    }
+    return render(request, 'nutrition_dashboard.html', context)
 
 
 # ===== Macronutrient Log =====

@@ -1,62 +1,76 @@
 {% extends 'base.html' %}
+{% block title %}{% if editing %}Edit{% else %}Add{% endif %} Sleep Log{% endblock %}
 {% block content %}
-<div class="container my-5">
-  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Sleep Log</h2>
+<div class="container-fluid px-4" style="max-width: 720px;">
+  <div class="mb-4">
+    <h1 class="h3 fw-semibold text-body">{% if editing %}Edit{% else %}Add{% endif %} Sleep Log</h1>
+    <p class="text-muted small mb-0">Record your nightly sleep data. Quality score is auto-calculated if left blank.</p>
+  </div>
+
   <form method="POST">
     {% csrf_token %}
-    <div class="mb-3">
-      <label for="date" class="form-label">Date:</label>
-      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold text-muted small text-uppercase mb-3">Schedule</h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="date" class="form-label small">Date</label>
+            <input type="date" class="form-control form-control-sm" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+          </div>
+          <div class="col-md-4">
+            <label for="bedtime" class="form-label small">Bedtime</label>
+            <input type="time" class="form-control form-control-sm" name="bedtime" id="bedtime" value="{% if editing and entry.bedtime is not None %}{{ entry.bedtime|time:'H:i' }}{% endif %}" />
+          </div>
+          <div class="col-md-4">
+            <label for="wake_time" class="form-label small">Wake Time</label>
+            <input type="time" class="form-control form-control-sm" name="wake_time" id="wake_time" value="{% if editing and entry.wake_time is not None %}{{ entry.wake_time|time:'H:i' }}{% endif %}" />
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="mb-3">
-      <label for="bedtime" class="form-label">Bedtime:</label>
-      <input type="time" class="form-control" name="bedtime" id="bedtime" value="{% if editing and entry.bedtime is not None %}{{ entry.bedtime|time:'H:i' }}{% endif %}" />
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold text-muted small text-uppercase mb-3">Sleep Stages</h6>
+        <div class="row g-3">
+          <div class="col-md-6 col-lg-4">
+            <label for="total_sleep_minutes" class="form-label small">Total Sleep (min)</label>
+            <input type="number" class="form-control form-control-sm" name="total_sleep_minutes" id="total_sleep_minutes" value="{% if editing and entry.total_sleep_minutes is not None %}{{ entry.total_sleep_minutes }}{% endif %}" />
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <label for="deep_sleep_minutes" class="form-label small">Deep Sleep (min)</label>
+            <input type="number" class="form-control form-control-sm" name="deep_sleep_minutes" id="deep_sleep_minutes" value="{% if editing and entry.deep_sleep_minutes is not None %}{{ entry.deep_sleep_minutes }}{% endif %}" />
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <label for="rem_minutes" class="form-label small">REM (min)</label>
+            <input type="number" class="form-control form-control-sm" name="rem_minutes" id="rem_minutes" value="{% if editing and entry.rem_minutes is not None %}{{ entry.rem_minutes }}{% endif %}" />
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <label for="light_sleep_minutes" class="form-label small">Light Sleep (min)</label>
+            <input type="number" class="form-control form-control-sm" name="light_sleep_minutes" id="light_sleep_minutes" value="{% if editing and entry.light_sleep_minutes is not None %}{{ entry.light_sleep_minutes }}{% endif %}" />
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <label for="awake_minutes" class="form-label small">Awake (min)</label>
+            <input type="number" class="form-control form-control-sm" name="awake_minutes" id="awake_minutes" value="{% if editing and entry.awake_minutes is not None %}{{ entry.awake_minutes }}{% endif %}" />
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <label for="sleep_quality_score" class="form-label small">Quality Score <span class="text-muted">(optional)</span></label>
+            <input type="number" class="form-control form-control-sm" name="sleep_quality_score" id="sleep_quality_score" step="0.1" min="0" max="100" placeholder="Auto-calculated" value="{% if editing and entry.sleep_quality_score is not None %}{{ entry.sleep_quality_score }}{% endif %}" />
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="mb-3">
-      <label for="wake_time" class="form-label">Wake Time:</label>
-      <input type="time" class="form-control" name="wake_time" id="wake_time" value="{% if editing and entry.wake_time is not None %}{{ entry.wake_time|time:'H:i' }}{% endif %}" />
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h6 class="fw-semibold text-muted small text-uppercase mb-3">Notes</h6>
+        <textarea class="form-control form-control-sm" name="notes" id="notes" rows="3" placeholder="Any observations about your sleep...">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+      </div>
     </div>
 
-    <div class="mb-3">
-      <label for="total_sleep_minutes" class="form-label">Total Sleep (minutes):</label>
-      <input type="number" class="form-control" name="total_sleep_minutes" id="total_sleep_minutes" value="{% if editing and entry.total_sleep_minutes is not None %}{{ entry.total_sleep_minutes }}{% endif %}" />
-    </div>
-
-    <div class="mb-3">
-      <label for="rem_minutes" class="form-label">REM (minutes):</label>
-      <input type="number" class="form-control" name="rem_minutes" id="rem_minutes" value="{% if editing and entry.rem_minutes is not None %}{{ entry.rem_minutes }}{% endif %}" />
-    </div>
-
-    <div class="mb-3">
-      <label for="deep_sleep_minutes" class="form-label">Deep Sleep (minutes):</label>
-      <input type="number" class="form-control" name="deep_sleep_minutes" id="deep_sleep_minutes" value="{% if editing and entry.deep_sleep_minutes is not None %}{{ entry.deep_sleep_minutes }}{% endif %}" />
-    </div>
-
-    <div class="mb-3">
-      <label for="light_sleep_minutes" class="form-label">Light Sleep (minutes):</label>
-      <input type="number" class="form-control" name="light_sleep_minutes" id="light_sleep_minutes" value="{% if editing and entry.light_sleep_minutes is not None %}{{ entry.light_sleep_minutes }}{% endif %}" />
-    </div>
-
-    <div class="mb-3">
-      <label for="awake_minutes" class="form-label">Awake (minutes):</label>
-      <input type="number" class="form-control" name="awake_minutes" id="awake_minutes" value="{% if editing and entry.awake_minutes is not None %}{{ entry.awake_minutes }}{% endif %}" />
-    </div>
-
-    <div class="mb-3">
-      <label for="sleep_quality_score" class="form-label">Sleep Quality Score:</label>
-      <input type="number" class="form-control" name="sleep_quality_score" id="sleep_quality_score" step="0.1" value="{% if editing and entry.sleep_quality_score is not None %}{{ entry.sleep_quality_score }}{% endif %}" />
-    </div>
-
-    <div class="mb-3">
-      <label for="notes" class="form-label">Notes:</label>
-      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
-    </div>
-
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
-      <a href="{% url 'sleep_list' %}" class="btn btn-secondary">Cancel</a>
+    <div class="d-flex justify-content-end gap-2">
+      <a href="{% url 'sleep_list' %}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+      <button type="submit" class="btn btn-primary btn-sm">{% if editing %}Update{% else %}Save{% endif %}</button>
     </div>
   </form>
 </div>

@@ -1,176 +1,230 @@
 {% extends 'base.html' %}
 {% load json_filters %}
+{% block title %}Macronutrient Log{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2><i class="fas fa-utensils"></i> Macronutrient Log</h2>
-  <a href="{% url 'macro_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Entry</a>
-</div>
+<div class="container-fluid px-4">
+  <!-- Page Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h1 class="h3 mb-1 fw-semibold text-body">Macronutrient Log</h1>
+      <p class="text-muted mb-0 small">Track daily protein, carbs, fat, and calorie intake</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'nutrition_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-chart-bar me-1"></i> Analytics
+      </a>
+      <a href="{% url 'macro_add' %}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus me-1"></i> Add Entry
+      </a>
+    </div>
+  </div>
 
-<!-- Summary Statistics -->
-{% if stats.total_entries %}
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-2">
-    <div class="card text-center border-primary">
-      <div class="card-body py-2">
-        <div class="text-muted small">Entries</div>
-        <div class="h5 mb-0">{{ stats.total_entries }}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-2">
-    <div class="card text-center border-danger">
-      <div class="card-body py-2">
-        <div class="text-muted small">Avg Calories</div>
-        <div class="h5 mb-0">{% if stats.avg_calories is not None %}{{ stats.avg_calories|floatformat:0 }}{% else %}-{% endif %}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-2">
-    <div class="card text-center border-success">
-      <div class="card-body py-2">
-        <div class="text-muted small">Avg Protein</div>
-        <div class="h5 mb-0">{% if stats.avg_protein is not None %}{{ stats.avg_protein|floatformat:0 }}g{% else %}-{% endif %}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-2">
-    <div class="card text-center border-info">
-      <div class="card-body py-2">
-        <div class="text-muted small">Avg Carbs</div>
-        <div class="h5 mb-0">{% if stats.avg_carbs is not None %}{{ stats.avg_carbs|floatformat:0 }}g{% else %}-{% endif %}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-2">
-    <div class="card text-center border-warning">
-      <div class="card-body py-2">
-        <div class="text-muted small">Avg Fat</div>
-        <div class="h5 mb-0">{% if stats.avg_fat is not None %}{{ stats.avg_fat|floatformat:0 }}g{% else %}-{% endif %}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-2">
-    <div class="card text-center border-secondary">
-      <div class="card-body py-2">
-        <div class="text-muted small">Avg Fiber</div>
-        <div class="h5 mb-0">{% if stats.avg_fiber is not None %}{{ stats.avg_fiber|floatformat:0 }}g{% else %}-{% endif %}</div>
-      </div>
-    </div>
-  </div>
-</div>
-{% endif %}
-
-<!-- Date Filter -->
-<form method="get" class="row g-2 mb-4 align-items-end">
-  <div class="col-auto">
-    <label for="startDate" class="form-label small mb-0">From</label>
-    <input type="date" class="form-control form-control-sm" id="startDate" name="start_date" value="{{ start_date }}">
-  </div>
-  <div class="col-auto">
-    <label for="endDate" class="form-label small mb-0">To</label>
-    <input type="date" class="form-control form-control-sm" id="endDate" name="end_date" value="{{ end_date }}">
-  </div>
-  <div class="col-auto">
-    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-filter"></i> Filter</button>
-    <a href="{% url 'macro_list' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i> Clear</a>
-  </div>
-</form>
-
-<!-- Trend Chart -->
-{% if stats.total_entries and stats.total_entries > 1 %}
-<div class="card mb-4">
-  <div class="card-body">
-    <h6 class="card-title"><i class="fas fa-chart-area"></i> Macronutrient Trends</h6>
-    <canvas id="macroTrendChart" height="80"></canvas>
-  </div>
-</div>
-{% endif %}
-
-{% if entries %}
-<div class="table-responsive">
-  <table class="table table-striped table-hover align-middle">
-    <thead>
-      <tr>
-        <th scope="col">Date</th>
-        <th scope="col">Protein (g)</th>
-        <th scope="col">Carbs (g)</th>
-        <th scope="col">Fat (g)</th>
-        <th scope="col">Calories</th>
-        <th scope="col">Fiber (g)</th>
-        <th scope="col">Total Macros</th>
-        <th scope="col">Macro Ratios</th>
-        <th scope="col">Notes</th>
-        <th scope="col">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for entry in entries %}
-      <tr>
-        <td>{{ entry.date|date:"Y-m-d" }}</td>
-        <td>{% if entry.protein_grams is not None %}{{ entry.protein_grams }}{% else %}-{% endif %}</td>
-        <td>{% if entry.carbohydrate_grams is not None %}{{ entry.carbohydrate_grams }}{% else %}-{% endif %}</td>
-        <td>{% if entry.fat_grams is not None %}{{ entry.fat_grams }}{% else %}-{% endif %}</td>
-        <td>{% if entry.calories is not None %}{{ entry.calories }}{% else %}-{% endif %}</td>
-        <td>{% if entry.fiber_grams is not None %}{{ entry.fiber_grams }}{% else %}-{% endif %}</td>
-        <td>{% if entry.total_macros_grams is not None %}{{ entry.total_macros_grams }}{% else %}-{% endif %}</td>
-        <td>
-          {% if entry.macro_ratios %}
-            <span class="badge bg-success">P:{{ entry.macro_ratios.protein_pct }}%</span>
-            <span class="badge bg-info">C:{{ entry.macro_ratios.carb_pct }}%</span>
-            <span class="badge bg-warning text-dark">F:{{ entry.macro_ratios.fat_pct }}%</span>
-          {% else %}-{% endif %}
-        </td>
-        <td>{% if entry.notes %}{{ entry.notes|truncatewords:8 }}{% else %}-{% endif %}</td>
-        <td>
-          <div class="dropdown d-inline-block">
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
-              <i class="fas fa-ellipsis-v"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li>
-                <a href="{% url 'macro_edit' pk=entry.id %}" class="dropdown-item"><i class="fas fa-edit me-2"></i>Edit</a>
-              </li>
-              <li>
-                <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}"><i class="fas fa-trash-alt me-2"></i>Delete</button>
-              </li>
-            </ul>
+  <!-- Summary Statistics -->
+  {% if stats.total_entries %}
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-primary-bg-subtle, #e8f0fe);">
+              <i class="fas fa-list-ol text-primary"></i>
+            </div>
+            <span class="text-muted small">Entries</span>
           </div>
+          <div class="h5 mb-0 fw-bold">{{ stats.total_entries }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-danger-bg-subtle, #f8d7da);">
+              <i class="fas fa-fire text-danger"></i>
+            </div>
+            <span class="text-muted small">Avg Calories</span>
+          </div>
+          <div class="h5 mb-0 fw-bold">{% if stats.avg_calories is not None %}{{ stats.avg_calories|floatformat:0 }}{% else %}&mdash;{% endif %}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-success-bg-subtle, #d1f5e0);">
+              <i class="fas fa-drumstick-bite text-success"></i>
+            </div>
+            <span class="text-muted small">Avg Protein</span>
+          </div>
+          <div class="h5 mb-0 fw-bold">{% if stats.avg_protein is not None %}{{ stats.avg_protein|floatformat:0 }}g{% else %}&mdash;{% endif %}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-info-bg-subtle, #cff4fc);">
+              <i class="fas fa-bread-slice text-info"></i>
+            </div>
+            <span class="text-muted small">Avg Carbs</span>
+          </div>
+          <div class="h5 mb-0 fw-bold">{% if stats.avg_carbs is not None %}{{ stats.avg_carbs|floatformat:0 }}g{% else %}&mdash;{% endif %}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-warning-bg-subtle, #fff3cd);">
+              <i class="fas fa-cheese text-warning"></i>
+            </div>
+            <span class="text-muted small">Avg Fat</span>
+          </div>
+          <div class="h5 mb-0 fw-bold">{% if stats.avg_fat is not None %}{{ stats.avg_fat|floatformat:0 }}g{% else %}&mdash;{% endif %}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-secondary-bg-subtle, #e2e3e5);">
+              <i class="fas fa-leaf text-secondary"></i>
+            </div>
+            <span class="text-muted small">Avg Fiber</span>
+          </div>
+          <div class="h5 mb-0 fw-bold">{% if stats.avg_fiber is not None %}{{ stats.avg_fiber|floatformat:0 }}g{% else %}&mdash;{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
-          <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title">Delete Confirmation</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                  Are you sure you want to delete this macronutrient entry?
-                </div>
-                <div class="modal-footer">
-                  <form action="{% url 'macro_delete' pk=entry.id %}" method="post">
-                    {% csrf_token %}
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                  </form>
+  <!-- Date Filter -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-2 px-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label for="startDate" class="form-label small mb-0 text-muted">From</label>
+          <input type="date" class="form-control form-control-sm" id="startDate" name="start_date" value="{{ start_date }}">
+        </div>
+        <div class="col-auto">
+          <label for="endDate" class="form-label small mb-0 text-muted">To</label>
+          <input type="date" class="form-control form-control-sm" id="endDate" name="end_date" value="{{ end_date }}">
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+          <a href="{% url 'macro_list' %}" class="btn btn-sm btn-outline-secondary ms-1">Clear</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Trend Chart -->
+  {% if stats.total_entries and stats.total_entries > 1 %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <h6 class="card-title fw-semibold mb-3">
+        <i class="fas fa-chart-area text-muted me-1"></i> Macronutrient Trends
+      </h6>
+      <canvas id="macroTrendChart" height="80"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Data Table -->
+  {% if entries %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="fw-semibold small text-muted">Date</th>
+            <th class="fw-semibold small text-muted">Protein</th>
+            <th class="fw-semibold small text-muted">Carbs</th>
+            <th class="fw-semibold small text-muted">Fat</th>
+            <th class="fw-semibold small text-muted">Calories</th>
+            <th class="fw-semibold small text-muted">Fiber</th>
+            <th class="fw-semibold small text-muted">Macro Ratios</th>
+            <th class="fw-semibold small text-muted">Notes</th>
+            <th class="fw-semibold small text-muted text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in entries %}
+          <tr>
+            <td class="small">{{ entry.date|date:"Y-m-d" }}</td>
+            <td class="small">{% if entry.protein_grams is not None %}{{ entry.protein_grams }}g{% else %}&mdash;{% endif %}</td>
+            <td class="small">{% if entry.carbohydrate_grams is not None %}{{ entry.carbohydrate_grams }}g{% else %}&mdash;{% endif %}</td>
+            <td class="small">{% if entry.fat_grams is not None %}{{ entry.fat_grams }}g{% else %}&mdash;{% endif %}</td>
+            <td class="small fw-semibold">{% if entry.calories is not None %}{{ entry.calories|floatformat:0 }}{% else %}&mdash;{% endif %}</td>
+            <td class="small">{% if entry.fiber_grams is not None %}{{ entry.fiber_grams }}g{% else %}&mdash;{% endif %}</td>
+            <td class="small">
+              {% if entry.macro_ratios %}
+                <span class="badge bg-success-subtle text-success">P:{{ entry.macro_ratios.protein_pct }}%</span>
+                <span class="badge bg-primary-subtle text-primary">C:{{ entry.macro_ratios.carb_pct }}%</span>
+                <span class="badge bg-warning-subtle text-warning">F:{{ entry.macro_ratios.fat_pct }}%</span>
+              {% else %}&mdash;{% endif %}
+            </td>
+            <td class="small text-muted">{% if entry.notes %}{{ entry.notes|truncatewords:6 }}{% else %}&mdash;{% endif %}</td>
+            <td class="small text-end">
+              <div class="dropdown d-inline-block">
+                <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                  <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a href="{% url 'macro_edit' pk=entry.id %}" class="dropdown-item small"><i class="fas fa-pen me-2"></i>Edit</a>
+                  </li>
+                  <li>
+                    <button type="button" class="dropdown-item small text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}"><i class="fas fa-trash me-2"></i>Delete</button>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">Delete Macronutrient Entry</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      Are you sure you want to delete the entry from <strong>{{ entry.date }}</strong>?
+                    </div>
+                    <div class="modal-footer">
+                      <form action="{% url 'macro_delete' pk=entry.id %}" method="post">
+                        {% csrf_token %}
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                      </form>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-{% include 'includes/pagination.html' %}
+  {% include 'includes/pagination.html' %}
 
-{% else %}
-<div class="alert alert-info">
-  <p>No macronutrient entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'macro_add' %}">Log Your First Macronutrient Entry</a>
+  {% else %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-utensils text-muted mb-3" style="font-size: 2rem;"></i>
+      <p class="text-muted mb-3">No macronutrient entries recorded yet.</p>
+      <a class="btn btn-primary btn-sm" href="{% url 'macro_add' %}">Log Your First Entry</a>
+    </div>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
 
 {% if stats.total_entries and stats.total_entries > 1 %}
 <script>
@@ -183,32 +237,44 @@
       datasets: [{
         label: 'Protein (g)',
         data: {{ chart_protein|safe }},
-        borderColor: 'rgba(40, 167, 69, 0.8)',
-        fill: false
+        borderColor: '#198754',
+        backgroundColor: 'transparent',
+        tension: 0.3,
+        pointRadius: 2,
       }, {
         label: 'Carbs (g)',
         data: {{ chart_carbs|safe }},
-        borderColor: 'rgba(0, 123, 255, 0.8)',
-        fill: false
+        borderColor: '#0d6efd',
+        backgroundColor: 'transparent',
+        tension: 0.3,
+        pointRadius: 2,
       }, {
         label: 'Fat (g)',
         data: {{ chart_fat|safe }},
-        borderColor: 'rgba(255, 193, 7, 0.8)',
-        fill: false
+        borderColor: '#ffc107',
+        backgroundColor: 'transparent',
+        tension: 0.3,
+        pointRadius: 2,
       }, {
         label: 'Calories',
         data: {{ chart_calories|safe }},
-        borderColor: 'rgba(220, 53, 69, 0.8)',
-        borderDash: [5, 5],
-        fill: false,
+        borderColor: '#dc3545',
+        borderDash: [4, 4],
+        backgroundColor: 'rgba(220,53,69,0.06)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
         yAxisID: 'y1'
       }]
     },
     options: {
       responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16, font: { size: 11 } } } },
       scales: {
-        y: { position: 'left', beginAtZero: true, scaleLabel: { display: true, labelString: 'Grams' } },
-        y1: { position: 'right', beginAtZero: true, gridLines: { drawOnChartArea: false }, scaleLabel: { display: true, labelString: 'Calories' } }
+        y: { position: 'left', title: { display: true, text: 'Grams', font: { size: 11 } } },
+        y1: { position: 'right', title: { display: true, text: 'Calories', font: { size: 11 } }, grid: { drawOnChartArea: false } },
+        x: { ticks: { font: { size: 10 }, maxRotation: 45 } }
       }
     }
   });

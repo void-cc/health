@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+{% block title %}Nutrition Analytics{% endblock %}
+{% block content %}
+<div class="container-fluid px-4">
+  <!-- Page Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h1 class="h3 mb-1 fw-semibold text-body">Nutrition Analytics</h1>
+      <p class="text-muted mb-0 small">Macros, hydration, fasting, and food insights</p>
+    </div>
+    <div class="d-flex gap-2">
+      <div class="btn-group btn-group-sm" role="group" aria-label="Period selector">
+        <a href="?period=7" class="btn {% if period == '7' %}btn-primary{% else %}btn-outline-secondary{% endif %}">7 days</a>
+        <a href="?period=14" class="btn {% if period == '14' %}btn-primary{% else %}btn-outline-secondary{% endif %}">14 days</a>
+        <a href="?period=30" class="btn {% if period == '30' or not period %}btn-primary{% else %}btn-outline-secondary{% endif %}">30 days</a>
+        <a href="?period=90" class="btn {% if period == '90' %}btn-primary{% else %}btn-outline-secondary{% endif %}">90 days</a>
+      </div>
+      <a href="{% url 'macro_add' %}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus me-1"></i> Log Nutrition
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-danger-bg-subtle, #f8d7da);">
+              <i class="fas fa-fire text-danger"></i>
+            </div>
+            <span class="text-muted small">Avg Calories</span>
+          </div>
+          <div class="h4 mb-0 fw-bold">
+            {% if macro_stats.avg_calories %}
+              {{ macro_stats.avg_calories|floatformat:0 }}<span class="fs-6 fw-normal text-muted"> kcal</span>
+            {% else %}
+              <span class="text-muted">&mdash;</span>
+            {% endif %}
+          </div>
+          {% if calorie_trend %}
+          <small class="{% if calorie_trend == 'increasing' %}text-warning{% elif calorie_trend == 'decreasing' %}text-info{% else %}text-muted{% endif %}">
+            {% if calorie_trend == 'increasing' %}<i class="fas fa-arrow-up"></i>{% elif calorie_trend == 'decreasing' %}<i class="fas fa-arrow-down"></i>{% else %}<i class="fas fa-arrow-right"></i>{% endif %}
+            {{ calorie_trend|title }}
+          </small>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-success-bg-subtle, #d1f5e0);">
+              <i class="fas fa-drumstick-bite text-success"></i>
+            </div>
+            <span class="text-muted small">Avg Protein</span>
+          </div>
+          <div class="h4 mb-0 fw-bold">
+            {% if macro_stats.avg_protein %}
+              {{ macro_stats.avg_protein|floatformat:0 }}<span class="fs-6 fw-normal text-muted"> g</span>
+            {% else %}
+              <span class="text-muted">&mdash;</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-primary-bg-subtle, #e8f0fe);">
+              <i class="fas fa-tint text-primary"></i>
+            </div>
+            <span class="text-muted small">Avg Hydration</span>
+          </div>
+          <div class="h4 mb-0 fw-bold">
+            {% if hydration_stats.avg_intake %}
+              {{ hydration_stats.avg_intake|floatformat:0 }}<span class="fs-6 fw-normal text-muted"> ml</span>
+            {% else %}
+              <span class="text-muted">&mdash;</span>
+            {% endif %}
+          </div>
+          {% if hydration_goal_pct %}
+          <small class="{% if hydration_goal_pct >= 100 %}text-success{% elif hydration_goal_pct >= 80 %}text-warning{% else %}text-danger{% endif %}">
+            {{ hydration_goal_pct }}% of goal
+          </small>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-warning-bg-subtle, #fff3cd);">
+              <i class="fas fa-hourglass-half text-warning"></i>
+            </div>
+            <span class="text-muted small">Fasting</span>
+          </div>
+          <div class="h4 mb-0 fw-bold">
+            {% if fasting_stats.avg_duration %}
+              {{ fasting_stats.avg_duration|floatformat:1 }}<span class="fs-6 fw-normal text-muted"> hrs avg</span>
+            {% else %}
+              <span class="text-muted">&mdash;</span>
+            {% endif %}
+          </div>
+          {% if fasting_stats.total_fasts > 0 %}
+          <small class="text-muted">
+            {{ fasting_goals_met }}/{{ fasting_stats.total_fasts }} goals met
+          </small>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="row g-3 mb-4">
+    <!-- Calorie Trend Chart -->
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-3">
+            <i class="fas fa-chart-area text-muted me-1"></i> Calorie &amp; Protein Trends
+          </h6>
+          <canvas id="nutritionTrendChart" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+    <!-- Macro Ratio Doughnut -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-3">
+            <i class="fas fa-chart-pie text-muted me-1"></i> Avg Macro Split
+          </h6>
+          <canvas id="macroDoughnutChart" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Cards Row -->
+  <div class="row g-3 mb-4">
+    <!-- Nutrition Scores -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-3">
+            <i class="fas fa-chart-bar text-muted me-1"></i> Daily Nutrition Score
+          </h6>
+          <canvas id="nutritionScoreChart" height="180"></canvas>
+          <p class="text-muted small mt-2 mb-0">Auto-scored based on calorie adequacy, protein, fiber, and macro balance.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Macro Details -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-3">
+            <i class="fas fa-utensils text-muted me-1"></i> Macro Averages
+          </h6>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Protein</span>
+            <span class="fw-semibold">{% if macro_stats.avg_protein %}{{ macro_stats.avg_protein|floatformat:1 }}g{% else %}&mdash;{% endif %}</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Carbohydrates</span>
+            <span class="fw-semibold">{% if macro_stats.avg_carbs %}{{ macro_stats.avg_carbs|floatformat:1 }}g{% else %}&mdash;{% endif %}</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Fat</span>
+            <span class="fw-semibold">{% if macro_stats.avg_fat %}{{ macro_stats.avg_fat|floatformat:1 }}g{% else %}&mdash;{% endif %}</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Fiber</span>
+            <span class="fw-semibold">{% if macro_stats.avg_fiber %}{{ macro_stats.avg_fiber|floatformat:1 }}g{% else %}&mdash;{% endif %}</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Entries Logged</span>
+            <span class="fw-semibold">{{ macro_stats.total_entries }}</span>
+          </div>
+          <div class="mt-3">
+            <a href="{% url 'macro_list' %}" class="text-decoration-none small">View macro log &rarr;</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supplementary Stats -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-3">
+            <i class="fas fa-coffee text-muted me-1"></i> Supplementary
+          </h6>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Food Items Logged</span>
+            <span class="fw-semibold">{{ food_stats.total_foods }}</span>
+          </div>
+          {% if food_stats.avg_food_calories %}
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Avg Food Calories</span>
+            <span class="fw-semibold">{{ food_stats.avg_food_calories|floatformat:0 }} kcal</span>
+          </div>
+          {% endif %}
+          {% if caffeine_stats.avg_caffeine %}
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Avg Caffeine</span>
+            <span class="fw-semibold">{{ caffeine_stats.avg_caffeine|floatformat:0 }} mg</span>
+          </div>
+          {% endif %}
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Hydration Entries</span>
+            <span class="fw-semibold">{{ hydration_stats.total_entries }}</span>
+          </div>
+          <hr class="my-2">
+          {% if weekly_nutrition.total_entries > 0 %}
+          <p class="small fw-semibold mb-1">This Week</p>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="text-muted small">Avg Calories</span>
+            <span class="small">{% if weekly_nutrition.avg_calories %}{{ weekly_nutrition.avg_calories|floatformat:0 }} kcal{% else %}&mdash;{% endif %}</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Total Logged</span>
+            <span class="small">{% if weekly_nutrition.total_calories %}{{ weekly_nutrition.total_calories|floatformat:0 }} kcal{% else %}&mdash;{% endif %}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-2">
+      <a href="{% url 'macro_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
+        <div class="card-body text-center p-3">
+          <i class="fas fa-chart-pie text-primary mb-2 fs-5"></i>
+          <div class="fw-semibold small text-body">Macros</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-2">
+      <a href="{% url 'food_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
+        <div class="card-body text-center p-3">
+          <i class="fas fa-apple-alt text-success mb-2 fs-5"></i>
+          <div class="fw-semibold small text-body">Food Log</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-2">
+      <a href="{% url 'fasting_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
+        <div class="card-body text-center p-3">
+          <i class="fas fa-hourglass-half text-warning mb-2 fs-5"></i>
+          <div class="fw-semibold small text-body">Fasting</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-2">
+      <a href="{% url 'hydration_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
+        <div class="card-body text-center p-3">
+          <i class="fas fa-tint text-info mb-2 fs-5"></i>
+          <div class="fw-semibold small text-body">Hydration</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-2">
+      <a href="{% url 'micro_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
+        <div class="card-body text-center p-3">
+          <i class="fas fa-capsules text-secondary mb-2 fs-5"></i>
+          <div class="fw-semibold small text-body">Micros</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-2">
+      <a href="{% url 'caffeine_alcohol_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
+        <div class="card-body text-center p-3">
+          <i class="fas fa-coffee text-dark mb-2 fs-5"></i>
+          <div class="fw-semibold small text-body">Caffeine</div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Calorie & Protein Trend Chart
+  var trendCtx = document.getElementById('nutritionTrendChart');
+  if (trendCtx) {
+    new Chart(trendCtx.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: {{ chart_dates|safe }},
+        datasets: [
+          {
+            label: 'Calories (kcal)',
+            data: {{ chart_calories|safe }},
+            borderColor: '#dc3545',
+            backgroundColor: 'rgba(220,53,69,0.08)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2,
+            yAxisID: 'y',
+          },
+          {
+            label: 'Protein (g)',
+            data: {{ chart_protein|safe }},
+            borderColor: '#198754',
+            backgroundColor: 'transparent',
+            borderDash: [4,4],
+            tension: 0.3,
+            pointRadius: 2,
+            yAxisID: 'y1',
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16, font: { size: 11 } } } },
+        scales: {
+          y: { position: 'left', title: { display: true, text: 'Calories (kcal)', font: { size: 11 } } },
+          y1: { position: 'right', title: { display: true, text: 'Protein (g)', font: { size: 11 } }, grid: { drawOnChartArea: false } },
+          x: { ticks: { font: { size: 10 }, maxRotation: 45 } }
+        }
+      }
+    });
+  }
+
+  // Macro Ratio Doughnut
+  var doughnutCtx = document.getElementById('macroDoughnutChart');
+  if (doughnutCtx) {
+    var macroData = {{ macro_doughnut|safe }};
+    new Chart(doughnutCtx.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Protein', 'Carbs', 'Fat'],
+        datasets: [{
+          data: [macroData.protein, macroData.carbs, macroData.fat],
+          backgroundColor: ['#198754', '#0d6efd', '#ffc107'],
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        cutoutPercentage: 65,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  // Daily Nutrition Score Chart
+  var scoreCtx = document.getElementById('nutritionScoreChart');
+  if (scoreCtx) {
+    var scores = {{ nutrition_scores|safe }};
+    var labels = scores.map(function(s) { return s.date; });
+    var values = scores.map(function(s) { return s.score; });
+    var colors = values.map(function(v) {
+      if (v >= 70) return '#198754';
+      if (v >= 40) return '#ffc107';
+      return '#dc3545';
+    });
+    new Chart(scoreCtx.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Score',
+          data: values,
+          backgroundColor: colors,
+          borderRadius: 4,
+          barPercentage: 0.7,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 0, max: 100, title: { display: true, text: 'Score', font: { size: 11 } } },
+          x: { ticks: { font: { size: 10 }, maxRotation: 45 } }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

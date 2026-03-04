@@ -1,166 +1,210 @@
 {% extends 'base.html' %}
 {% load json_filters %}
+{% block title %}Sleep Log{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2><i class="fas fa-bed"></i> Sleep Log</h2>
-  <a href="{% url 'sleep_add' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Entry</a>
-</div>
-
-<!-- Summary Statistics -->
-{% if stats.total_entries %}
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-primary">
-      <div class="card-body py-2">
-        <div class="text-muted small">Total Entries</div>
-        <div class="h4 mb-0">{{ stats.total_entries }}</div>
-      </div>
+<div class="container-fluid px-4">
+  <!-- Page Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h1 class="h3 mb-1 fw-semibold text-body">Sleep Log</h1>
+      <p class="text-muted mb-0 small">Track and manage your nightly sleep data</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'sleep_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-chart-bar me-1"></i> Analytics
+      </a>
+      <a href="{% url 'sleep_add' %}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus me-1"></i> Add Entry
+      </a>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-info">
-      <div class="card-body py-2">
-        <div class="text-muted small">Avg Sleep (min)</div>
-        <div class="h4 mb-0">{% if stats.avg_total_sleep is not None %}{{ stats.avg_total_sleep|floatformat:0 }}{% else %}-{% endif %}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-success">
-      <div class="card-body py-2">
-        <div class="text-muted small">Avg Quality Score</div>
-        <div class="h4 mb-0">{% if stats.avg_quality is not None %}{{ stats.avg_quality|floatformat:1 }}{% else %}-{% endif %}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-warning">
-      <div class="card-body py-2">
-        <div class="text-muted small">Avg Deep Sleep (min)</div>
-        <div class="h4 mb-0">{% if stats.avg_deep is not None %}{{ stats.avg_deep|floatformat:0 }}{% else %}-{% endif %}</div>
-      </div>
-    </div>
-  </div>
-</div>
-{% endif %}
 
-<!-- Date Filter -->
-<form method="get" class="row g-2 mb-4 align-items-end">
-  <div class="col-auto">
-    <label for="startDate" class="form-label small mb-0">From</label>
-    <input type="date" class="form-control form-control-sm" id="startDate" name="start_date" value="{{ start_date }}">
-  </div>
-  <div class="col-auto">
-    <label for="endDate" class="form-label small mb-0">To</label>
-    <input type="date" class="form-control form-control-sm" id="endDate" name="end_date" value="{{ end_date }}">
-  </div>
-  <div class="col-auto">
-    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-filter"></i> Filter</button>
-    <a href="{% url 'sleep_list' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i> Clear</a>
-  </div>
-</form>
-
-<!-- Trend Chart -->
-{% if stats.total_entries and stats.total_entries > 1 %}
-<div class="card mb-4">
-  <div class="card-body">
-    <h6 class="card-title"><i class="fas fa-chart-line"></i> Sleep Trends</h6>
-    <canvas id="sleepTrendChart" height="80"></canvas>
-  </div>
-</div>
-{% endif %}
-
-{% if entries %}
-<div class="table-responsive">
-  <table class="table table-striped table-hover align-middle">
-    <thead>
-      <tr>
-        <th scope="col">Date</th>
-        <th scope="col">Bedtime</th>
-        <th scope="col">Wake Time</th>
-        <th scope="col">Total Sleep</th>
-        <th scope="col">REM</th>
-        <th scope="col">Deep</th>
-        <th scope="col">Light</th>
-        <th scope="col">Awake</th>
-        <th scope="col">Quality Score</th>
-        <th scope="col">Efficiency</th>
-        <th scope="col">Trend</th>
-        <th scope="col">Notes</th>
-        <th scope="col">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for entry in entries %}
-      <tr>
-        <td>{{ entry.date|date:"Y-m-d" }}</td>
-        <td>{% if entry.bedtime is not None %}{{ entry.bedtime }}{% else %}-{% endif %}</td>
-        <td>{% if entry.wake_time is not None %}{{ entry.wake_time }}{% else %}-{% endif %}</td>
-        <td>{% if entry.total_sleep_minutes is not None %}{{ entry.total_sleep_minutes }}{% else %}-{% endif %}</td>
-        <td>{% if entry.rem_minutes is not None %}{{ entry.rem_minutes }}{% else %}-{% endif %}</td>
-        <td>{% if entry.deep_sleep_minutes is not None %}{{ entry.deep_sleep_minutes }}{% else %}-{% endif %}</td>
-        <td>{% if entry.light_sleep_minutes is not None %}{{ entry.light_sleep_minutes }}{% else %}-{% endif %}</td>
-        <td>{% if entry.awake_minutes is not None %}{{ entry.awake_minutes }}{% else %}-{% endif %}</td>
-        <td>
-          {% if entry.sleep_quality_score is not None %}
-            <span class="badge {% if entry.sleep_quality_score >= 80 %}bg-success{% elif entry.sleep_quality_score >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-              {{ entry.sleep_quality_score }}
-            </span>
-          {% else %}-{% endif %}
-        </td>
-        <td>{% if entry.sleep_efficiency is not None %}{{ entry.sleep_efficiency }}{% else %}-{% endif %}</td>
-        <td>{% if entry.sleep_trend %}{{ entry.sleep_trend }}{% else %}-{% endif %}</td>
-        <td>{% if entry.notes %}{{ entry.notes|truncatewords:8 }}{% else %}-{% endif %}</td>
-        <td>
-          <div class="dropdown d-inline-block">
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
-              <i class="fas fa-ellipsis-v"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li>
-                <a href="{% url 'sleep_edit' pk=entry.id %}" class="dropdown-item"><i class="fas fa-edit me-2"></i>Edit</a>
-              </li>
-              <li>
-                <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}"><i class="fas fa-trash-alt me-2"></i>Delete</button>
-              </li>
-            </ul>
+  <!-- Summary Statistics -->
+  {% if stats.total_entries %}
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-primary-bg-subtle, #e8f0fe);">
+              <i class="fas fa-list-ol text-primary"></i>
+            </div>
+            <span class="text-muted small">Total Entries</span>
           </div>
+          <div class="h4 mb-0 fw-bold">{{ stats.total_entries }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-info-bg-subtle, #cff4fc);">
+              <i class="fas fa-clock text-info"></i>
+            </div>
+            <span class="text-muted small">Avg Sleep (min)</span>
+          </div>
+          <div class="h4 mb-0 fw-bold">{% if stats.avg_total_sleep is not None %}{{ stats.avg_total_sleep|floatformat:0 }}{% else %}&mdash;{% endif %}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-success-bg-subtle, #d1f5e0);">
+              <i class="fas fa-star text-success"></i>
+            </div>
+            <span class="text-muted small">Avg Quality Score</span>
+          </div>
+          <div class="h4 mb-0 fw-bold">{% if stats.avg_quality is not None %}{{ stats.avg_quality|floatformat:1 }}{% else %}&mdash;{% endif %}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-2 p-2 me-2" style="background: var(--bs-warning-bg-subtle, #fff3cd);">
+              <i class="fas fa-moon text-warning"></i>
+            </div>
+            <span class="text-muted small">Avg Deep Sleep (min)</span>
+          </div>
+          <div class="h4 mb-0 fw-bold">{% if stats.avg_deep is not None %}{{ stats.avg_deep|floatformat:0 }}{% else %}&mdash;{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
-          <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title">Delete Confirmation</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                  Are you sure you want to delete this sleep entry?
-                </div>
-                <div class="modal-footer">
-                  <form action="{% url 'sleep_delete' pk=entry.id %}" method="post">
-                    {% csrf_token %}
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                  </form>
+  <!-- Date Filter -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-2 px-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label for="startDate" class="form-label small mb-0 text-muted">From</label>
+          <input type="date" class="form-control form-control-sm" id="startDate" name="start_date" value="{{ start_date }}">
+        </div>
+        <div class="col-auto">
+          <label for="endDate" class="form-label small mb-0 text-muted">To</label>
+          <input type="date" class="form-control form-control-sm" id="endDate" name="end_date" value="{{ end_date }}">
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+          <a href="{% url 'sleep_list' %}" class="btn btn-sm btn-outline-secondary ms-1">Clear</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Trend Chart -->
+  {% if stats.total_entries and stats.total_entries > 1 %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <h6 class="card-title fw-semibold mb-3">
+        <i class="fas fa-chart-line text-muted me-1"></i> Sleep Trends
+      </h6>
+      <canvas id="sleepTrendChart" height="80"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Data Table -->
+  {% if entries %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="fw-semibold small text-muted">Date</th>
+            <th class="fw-semibold small text-muted">Bedtime</th>
+            <th class="fw-semibold small text-muted">Wake</th>
+            <th class="fw-semibold small text-muted">Total</th>
+            <th class="fw-semibold small text-muted">REM</th>
+            <th class="fw-semibold small text-muted">Deep</th>
+            <th class="fw-semibold small text-muted">Light</th>
+            <th class="fw-semibold small text-muted">Awake</th>
+            <th class="fw-semibold small text-muted">Quality</th>
+            <th class="fw-semibold small text-muted">Efficiency</th>
+            <th class="fw-semibold small text-muted">Notes</th>
+            <th class="fw-semibold small text-muted text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in entries %}
+          <tr>
+            <td class="small">{{ entry.date|date:"Y-m-d" }}</td>
+            <td class="small">{% if entry.bedtime is not None %}{{ entry.bedtime }}{% else %}&mdash;{% endif %}</td>
+            <td class="small">{% if entry.wake_time is not None %}{{ entry.wake_time }}{% else %}&mdash;{% endif %}</td>
+            <td class="small">{% if entry.total_sleep_minutes is not None %}{{ entry.total_sleep_minutes }}{% else %}&mdash;{% endif %}</td>
+            <td class="small">{% if entry.rem_minutes is not None %}{{ entry.rem_minutes }}{% else %}&mdash;{% endif %}</td>
+            <td class="small">{% if entry.deep_sleep_minutes is not None %}{{ entry.deep_sleep_minutes }}{% else %}&mdash;{% endif %}</td>
+            <td class="small">{% if entry.light_sleep_minutes is not None %}{{ entry.light_sleep_minutes }}{% else %}&mdash;{% endif %}</td>
+            <td class="small">{% if entry.awake_minutes is not None %}{{ entry.awake_minutes }}{% else %}&mdash;{% endif %}</td>
+            <td class="small">
+              {% if entry.sleep_quality_score is not None %}
+                <span class="badge {% if entry.sleep_quality_score >= 80 %}bg-success-subtle text-success{% elif entry.sleep_quality_score >= 50 %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %}">
+                  {{ entry.sleep_quality_score|floatformat:0 }}
+                </span>
+              {% else %}&mdash;{% endif %}
+            </td>
+            <td class="small">{% if entry.sleep_efficiency is not None %}{{ entry.sleep_efficiency }}%{% else %}&mdash;{% endif %}</td>
+            <td class="small text-muted">{% if entry.notes %}{{ entry.notes|truncatewords:6 }}{% else %}&mdash;{% endif %}</td>
+            <td class="small text-end">
+              <div class="dropdown d-inline-block">
+                <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                  <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a href="{% url 'sleep_edit' pk=entry.id %}" class="dropdown-item small"><i class="fas fa-pen me-2"></i>Edit</a>
+                  </li>
+                  <li>
+                    <button type="button" class="dropdown-item small text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}"><i class="fas fa-trash me-2"></i>Delete</button>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">Delete Sleep Entry</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      Are you sure you want to delete the sleep entry from <strong>{{ entry.date }}</strong>?
+                    </div>
+                    <div class="modal-footer">
+                      <form action="{% url 'sleep_delete' pk=entry.id %}" method="post">
+                        {% csrf_token %}
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                      </form>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-{% include 'includes/pagination.html' %}
+  {% include 'includes/pagination.html' %}
 
-{% else %}
-<div class="alert alert-info">
-  <p>No sleep entries recorded yet.</p>
-  <a class="btn btn-primary" href="{% url 'sleep_add' %}">Log Your First Sleep Entry</a>
+  {% else %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-bed text-muted mb-3" style="font-size: 2rem;"></i>
+      <p class="text-muted mb-3">No sleep entries recorded yet.</p>
+      <a class="btn btn-primary btn-sm" href="{% url 'sleep_add' %}">Log Your First Sleep Entry</a>
+    </div>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
 
 {% if stats.total_entries and stats.total_entries > 1 %}
 <script>
@@ -173,24 +217,31 @@
       datasets: [{
         label: 'Quality Score',
         data: {{ chart_quality|safe }},
-        borderColor: 'rgba(40, 167, 69, 0.8)',
-        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+        borderColor: '#198754',
+        backgroundColor: 'rgba(25,135,84,0.08)',
         fill: true,
+        tension: 0.3,
+        pointRadius: 2,
         yAxisID: 'y'
       }, {
-        label: 'Total Sleep (min)',
+        label: 'Duration (min)',
         data: {{ chart_total|safe }},
-        borderColor: 'rgba(0, 123, 255, 0.8)',
-        backgroundColor: 'rgba(0, 123, 255, 0.1)',
-        fill: false,
+        borderColor: '#0d6efd',
+        backgroundColor: 'transparent',
+        borderDash: [4,4],
+        tension: 0.3,
+        pointRadius: 2,
         yAxisID: 'y1'
       }]
     },
     options: {
       responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16, font: { size: 11 } } } },
       scales: {
-        y: { position: 'left', beginAtZero: true, scaleLabel: { display: true, labelString: 'Quality' } },
-        y1: { position: 'right', beginAtZero: true, gridLines: { drawOnChartArea: false }, scaleLabel: { display: true, labelString: 'Minutes' } }
+        y: { position: 'left', title: { display: true, text: 'Quality (0-100)', font: { size: 11 } }, min: 0, max: 100 },
+        y1: { position: 'right', title: { display: true, text: 'Duration (min)', font: { size: 11 } }, grid: { drawOnChartArea: false } },
+        x: { ticks: { font: { size: 10 }, maxRotation: 45 } }
       }
     }
   });

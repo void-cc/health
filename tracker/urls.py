@@ -138,6 +138,7 @@ urlpatterns = [
     path('sleep/add/', views.sleep_add, name='sleep_add'),
     path('sleep/edit/<int:pk>/', views.sleep_edit, name='sleep_edit'),
     path('sleep/delete/<int:pk>/', views.sleep_delete, name='sleep_delete'),
+    path('sleep/dashboard/', views.sleep_dashboard, name='sleep_dashboard'),
 
     # Circadian Rhythm
     path('circadian/', views.circadian_list, name='circadian_list'),
@@ -180,6 +181,9 @@ urlpatterns = [
     path('caffeine-alcohol/add/', views.caffeine_alcohol_add, name='caffeine_alcohol_add'),
     path('caffeine-alcohol/edit/<int:pk>/', views.caffeine_alcohol_edit, name='caffeine_alcohol_edit'),
     path('caffeine-alcohol/delete/<int:pk>/', views.caffeine_alcohol_delete, name='caffeine_alcohol_delete'),
+
+    # Nutrition Dashboard
+    path('nutrition/dashboard/', views.nutrition_dashboard, name='nutrition_dashboard'),
 
     # User Profiles (RBAC)
     path('profiles/', views.user_profile_list, name='user_profile_list'),

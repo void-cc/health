@@ -1,47 +1,64 @@
 {% extends 'base.html' %}
+{% block title %}{% if editing %}Edit{% else %}Add{% endif %} Macronutrient Log{% endblock %}
 {% block content %}
-<div class="container my-5">
-  <h2 class="mb-4 text-center">{% if editing %}Edit{% else %}Add{% endif %} Macronutrient Log</h2>
+<div class="container-fluid px-4" style="max-width: 720px;">
+  <div class="mb-4">
+    <h1 class="h3 fw-semibold text-body">{% if editing %}Edit{% else %}Add{% endif %} Macronutrient Log</h1>
+    <p class="text-muted small mb-0">Log your daily macros. Calories are auto-calculated from macros if left blank.</p>
+  </div>
+
   <form method="POST">
     {% csrf_token %}
-    <div class="mb-3">
-      <label for="date" class="form-label">Date:</label>
-      <input type="date" class="form-control" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold text-muted small text-uppercase mb-3">Date</h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="date" class="form-label small">Date</label>
+            <input type="date" class="form-control form-control-sm" name="date" id="date" value="{% if editing %}{{ entry.date|date:'Y-m-d' }}{% else %}{{ date }}{% endif %}" required />
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="mb-3">
-      <label for="protein_grams" class="form-label">Protein (g):</label>
-      <input type="number" class="form-control" name="protein_grams" id="protein_grams" step="0.1" value="{% if editing and entry.protein_grams is not None %}{{ entry.protein_grams }}{% endif %}" />
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold text-muted small text-uppercase mb-3">Macronutrients</h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="protein_grams" class="form-label small">Protein (g)</label>
+            <input type="number" class="form-control form-control-sm" name="protein_grams" id="protein_grams" step="0.1" min="0" value="{% if editing and entry.protein_grams is not None %}{{ entry.protein_grams }}{% endif %}" />
+          </div>
+          <div class="col-md-4">
+            <label for="carbohydrate_grams" class="form-label small">Carbohydrates (g)</label>
+            <input type="number" class="form-control form-control-sm" name="carbohydrate_grams" id="carbohydrate_grams" step="0.1" min="0" value="{% if editing and entry.carbohydrate_grams is not None %}{{ entry.carbohydrate_grams }}{% endif %}" />
+          </div>
+          <div class="col-md-4">
+            <label for="fat_grams" class="form-label small">Fat (g)</label>
+            <input type="number" class="form-control form-control-sm" name="fat_grams" id="fat_grams" step="0.1" min="0" value="{% if editing and entry.fat_grams is not None %}{{ entry.fat_grams }}{% endif %}" />
+          </div>
+          <div class="col-md-4">
+            <label for="calories" class="form-label small">Calories <span class="text-muted">(optional)</span></label>
+            <input type="number" class="form-control form-control-sm" name="calories" id="calories" step="0.1" min="0" placeholder="Auto-calculated" value="{% if editing and entry.calories is not None %}{{ entry.calories }}{% endif %}" />
+          </div>
+          <div class="col-md-4">
+            <label for="fiber_grams" class="form-label small">Fiber (g)</label>
+            <input type="number" class="form-control form-control-sm" name="fiber_grams" id="fiber_grams" step="0.1" min="0" value="{% if editing and entry.fiber_grams is not None %}{{ entry.fiber_grams }}{% endif %}" />
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="mb-3">
-      <label for="carbohydrate_grams" class="form-label">Carbohydrates (g):</label>
-      <input type="number" class="form-control" name="carbohydrate_grams" id="carbohydrate_grams" step="0.1" value="{% if editing and entry.carbohydrate_grams is not None %}{{ entry.carbohydrate_grams }}{% endif %}" />
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h6 class="fw-semibold text-muted small text-uppercase mb-3">Notes</h6>
+        <textarea class="form-control form-control-sm" name="notes" id="notes" rows="3" placeholder="Any notes about today's nutrition...">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
+      </div>
     </div>
 
-    <div class="mb-3">
-      <label for="fat_grams" class="form-label">Fat (g):</label>
-      <input type="number" class="form-control" name="fat_grams" id="fat_grams" step="0.1" value="{% if editing and entry.fat_grams is not None %}{{ entry.fat_grams }}{% endif %}" />
-    </div>
-
-    <div class="mb-3">
-      <label for="calories" class="form-label">Calories:</label>
-      <input type="number" class="form-control" name="calories" id="calories" step="0.1" value="{% if editing and entry.calories is not None %}{{ entry.calories }}{% endif %}" />
-    </div>
-
-    <div class="mb-3">
-      <label for="fiber_grams" class="form-label">Fiber (g):</label>
-      <input type="number" class="form-control" name="fiber_grams" id="fiber_grams" step="0.1" value="{% if editing and entry.fiber_grams is not None %}{{ entry.fiber_grams }}{% endif %}" />
-    </div>
-
-    <div class="mb-3">
-      <label for="notes" class="form-label">Notes:</label>
-      <textarea class="form-control" name="notes" id="notes" rows="3">{% if editing and entry.notes %}{{ entry.notes }}{% endif %}</textarea>
-    </div>
-
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
-      <a href="{% url 'macro_list' %}" class="btn btn-secondary">Cancel</a>
+    <div class="d-flex justify-content-end gap-2">
+      <a href="{% url 'macro_list' %}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+      <button type="submit" class="btn btn-primary btn-sm">{% if editing %}Update{% else %}Save{% endif %}</button>
     </div>
   </form>
 </div>
