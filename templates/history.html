@@ -101,7 +101,7 @@
     <tbody>
       {% for item in history %}
       <tr>
-        <td><span class="fw-medium">{{ item.date|date:"M j, Y" }}</span></td>
+        <td><span class="fw-medium">{{ item.date|date:"Y-m-d" }}</span></td>
         <td>
           {% if item.type == 'Blood Test' %}
             <span class="status-badge badge-neutral">
