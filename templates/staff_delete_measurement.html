@@ -2,6 +2,14 @@
 
 {% block content %}
 
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'index' %}">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'review_measurements' %}">Review Measurements</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Delete Measurement</li>
+  </ol>
+</nav>
+
 <div class="page-header">
   <div>
     <h1 class="page-header-title">Delete Measurement (Staff)</h1>

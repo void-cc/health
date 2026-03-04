@@ -2,6 +2,13 @@
 
 {% block content %}
 
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'index' %}">Dashboard</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Import Data</li>
+  </ol>
+</nav>
+
 <div class="page-header">
   <div>
     <h1 class="page-header-title">Import Data</h1>

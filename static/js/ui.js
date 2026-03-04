@@ -42,6 +42,7 @@
    * ========================================================= */
   document.addEventListener('DOMContentLoaded', () => {
     initDarkMode();
+    initAlertAutoDismiss();
     initDragAndDropDashboard();
     initQuickEntryVitals();
     initVoiceToText();
@@ -68,6 +69,18 @@
       } else {
         root.removeAttribute('data-theme');
       }
+      updateDarkModeIcon(theme);
+    };
+
+    const updateDarkModeIcon = (theme) => {
+      if (!toggle) return;
+      const icon = toggle.querySelector('i');
+      if (!icon) return;
+      if (theme === 'dark') {
+        icon.className = 'fas fa-sun';
+      } else {
+        icon.className = 'fas fa-moon';
+      }
     };
 
     // Apply saved preference or respect OS setting
@@ -76,6 +89,8 @@
       applyTheme(saved);
     } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       applyTheme('dark');
+    } else {
+      updateDarkModeIcon('light');
     }
 
     if (toggle) {
@@ -95,6 +110,32 @@
         }
       });
     }
+  }
+
+  /* =========================================================
+   * 1b. Auto-dismiss Alerts
+   * ========================================================= */
+  function initAlertAutoDismiss() {
+    // Auto-dismiss success, info, and warning alerts after 6 seconds
+    // Error/danger alerts remain until manually dismissed
+    const alerts = document.querySelectorAll(
+      '.alert-success, .alert-info, .alert-warning'
+    );
+    alerts.forEach((alert) => {
+      if (!alert.classList.contains('alert-dismissible')) return;
+      setTimeout(() => {
+        // Use Bootstrap's dismiss method if available, otherwise fade out
+        const bsAlert = window.bootstrap && window.bootstrap.Alert
+          ? window.bootstrap.Alert.getOrCreateInstance(alert)
+          : null;
+        if (bsAlert) {
+          bsAlert.close();
+        } else {
+          alert.classList.remove('show');
+          alert.addEventListener('transitionend', () => alert.remove(), { once: true });
+        }
+      }, 6000);
+    });
   }
 
   /* =========================================================
@@ -626,8 +667,8 @@
 
         loading = true;
         const spinner = document.createElement('div');
-        spinner.className = 'infinite-scroll-spinner';
-        spinner.textContent = 'Loading…';
+        spinner.className = 'infinite-scroll-loader';
+        spinner.innerHTML = '<div class="spinner" aria-hidden="true"></div><span>Loading…</span>';
         container.appendChild(spinner);
 
         try {
@@ -856,6 +897,25 @@
       }
     }
   }
+
+  /* =========================================================
+   * 13b. Chart Dark Mode Helper
+   * ========================================================= */
+  /**
+   * Returns chart color settings that adapt to the current dark/light theme.
+   * Chart templates can call window.getChartThemeColors() to get theme-aware colors.
+   */
+  window.getChartThemeColors = function () {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+      gridColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+      tickColor: isDark ? '#94a3b8' : '#6b7280',
+      fontColor: isDark ? '#94a3b8' : '#6b7280',
+      tooltipBg: isDark ? 'rgba(15,23,42,0.95)' : 'rgba(17,24,39,0.92)',
+      tooltipTitleColor: isDark ? '#cbd5e1' : '#9ca3af',
+      tooltipBodyColor: isDark ? '#f1f5f9' : '#f9fafb',
+    };
+  };
 
   /* =========================================================
    * 13. PWA Registration

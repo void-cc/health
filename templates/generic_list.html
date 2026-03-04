@@ -20,9 +20,9 @@
     <thead>
       <tr>
         {% for f in fields %}
-          <th>{{ f.label }}</th>
+          <th scope="col">{{ f.label }}</th>
         {% endfor %}
-        <th style="width: 56px;"></th>
+        <th scope="col" style="width: 56px;"><span class="visually-hidden">Actions</span></th>
       </tr>
     </thead>
     <tbody>

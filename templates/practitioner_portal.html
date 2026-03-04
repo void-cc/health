@@ -43,7 +43,7 @@
   <div class="table-responsive mb-4">
     <table class="table table-striped">
       <thead>
-        <tr><th>Practitioner</th><th>Specialty</th><th>Granted</th><th>Expires</th></tr>
+        <tr><th scope="col">Practitioner</th><th scope="col">Specialty</th><th scope="col">Granted</th><th scope="col">Expires</th></tr>
       </thead>
       <tbody>
         {% for entry in access_entries %}
@@ -64,7 +64,7 @@
   <div class="table-responsive">
     <table class="table table-striped table-hover">
       <thead>
-        <tr><th>Test</th><th>Value</th><th>Unit</th><th>Date</th><th>Range</th></tr>
+        <tr><th scope="col">Test</th><th scope="col">Value</th><th scope="col">Unit</th><th scope="col">Date</th><th scope="col">Range</th></tr>
       </thead>
       <tbody>
         {% for t in patient_data.blood_tests %}
@@ -86,7 +86,7 @@
   <div class="table-responsive">
     <table class="table table-striped table-hover">
       <thead>
-        <tr><th>Date</th><th>BP</th><th>HR</th><th>Temp</th><th>RR</th><th>SpO2</th></tr>
+        <tr><th scope="col">Date</th><th scope="col">BP</th><th scope="col">HR</th><th scope="col">Temp</th><th scope="col">RR</th><th scope="col">SpO2</th></tr>
       </thead>
       <tbody>
         {% for v in patient_data.vitals %}
@@ -109,7 +109,7 @@
   <div class="table-responsive">
     <table class="table table-striped table-hover">
       <thead>
-        <tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Start</th><th>End</th></tr>
+        <tr><th scope="col">Medication</th><th scope="col">Dosage</th><th scope="col">Frequency</th><th scope="col">Start</th><th scope="col">End</th></tr>
       </thead>
       <tbody>
         {% for m in patient_data.medications %}

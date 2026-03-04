@@ -42,10 +42,10 @@
   <table class="table table-hover align-middle">
     <thead>
       <tr>
-        <th>Date</th>
-        <th>Value</th>
-        <th>Notes</th>
-        <th style="width:280px;">Add Note</th>
+        <th scope="col">Date</th>
+        <th scope="col">Value</th>
+        <th scope="col">Notes</th>
+        <th scope="col" style="width:280px;">Add Note</th>
       </tr>
     </thead>
     <tbody>
@@ -87,9 +87,13 @@
 <script>
   var annotationsMap = {{ annotations_map|tojson }};
 
+  var _themeColors = (typeof getChartThemeColors === 'function') ? getChartThemeColors() : {};
+  var gridColor = _themeColors.gridColor || 'rgba(0,0,0,0.05)';
+  var fontColor = _themeColors.fontColor || '#6b7280';
+
   Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
   Chart.defaults.global.defaultFontSize = 11;
-  Chart.defaults.global.defaultFontColor = '#6b7280';
+  Chart.defaults.global.defaultFontColor = fontColor;
 
   var ctx = document.getElementById('bloodChart').getContext('2d');
   var bloodChart = new Chart(ctx, {
@@ -116,16 +120,16 @@
       layout: { padding: { top: 8, right: 8 } },
       legend: { display: false },
       scales: {
-        xAxes: [{ type: 'time', time: { unit: 'month', tooltipFormat: 'MMM D, YYYY' }, gridLines: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { padding: 8 } }],
-        yAxes: [{ ticks: { beginAtZero: false, padding: 12 }, gridLines: { color: 'rgba(0,0,0,0.05)', drawBorder: false } }],
+        xAxes: [{ type: 'time', time: { unit: 'month', tooltipFormat: 'MMM D, YYYY' }, gridLines: { color: gridColor, drawBorder: false }, ticks: { padding: 8, fontColor: fontColor, maxRotation: 45, minRotation: 0 } }],
+        yAxes: [{ ticks: { beginAtZero: false, padding: 12, fontColor: fontColor }, gridLines: { color: gridColor, drawBorder: false } }],
       },
       tooltips: {
-        backgroundColor: 'rgba(17,24,39,0.92)',
+        backgroundColor: _themeColors.tooltipBg || 'rgba(17,24,39,0.92)',
         titleFontSize: 11,
-        titleFontColor: '#9ca3af',
+        titleFontColor: _themeColors.tooltipTitleColor || '#9ca3af',
         bodyFontSize: 13,
         bodyFontStyle: '600',
-        bodyFontColor: '#f9fafb',
+        bodyFontColor: _themeColors.tooltipBodyColor || '#f9fafb',
         cornerRadius: 6,
         xPadding: 12,
         yPadding: 10,
