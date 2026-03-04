@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center"><i class="fas fa-boxes"></i> {% if editing %}Edit{% else %}Add{% endif %} Inventory Entry</h2>
+  <form method="POST">
+    {% csrf_token %}
+
+    <div class="mb-3">
+      <label for="schedule" class="form-label">Linked Schedule <span class="text-muted small">(optional)</span></label>
+      <select class="form-select" name="schedule" id="schedule">
+        <option value="">— No schedule —</option>
+        {% for s in schedules %}
+        <option value="{{ s.id }}"
+          {% if editing and entry.schedule_id == s.id %}selected{% endif %}>
+          {{ s.medication_name }} ({{ s.dosage }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="medication_name" class="form-label">Medication Name <span class="text-danger">*</span></label>
+      <input type="text" class="form-control" id="medication_name" name="medication_name"
+        value="{% if editing %}{{ entry.medication_name }}{% endif %}" required>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <label for="current_count" class="form-label">Current Count <span class="text-danger">*</span></label>
+        <input type="number" class="form-control" id="current_count" name="current_count" min="0"
+          value="{% if editing %}{{ entry.current_count }}{% else %}0{% endif %}" required>
+      </div>
+      <div class="col-md-4">
+        <label for="units_per_dose" class="form-label">Units per Dose</label>
+        <input type="number" class="form-control" id="units_per_dose" name="units_per_dose" min="0.1" step="0.1"
+          value="{% if editing %}{{ entry.units_per_dose }}{% else %}1{% endif %}">
+      </div>
+      <div class="col-md-4">
+        <label for="refill_reminder_threshold" class="form-label">Refill Reminder (doses)</label>
+        <input type="number" class="form-control" id="refill_reminder_threshold" name="refill_reminder_threshold" min="0"
+          value="{% if editing %}{{ entry.refill_reminder_threshold }}{% else %}7{% endif %}">
+        <div class="form-text">Remind when count drops to this many doses.</div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label for="last_refill_date" class="form-label">Last Refill Date</label>
+        <input type="date" class="form-control" id="last_refill_date" name="last_refill_date"
+          value="{% if editing and entry.last_refill_date %}{{ entry.last_refill_date|date:'Y-m-d' }}{% endif %}">
+      </div>
+      <div class="col-md-6">
+        <label for="expiration_date" class="form-label">Expiration Date</label>
+        <input type="date" class="form-control" id="expiration_date" name="expiration_date"
+          value="{% if editing and entry.expiration_date %}{{ entry.expiration_date|date:'Y-m-d' }}{% endif %}">
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="pharmacy_name" class="form-label">Pharmacy</label>
+      <input type="text" class="form-control" id="pharmacy_name" name="pharmacy_name"
+        value="{% if editing %}{{ entry.pharmacy_name }}{% endif %}" placeholder="e.g. CVS Pharmacy">
+    </div>
+
+    <div class="mb-3">
+      <label for="notes" class="form-label">Notes</label>
+      <textarea class="form-control" id="notes" name="notes" rows="3">{% if editing %}{{ entry.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+      <button type="submit" class="btn btn-primary me-md-2">{% if editing %}Update{% else %}Save{% endif %}</button>
+      <a href="{% url 'medication_inventory_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Auto-fill medication name when a schedule is selected
+  const scheduleData = {
+    {% for s in schedules %}
+    "{{ s.id }}": {"name": "{{ s.medication_name|escapejs }}"},
+    {% endfor %}
+  };
+  document.getElementById('schedule').addEventListener('change', function () {
+    const sel = this.value;
+    if (sel && scheduleData[sel]) {
+      const nameField = document.getElementById('medication_name');
+      if (!nameField.value || Object.values(scheduleData).some(d => d.name === nameField.value)) {
+        nameField.value = scheduleData[sel].name;
+      }
+    }
+  });
+</script>
+{% endblock %}

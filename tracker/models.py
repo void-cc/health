@@ -1267,6 +1267,16 @@ class MedicationSchedule(models.Model):
             return delta.days
         return None
 
+    @property
+    def adherence_percent(self):
+        """Calculate adherence as percent of 'taken' doses out of all logged doses."""
+        logs = self.dose_logs.all()
+        total = logs.count()
+        if total == 0:
+            return None
+        taken = logs.filter(status__in=['taken', 'late']).count()
+        return round(taken / total * 100, 1)
+
     def __str__(self):
         return f"{self.medication_name} - {self.dosage}"
 
@@ -1286,6 +1296,83 @@ class PharmacologicalInteraction(models.Model):
 
     def __str__(self):
         return f"Interaction: {self.medication_a} x {self.medication_b} ({self.severity})"
+
+
+class MedicationLog(models.Model):
+    """Records each dose taken, skipped, or otherwise logged for a medication schedule."""
+    STATUS_CHOICES = [
+        ('taken', 'Taken'),
+        ('skipped', 'Skipped'),
+        ('late', 'Late'),
+        ('prn', 'PRN / As Needed'),
+    ]
+    schedule = models.ForeignKey(
+        MedicationSchedule,
+        on_delete=models.CASCADE,
+        related_name='dose_logs',
+        null=True,
+        blank=True,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='medication_logs',
+    )
+    medication_name = models.CharField(max_length=200)
+    dosage = models.CharField(max_length=100, blank=True, default='')
+    scheduled_time = models.DateTimeField(null=True, blank=True)
+    taken_at = models.DateTimeField(default=timezone.now)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='taken')
+    skip_reason = models.CharField(max_length=200, blank=True, default='')
+    side_effects = models.TextField(blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-taken_at']
+
+    def __str__(self):
+        return f"{self.medication_name} – {self.get_status_display()} at {self.taken_at:%Y-%m-%d %H:%M}"
+
+
+class MedicationInventory(models.Model):
+    """Tracks pill/supply inventory and refill information for a medication."""
+    schedule = models.OneToOneField(
+        MedicationSchedule,
+        on_delete=models.CASCADE,
+        related_name='inventory',
+        null=True,
+        blank=True,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='medication_inventories',
+    )
+    medication_name = models.CharField(max_length=200)
+    current_count = models.PositiveIntegerField(default=0)
+    units_per_dose = models.FloatField(default=1.0)
+    refill_reminder_threshold = models.PositiveIntegerField(default=7, help_text='Remind when count drops to this many doses')
+    last_refill_date = models.DateField(null=True, blank=True)
+    expiration_date = models.DateField(null=True, blank=True)
+    pharmacy_name = models.CharField(max_length=200, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+
+    @property
+    def needs_refill(self):
+        return self.current_count <= self.refill_reminder_threshold
+
+    @property
+    def is_expired(self):
+        if self.expiration_date:
+            return timezone.now().date() > self.expiration_date
+        return False
+
+    def __str__(self):
+        return f"{self.medication_name} – {self.current_count} remaining"
 
 
 class HealthGoal(models.Model):

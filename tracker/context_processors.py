@@ -62,10 +62,19 @@ SIDEBAR_CONFIG = [
         ],
     },
     {
+        "category": "Medications",
+        "collapsible": True,
+        "items": [
+            {"label": "Schedules", "icon": "fa-pills", "url_name": "medication_schedule_list", "match": ["medication_schedule"]},
+            {"label": "Dose Log", "icon": "fa-clipboard-check", "url_name": "medication_log_list", "match": ["medication_log"]},
+            {"label": "Inventory", "icon": "fa-boxes", "url_name": "medication_inventory_list", "match": ["medication_inventory"]},
+            {"label": "Interactions", "icon": "fa-exclamation-circle", "url_name": "pharmacological_interaction_list", "match": ["pharmacological_interaction"]},
+        ],
+    },
+    {
         "category": "Intelligence",
         "collapsible": True,
         "items": [
-            {"label": "Medications", "icon": "fa-pills", "url_name": "medication_schedule_list", "match": ["medication_schedule"]},
             {"label": "Health Goals", "icon": "fa-bullseye", "url_name": "health_goal_list", "match": ["health_goal"]},
             {"label": "Critical Alerts", "icon": "fa-exclamation-triangle", "url_name": "critical_alert_list", "match": ["critical_alert"]},
             {"label": "Health Reports", "icon": "fa-file-medical-alt", "url_name": "health_report_list", "match": ["health_report"]},

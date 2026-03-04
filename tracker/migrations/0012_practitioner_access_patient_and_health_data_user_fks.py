@@ -7,17 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('tracker', '0011_merge_20260302_1059'),
-    ]
-
-    operations = [
         ('tracker', '0012_add_user_to_secure_link_and_health_models'),
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
-    operations = [
-        migrations.AddField(
-            model_name='practitioneraccess',
-            name='patient',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='practitioner_accesses', to=settings.AUTH_USER_MODEL),
-        ),
-    ]
+    operations = []
