@@ -103,12 +103,57 @@ def index(request):
     # Compute additional dashboard metrics
     in_range = total_tests - out_of_range
     in_range_pct = round((in_range / total_tests) * 100) if total_tests > 0 else 0
+    out_of_range_pct = 100 - in_range_pct
     categories_tracked = len(tests_by_category)
 
     # Recent vitals for sparkline data (last 7 entries)
     recent_vitals_qs = VitalSign.objects.all().order_by('-date')[:7]
     recent_hr_data = [v.heart_rate for v in reversed(recent_vitals_qs) if v.heart_rate]
-    recent_weight_data = [float(v.weight) for v in reversed(recent_vitals_qs) if v.weight]
+
+    # Build SVG polyline points for heart rate sparkline
+    hr_sparkline_points = ''
+    if len(recent_hr_data) >= 2:
+        hr_min = min(recent_hr_data)
+        hr_max = max(recent_hr_data)
+        hr_range = hr_max - hr_min if hr_max != hr_min else 1
+        n = len(recent_hr_data)
+        pts = []
+        for i, val in enumerate(recent_hr_data):
+            x = round((i / (n - 1)) * 76 + 2, 1)
+            y = round(22 - ((val - hr_min) / hr_range) * 18, 1)
+            pts.append(f'{x},{y}')
+        hr_sparkline_points = ' '.join(pts)
+
+    # Build per-biomarker sparklines: for each test_name, collect recent values
+    # and generate SVG polyline points keyed by test.id
+    _values_by_name = {}
+    for test in tests:
+        _values_by_name.setdefault(test.test_name, []).append(float(test.value))
+    test_sparklines = {}
+    for test in tests:
+        vals = _values_by_name.get(test.test_name, [])
+        # Reverse so oldest is first (tests are ordered -date)
+        vals_asc = list(reversed(vals[:6]))
+        if len(vals_asc) >= 2:
+            v_min = min(vals_asc)
+            v_max = max(vals_asc)
+            v_range = v_max - v_min if v_max != v_min else 1
+            n = len(vals_asc)
+            pts = []
+            for i, val in enumerate(vals_asc):
+                x = round((i / (n - 1)) * 56 + 2, 1)
+                y = round(18 - ((val - v_min) / v_range) * 14, 1)
+                pts.append(f'{x},{y}')
+            test_sparklines[test.id] = ' '.join(pts)
+
+    # Build mini bar chart for KPI: tests per category (top 5)
+    cat_bar_data = []
+    if tests_by_category:
+        sorted_cats = sorted(tests_by_category.items(), key=lambda x: len(x[1]), reverse=True)[:5]
+        max_count = max(len(v) for _, v in sorted_cats) if sorted_cats else 1
+        for cat, cat_tests in sorted_cats:
+            pct = round((len(cat_tests) / max_count) * 100)
+            cat_bar_data.append({'name': cat, 'count': len(cat_tests), 'pct': pct})
 
     context = {
         'tests': tests,
@@ -118,12 +163,14 @@ def index(request):
         'out_of_range': out_of_range,
         'in_range': in_range,
         'in_range_pct': in_range_pct,
+        'out_of_range_pct': out_of_range_pct,
         'categories_tracked': categories_tracked,
         'latest_vitals': latest_vitals,
         'tests_by_category': tests_by_category,
         'widgets': _get_dashboard_widgets(),
-        'recent_hr_data': recent_hr_data,
-        'recent_weight_data': recent_weight_data,
+        'hr_sparkline_points': hr_sparkline_points,
+        'test_sparklines': test_sparklines,
+        'cat_bar_data': cat_bar_data,
     }
     return render(request, 'index.html', context)
 
