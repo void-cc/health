@@ -38,7 +38,7 @@ jobs:
           - name: "Templates & Views"
             tests: "tracker.tests.TemplateFilterTests tracker.tests.ViewStatusCodeTests tracker.tests.ViewWithDataTests"
           - name: "Phase 2 - Health Tracking"
-            tests: "tracker.tests.Phase2ModelTests tracker.tests.Phase2StatusCodeTests tracker.tests.Phase2CRUDTests tracker.tests.Phase2VitalsExtensionTests"
+            tests: "tracker.tests.Phase2ModelTests tracker.tests.Phase2StatusCodeTests tracker.tests.Phase2CRUDTests tracker.tests.Phase2VitalsExtensionTests tracker.tests.IngestionServiceTests"
           - name: "Annotations & Dashboard"
             tests: "tracker.tests.AnnotationTests tracker.tests.BulkEditTests tracker.tests.DashboardWidgetTests tracker.tests.PDFExportTests"
           - name: "Phase 3 - UI & UX"
