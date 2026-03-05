@@ -8,11 +8,11 @@
   </div>
   <div class="page-header-actions">
     <a href="{% url 'labs_dashboard' %}" class="toolbar-btn">
-      <i class="fas fa-flask" aria-hidden="true"></i>
+      <i data-lucide="flask-conical" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Labs Dashboard</span>
     </a>
     <a href="{% url 'index' %}" class="toolbar-btn">
-      <i class="fas fa-th-large" aria-hidden="true"></i>
+      <i data-lucide="layout-grid" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Dashboard</span>
     </a>
   </div>
@@ -55,11 +55,11 @@
           <div class="d-flex align-items-start">
             <span class="me-3 mt-1">
               {% if event.type == 'blood_test' %}
-                <i class="fas fa-vial text-primary"></i>
+                <i data-lucide="test-tube" class="text-primary"></i>
               {% elif event.type == 'vital_sign' %}
-                <i class="fas fa-heartbeat text-success"></i>
+                <i data-lucide="heart-pulse" class="text-success"></i>
               {% else %}
-                <i class="fas fa-chart-line text-secondary"></i>
+                <i data-lucide="line-chart" class="text-secondary"></i>
               {% endif %}
             </span>
             <div>
@@ -81,7 +81,7 @@
     </div>
     {% else %}
     <div class="text-center py-5 text-muted">
-      <i class="fas fa-stream fa-2x mb-3"></i>
+      <i data-lucide="layout-list" class="mb-3"></i>
       <p>No health events recorded yet.</p>
     </div>
     {% endif %}

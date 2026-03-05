@@ -4,17 +4,17 @@
     {% if page_obj.has_previous %}
     <li class="page-item">
       <a class="page-link" href="?page=1{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}" aria-label="First">
-        <i class="fas fa-angle-double-left"></i>
+        <i data-lucide="chevrons-left"></i>
       </a>
     </li>
     <li class="page-item">
       <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}" aria-label="Previous">
-        <i class="fas fa-angle-left"></i>
+        <i data-lucide="chevron-left"></i>
       </a>
     </li>
     {% else %}
-    <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-left"></i></span></li>
-    <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-left"></i></span></li>
+    <li class="page-item disabled"><span class="page-link"><i data-lucide="chevrons-left"></i></span></li>
+    <li class="page-item disabled"><span class="page-link"><i data-lucide="chevron-left"></i></span></li>
     {% endif %}
     {% for num in page_obj.paginator.page_range %}
       {% if page_obj.number == num %}
@@ -34,17 +34,17 @@
     {% if page_obj.has_next %}
     <li class="page-item">
       <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}" aria-label="Next">
-        <i class="fas fa-angle-right"></i>
+        <i data-lucide="chevron-right"></i>
       </a>
     </li>
     <li class="page-item">
       <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}" aria-label="Last">
-        <i class="fas fa-angle-double-right"></i>
+        <i data-lucide="chevrons-right"></i>
       </a>
     </li>
     {% else %}
-    <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-right"></i></span></li>
-    <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-right"></i></span></li>
+    <li class="page-item disabled"><span class="page-link"><i data-lucide="chevron-right"></i></span></li>
+    <li class="page-item disabled"><span class="page-link"><i data-lucide="chevrons-right"></i></span></li>
     {% endif %}
   </ul>
   <p class="text-center text-muted small">

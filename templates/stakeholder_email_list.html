@@ -28,15 +28,15 @@
         <td>{% if entry.last_sent %}{{ entry.last_sent }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'stakeholder_email_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
-            <i class="fas fa-edit"></i> Edit
+            <i data-lucide="pencil"></i> Edit
           </a>
           {% if entry.is_active %}
           <a href="{% url 'stakeholder_email_send' pk=entry.id %}" class="btn btn-sm btn-success">
-            <i class="fas fa-paper-plane"></i> Send
+            <i data-lucide="send"></i> Send
           </a>
           {% endif %}
           <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
-            <i class="fas fa-trash-alt"></i> Delete
+            <i data-lucide="trash-2"></i> Delete
           </button>
 
           <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">

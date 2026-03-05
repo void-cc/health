@@ -9,7 +9,7 @@
   </div>
   <div class="page-header-actions">
     <a href="{% url 'index' %}" class="toolbar-btn">
-      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <i data-lucide="arrow-left" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Dashboard</span>
     </a>
   </div>
@@ -55,16 +55,16 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <div class="empty-state-icon"><i class="fas fa-project-diagram"></i></div>
+  <div class="empty-state-icon"><i data-lucide="network"></i></div>
   <div class="empty-state-title">Not enough data</div>
   <div class="empty-state-description">At least two different metrics are needed for scatter plots. Add more blood tests or vital signs.</div>
   <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
-    <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Blood Test
+    <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add Blood Test
   </a>
 </div>
 {% endif %}
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<script src="{% static 'js/moment.min.js' %}"></script>
 <script>
   var allMetrics = {{ metrics|tojson }};
   var scatterChart = null;

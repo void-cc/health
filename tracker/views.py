@@ -2817,18 +2817,22 @@ def caffeine_alcohol_delete(request, pk):
     return redirect('caffeine_alcohol_list')
 
 
-# ===== User Profile =====
+# ===== User Profile (custom CRUD – manages both User and UserProfile) =====
 
-@admin_required
-def user_profile_list(request):
-    entries = UserProfile.objects.select_related('user').all().order_by('-created_at')
-    return render(request, 'user_profile_list.html', {'entries': entries})
+_user_profile_fields = [
+    {'name': 'role', 'type': 'str', 'choices': UserProfile.ROLE_CHOICES, 'default': 'user', 'label': 'Role'},
+    {'name': 'language', 'type': 'str', 'choices': UserProfile.LANGUAGE_CHOICES, 'default': 'en', 'label': 'Language'},
+]
+
 
 @admin_required
 def user_profile_add(request):
     if request.method == 'POST':
         try:
             username = request.POST.get('username', '')
+            if not username:
+                messages.error(request, 'Username is required.')
+                return redirect('user_profile_add')
             user = User.objects.create_user(username=username)
             user.set_unusable_password()
             user.save()
@@ -2837,37 +2841,59 @@ def user_profile_add(request):
                 role=request.POST.get('role', 'user'),
                 language=request.POST.get('language', 'en'),
             )
-            messages.success(request, 'User profile added!')
+            messages.success(request, 'User Profile entry added!')
             return redirect('user_profile_list')
         except Exception:
-            messages.error(request, 'Error adding user profile.')
+            messages.error(request, 'Error adding user profile. Please try again.')
             return redirect('user_profile_add')
-    return render(request, 'user_profile_form.html', {'editing': False})
+    context = {
+        'editing': False,
+        'page_title': 'User Profiles',
+        'page_subtitle': 'Configure user account details and access level.',
+        'list_url_name': 'user_profile_list',
+        'fields': [
+            {'name': 'username', 'type': 'str', 'required': True, 'label': 'Username'},
+        ] + _user_profile_fields,
+        'entry': None,
+    }
+    return render(request, 'generic_form.html', context)
+
 
 @admin_required
 def user_profile_edit(request, pk):
     entry = get_object_or_404(UserProfile, id=pk)
     if request.method == 'POST':
         try:
-            entry.user.username = request.POST.get('username', '')
-            entry.user.is_active = request.POST.get('is_active') == 'on'
+            entry.user.username = request.POST.get('username', entry.user.username)
             entry.user.save()
-            entry.role = request.POST.get('role', '')
-            entry.language = request.POST.get('language', 'en')
+            entry.role = request.POST.get('role', entry.role)
+            entry.language = request.POST.get('language', entry.language)
             entry.save()
-            messages.success(request, 'User profile updated!')
+            messages.success(request, 'User Profile updated!')
             return redirect('user_profile_list')
         except Exception:
             messages.error(request, 'Error updating user profile.')
             return redirect('user_profile_edit', pk=pk)
-    return render(request, 'user_profile_form.html', {'entry': entry, 'editing': True})
+
+    context = {
+        'entry': entry,
+        'editing': True,
+        'page_title': 'User Profiles',
+        'page_subtitle': 'Configure user account details and access level.',
+        'list_url_name': 'user_profile_list',
+        'fields': [
+            {'name': 'username', 'type': 'str', 'required': True, 'label': 'Username'},
+        ] + _user_profile_fields,
+    }
+    return render(request, 'generic_form.html', context)
+
 
 @admin_required
 def user_profile_delete(request, pk):
     if request.method == 'POST':
         profile = get_object_or_404(UserProfile, id=pk)
         profile.user.delete()
-        messages.success(request, 'User profile deleted!')
+        messages.success(request, 'User Profile entry deleted!')
     return redirect('user_profile_list')
 
 
@@ -4625,21 +4651,26 @@ stakeholder_email_delete = _stakeholder_email['delete']
 # ===== User Profiles (RBAC) =====
 _user_profile = make_crud_views(
     model_class=UserProfile,
-    display_name='User Profile',
+    display_name='User Profiles',
     fields=[
+        {'name': 'username', 'type': 'str', 'label': 'Username'},
         {'name': 'role', 'type': 'str', 'choices': UserProfile.ROLE_CHOICES, 'default': 'user', 'label': 'Role'},
+        {'name': 'language', 'type': 'str', 'choices': UserProfile.LANGUAGE_CHOICES, 'default': 'en', 'label': 'Language'},
     ],
     list_url_name='user_profile_list',
     add_url_name='user_profile_add',
     edit_url_name='user_profile_edit',
     order_by='-created_at',
+    extra_list_context={'page_subtitle': 'Manage user accounts, roles, and language preferences.'},
+    extra_form_context={'page_subtitle': 'Configure user account details and access level.'},
 )
 user_profile_list = admin_required(_user_profile['list'])
+# user_profile_add/edit/delete are handwritten above (manage User + UserProfile)
 
 # ===== Family Accounts =====
 _family_account = make_crud_views(
     model_class=FamilyAccount,
-    display_name='Family Account',
+    display_name='Family Accounts',
     fields=[
         {'name': 'member_name', 'type': 'str', 'required': True, 'label': 'Member Name'},
         {'name': 'relationship', 'type': 'str', 'label': 'Relationship'},
@@ -4649,6 +4680,8 @@ _family_account = make_crud_views(
     add_url_name='family_account_add',
     edit_url_name='family_account_edit',
     order_by='-created_at',
+    extra_list_context={'page_subtitle': 'Manage linked family member accounts and relationships.'},
+    extra_form_context={'page_subtitle': 'Add or update a family member linked to a primary user.'},
 )
 family_account_list = admin_required(_family_account['list'])
 family_account_add = admin_required(_family_account['add'])
@@ -4658,7 +4691,7 @@ family_account_delete = admin_required(_family_account['delete'])
 # ===== Consent Logs =====
 _consent_log = make_crud_views(
     model_class=ConsentLog,
-    display_name='Consent Log',
+    display_name='Consent Logs',
     fields=[
         {'name': 'consent_type', 'type': 'str', 'required': True, 'label': 'Consent Type'},
         {'name': 'version', 'type': 'str', 'required': True, 'label': 'Version'},
@@ -4669,6 +4702,8 @@ _consent_log = make_crud_views(
     add_url_name='consent_log_add',
     edit_url_name='consent_log_edit',
     order_by='-accepted_at',
+    extra_list_context={'page_subtitle': 'Track user consent records for data processing and privacy compliance.'},
+    extra_form_context={'page_subtitle': 'Record a consent event with type, version, and acceptance status.'},
 )
 consent_log_list = admin_required(_consent_log['list'])
 consent_log_add = admin_required(_consent_log['add'])
@@ -4678,7 +4713,7 @@ consent_log_delete = admin_required(_consent_log['delete'])
 # ===== Audit Logs =====
 _audit_log = make_crud_views(
     model_class=AuditLog,
-    display_name='Audit Log',
+    display_name='Audit Logs',
     fields=[
         {'name': 'action', 'type': 'str', 'required': True, 'label': 'Action'},
         {'name': 'details', 'type': 'str', 'widget': 'textarea', 'label': 'Details'},
@@ -4688,6 +4723,8 @@ _audit_log = make_crud_views(
     add_url_name='audit_log_add',
     edit_url_name='audit_log_edit',
     order_by='-created_at',
+    extra_list_context={'page_subtitle': 'Review system-wide audit trail of administrative actions.'},
+    extra_form_context={'page_subtitle': 'Record an auditable action with context details.'},
 )
 audit_log_list = admin_required(_audit_log['list'])
 audit_log_add = admin_required(_audit_log['add'])

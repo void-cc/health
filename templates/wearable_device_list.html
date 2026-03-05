@@ -4,10 +4,10 @@
   <h2>Wearable Devices</h2>
   <div>
     <a href="{% url 'sync_log_list' %}" class="btn btn-outline-secondary me-2">
-      <i class="fas fa-history"></i> Sync Logs
+      <i data-lucide="history"></i> Sync Logs
     </a>
     <a href="{% url 'wearable_device_add' %}" class="btn btn-primary">
-      <i class="fas fa-plus"></i> Add Device
+      <i data-lucide="plus"></i> Add Device
     </a>
   </div>
 </div>
@@ -51,26 +51,26 @@
               <form action="{% url 'wearable_sync' pk=entry.id %}" method="post" class="d-inline">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-success" title="Sync data now">
-                  <i class="fas fa-sync-alt"></i> Sync
+                  <i data-lucide="refresh-cw"></i> Sync
                 </button>
               </form>
               <form action="{% url 'wearable_disconnect' pk=entry.id %}" method="post" class="d-inline">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-outline-warning" title="Disconnect">
-                  <i class="fas fa-unlink"></i> Disconnect
+                  <i data-lucide="unlink"></i> Disconnect
                 </button>
               </form>
             {% else %}
               <a href="{% url 'wearable_connect' pk=entry.id %}" class="btn btn-sm btn-primary" title="Connect via OAuth">
-                <i class="fas fa-link"></i> Connect
+                <i data-lucide="link"></i> Connect
               </a>
             {% endif %}
           {% endif %}
           <a href="{% url 'wearable_device_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
-            <i class="fas fa-edit"></i> Edit
+            <i data-lucide="pencil"></i> Edit
           </a>
           <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
-            <i class="fas fa-trash-alt"></i> Delete
+            <i data-lucide="trash-2"></i> Delete
           </button>
 
           <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">
