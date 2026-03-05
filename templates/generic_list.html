@@ -8,21 +8,120 @@
   </div>
   <div class="page-header-actions">
     <a href="{% url add_url_name %}" class="toolbar-btn toolbar-btn-primary">
-      <i class="fas fa-plus" aria-hidden="true"></i>
+      <i data-lucide="plus" aria-hidden="true"></i>
       <span>Add Entry</span>
     </a>
   </div>
 </div>
 
+{% include 'includes/tracking_insights.html' %}
+
+{% if insights and insights.has_data %}
+<!-- Automated Insights -->
+<div class="kpi-grid kpi-grid-2 mb-4">
+  {% if insights.current is not None %}
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Latest Value</span>
+      <div class="kpi-card-icon icon-primary"><i data-lucide="activity"></i></div>
+    </div>
+    <div class="kpi-card-value-row">
+      <div>
+        <span class="kpi-card-value">{{ insights.current }}</span>
+      </div>
+      {% if insights.sparkline %}
+      <div class="tracking-sparkline">
+        <svg viewBox="0 0 64 24" preserveAspectRatio="none">
+          <polyline points="{{ insights.sparkline }}" fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      {% endif %}
+    </div>
+    <div class="kpi-card-trend">
+      {% if insights.trend %}
+      <span class="trend-indicator trend-{% if insights.trend == 'up' %}up{% elif insights.trend == 'down' %}down{% else %}stable{% endif %}">
+        <i data-lucide="{% if insights.trend == 'up' %}trending-up{% elif insights.trend == 'down' %}trending-down{% else %}minus{% endif %}" style="width:12px;height:12px;"></i>
+        {% if insights.change is not None %}{{ insights.change }}{% endif %}
+      </span>
+      {% endif %}
+      <span class="kpi-card-trend-text">vs previous</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Activity</span>
+      <div class="kpi-card-icon icon-success"><i data-lucide="bar-chart-3"></i></div>
+    </div>
+    <div class="tracking-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 0;">
+      <div class="tracking-stat-card" style="padding: var(--space-2);">
+        <div class="tracking-stat-label">Last 7d</div>
+        <div class="tracking-stat-value" style="font-size:1rem;">{{ insights.entries_last_7 }}</div>
+      </div>
+      <div class="tracking-stat-card" style="padding: var(--space-2);">
+        <div class="tracking-stat-label">Last 30d</div>
+        <div class="tracking-stat-value" style="font-size:1rem;">{{ insights.entries_last_30 }}</div>
+      </div>
+    </div>
+    {% if insights.avg_30d is not None %}
+    <div class="kpi-card-trend">
+      <span class="kpi-card-trend-text">30d avg: {{ insights.avg_30d }}</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% elif insights and insights.has_data and insights.glucose_current is not None %}
+{# Metabolic-specific: handled by metabolic insights #}
+<div class="kpi-grid kpi-grid-2 mb-4">
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">Glucose</span>
+      <div class="kpi-card-icon icon-{% if insights.glucose_current > 126 %}error{% elif insights.glucose_current > 100 %}warning{% else %}success{% endif %}"><i data-lucide="test-tube"></i></div>
+    </div>
+    <div class="kpi-card-value-row">
+      <div>
+        <span class="kpi-card-value">{{ insights.glucose_current }}</span>
+        <span class="kpi-card-value-unit">mg/dL</span>
+      </div>
+      {% if insights.glucose_sparkline %}
+      <div class="tracking-sparkline">
+        <svg viewBox="0 0 64 24" preserveAspectRatio="none">
+          <polyline points="{{ insights.glucose_sparkline }}" fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% if insights.homa_ir is not None %}
+  <div class="kpi-card">
+    <div class="kpi-card-header">
+      <span class="kpi-card-label">HOMA-IR</span>
+      <div class="kpi-card-icon icon-{% if insights.homa_category == 'normal' %}success{% elif insights.homa_category == 'borderline' %}warning{% else %}error{% endif %}"><i data-lucide="gauge"></i></div>
+    </div>
+    <div class="kpi-card-value-row">
+      <div>
+        <span class="kpi-card-value">{{ insights.homa_ir }}</span>
+      </div>
+    </div>
+    <div class="kpi-card-trend">
+      <span class="status-badge {% if insights.homa_category == 'normal' %}badge-success{% elif insights.homa_category == 'borderline' %}badge-warning{% else %}badge-error{% endif %}">{{ insights.homa_category|title }}</span>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if entries %}
-<div class="table-responsive">
+<div class="tracking-table">
   <table class="table table-hover align-middle">
     <thead>
       <tr>
         {% for f in fields %}
-          <th scope="col">{{ f.label }}</th>
+          <th>{{ f.label }}</th>
         {% endfor %}
-        <th scope="col" style="width: 56px;"><span class="visually-hidden">Actions</span></th>
+        <th style="width: 56px;"><span class="visually-hidden">Actions</span></th>
       </tr>
     </thead>
     <tbody>
@@ -31,24 +130,24 @@
         {% for f in fields %}
           <td>
             {% with val=entry|get_field:f.name %}
-              {% if f.type == "date" %}{{ val|date:"M j, Y" }}{% elif f.type == "datetime" %}{{ val|date:"M j, Y H:i" }}{% elif val is None or val == "" %}<span class="text-muted">—</span>{% elif f.type == "bool" %}{% if val %}<i class="fas fa-check text-success" aria-label="Yes"></i>{% else %}<i class="fas fa-times text-muted" aria-label="No"></i>{% endif %}{% else %}{{ val }}{% endif %}
+              {% if f.type == "date" %}{{ val|date:"M j, Y" }}{% elif f.type == "datetime" %}{{ val|date:"M j, Y H:i" }}{% elif val is None or val == "" %}<span class="text-muted">&mdash;</span>{% elif f.type == "bool" %}{% if val %}<i data-lucide="check" style="width:14px;height:14px;color:var(--color-success);"></i>{% else %}<i data-lucide="x" style="width:14px;height:14px;color:var(--text-muted);"></i>{% endif %}{% else %}{{ val }}{% endif %}
             {% endwith %}
           </td>
         {% endfor %}
         <td class="text-nowrap">
           <div class="dropdown">
             <button class="toolbar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
-              <i class="fas fa-ellipsis-v"></i>
+              <i data-lucide="more-vertical" style="width:16px;height:16px;"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
                 <a href="{% url edit_url_name pk=entry.id %}" class="dropdown-item">
-                  <i class="fas fa-edit me-2"></i>Edit
+                  <i data-lucide="pencil" style="width:14px;height:14px;" class="me-2"></i>Edit
                 </a>
               </li>
               <li>
                 <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
-                  <i class="fas fa-trash-alt me-2"></i>Delete
+                  <i data-lucide="trash-2" style="width:14px;height:14px;" class="me-2"></i>Delete
                 </button>
               </li>
             </ul>
@@ -81,12 +180,12 @@
   </table>
 </div>
 {% else %}
-<div class="empty-state">
-  <div class="empty-state-icon"><i class="fas fa-inbox"></i></div>
-  <div class="empty-state-title">No entries yet</div>
-  <div class="empty-state-description">No {{ page_title|lower }} entries recorded yet. Add your first entry to get started.</div>
+<div class="tracking-empty">
+  <div class="tracking-empty-icon"><i data-lucide="inbox" style="width:32px;height:32px;"></i></div>
+  <div class="tracking-empty-title">No entries yet</div>
+  <div class="tracking-empty-text">No {{ page_title|lower }} entries recorded yet. Add your first entry to get started.</div>
   <a href="{% url add_url_name %}" class="toolbar-btn toolbar-btn-primary">
-    <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Entry
+    <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Entry
   </a>
 </div>
 {% endif %}

@@ -51,6 +51,8 @@ def make_crud_views(
     list_template='generic_list.html',
     form_template='generic_form.html',
     require_staff=True,
+    insights_fn=None,
+    insights_value_field=None,
 ):
     """
     Factory that generates list, add, edit, and delete views for a model.
@@ -61,6 +63,11 @@ def make_crud_views(
     it.  When *require_staff* is False the views are guarded by
     ``@login_required`` instead, making them suitable for personal health
     data that every authenticated user should be able to access.
+
+    If *insights_fn* is provided it is called with the queryset and its
+    return value is added to the template context under ``insights``.
+    When *insights_fn* is ``None`` and *insights_value_field* is set,
+    the generic ``generic_tracking_insights`` helper is used automatically.
     """
 
     _guard = staff_only if require_staff else login_required
@@ -85,6 +92,12 @@ def make_crud_views(
             'delete_url_name': delete_url_name,
             'fields': fields,
         }
+        # Automated insights
+        if insights_fn is not None:
+            context['insights'] = insights_fn(entries)
+        elif insights_value_field is not None:
+            from .services.tracking_insights import generic_tracking_insights
+            context['insights'] = generic_tracking_insights(entries, value_field=insights_value_field)
         context.update(_resolve_extra_context(extra_list_context, request))
         return render(request, list_template, context)
 

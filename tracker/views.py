@@ -1235,6 +1235,7 @@ def export_data(request):
 
 @login_required
 def body_composition_list(request):
+    from .services.tracking_insights import body_composition_insights
     entries = BodyComposition.objects.all().order_by('-date')
 
     # Date range filtering
@@ -1253,6 +1254,9 @@ def body_composition_list(request):
         total_entries=Count('id'),
     )
 
+    # Automated insights
+    insights = body_composition_insights(entries)
+
     # Chart data (last 30 entries, chronological)
     chart_entries = entries.order_by('date')[:30]
     chart_dates = [e.date.isoformat() for e in chart_entries]
@@ -1267,6 +1271,7 @@ def body_composition_list(request):
         'entries': page_obj,
         'page_obj': page_obj,
         'stats': stats,
+        'insights': insights,
         'start_date': start_date,
         'end_date': end_date,
         'chart_dates': json.dumps(chart_dates),
@@ -1333,9 +1338,9 @@ def body_composition_delete(request, pk):
 
 @login_required
 def hydration_list(request):
+    from .services.tracking_insights import hydration_insights
     entries = HydrationLog.objects.all().order_by('-date')
 
-    # Date range filtering
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
     if start_date:
@@ -1343,25 +1348,23 @@ def hydration_list(request):
     if end_date:
         entries = entries.filter(date__lte=end_date)
 
-    # Summary statistics
     stats = entries.aggregate(
         avg_intake=Avg('fluid_intake_ml'),
         avg_goal=Avg('goal_ml'),
         total_entries=Count('id'),
     )
-    # Calculate average goal achievement percentage
     all_entries_for_stats = list(entries)
     goal_percentages = [e.goal_percentage for e in all_entries_for_stats if e.goal_percentage is not None]
     stats['avg_goal_pct'] = round(sum(goal_percentages) / len(goal_percentages), 1) if goal_percentages else None
     stats['days_goal_met'] = sum(1 for p in goal_percentages if p >= 100)
 
-    # Chart data (last 30 entries, chronological)
+    insights = hydration_insights(entries)
+
     chart_entries = entries.order_by('date')[:30]
     chart_dates = [e.date.isoformat() for e in chart_entries]
     chart_intake = [e.fluid_intake_ml for e in chart_entries]
     chart_goal = [e.goal_ml for e in chart_entries if e.goal_ml is not None]
 
-    # Pagination
     paginator = Paginator(entries, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
 
@@ -1369,6 +1372,7 @@ def hydration_list(request):
         'entries': page_obj,
         'page_obj': page_obj,
         'stats': stats,
+        'insights': insights,
         'start_date': start_date,
         'end_date': end_date,
         'chart_dates': json.dumps(chart_dates),
@@ -1432,8 +1436,26 @@ def hydration_delete(request, pk):
 
 @login_required
 def energy_list(request):
+    from .services.tracking_insights import energy_insights
     entries = EnergyFatigueLog.objects.all().order_by('-date')
-    return render(request, 'energy_list.html', {'entries': entries})
+
+    insights = energy_insights(entries)
+
+    chart_entries = list(entries.order_by('date')[:30])
+    chart_dates = json.dumps([e.date.isoformat() for e in chart_entries])
+    chart_scores = json.dumps([e.energy_score for e in chart_entries])
+
+    paginator = Paginator(entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'entries': page_obj,
+        'page_obj': page_obj,
+        'insights': insights,
+        'chart_dates': chart_dates,
+        'chart_scores': chart_scores,
+    }
+    return render(request, 'energy_list.html', context)
 
 @login_required
 def energy_add(request):
@@ -4361,6 +4383,8 @@ energy_edit = _energy['edit']
 energy_delete = _energy['delete']
 
 # ===== Pain =====
+from .services.tracking_insights import pain_insights as _pain_insights_fn
+from .services.tracking_insights import metabolic_insights as _metabolic_insights_fn
 _pain = make_crud_views(
     model_class=PainLog,
     display_name='Pain Log',
@@ -4376,6 +4400,7 @@ _pain = make_crud_views(
     extra_list_context={'body_regions': BODY_REGIONS},
     extra_form_context={'body_regions': BODY_REGIONS},
     list_template='pain_list.html',
+    insights_fn=_pain_insights_fn,
 )
 pain_list = _pain['list']
 pain_add = _pain['add']
@@ -4397,6 +4422,7 @@ _rmr = make_crud_views(
     list_url_name='rmr_list',
     add_url_name='rmr_add',
     edit_url_name='rmr_edit',
+    insights_value_field='rmr_value',
 )
 rmr_list = _rmr['list']
 rmr_add = _rmr['add']
@@ -4440,6 +4466,7 @@ _reproductive = make_crud_views(
     list_url_name='reproductive_list',
     add_url_name='reproductive_add',
     edit_url_name='reproductive_edit',
+    insights_value_field='flow_intensity',
 )
 reproductive_list = _reproductive['list']
 reproductive_add = _reproductive['add']
@@ -4460,6 +4487,7 @@ _symptom = make_crud_views(
     list_url_name='symptom_list',
     add_url_name='symptom_add',
     edit_url_name='symptom_edit',
+    insights_value_field='severity',
 )
 symptom_list = _symptom['list']
 symptom_add = _symptom['add']
@@ -4479,6 +4507,7 @@ _metabolic = make_crud_views(
     list_url_name='metabolic_list',
     add_url_name='metabolic_add',
     edit_url_name='metabolic_edit',
+    insights_fn=_metabolic_insights_fn,
 )
 metabolic_list = _metabolic['list']
 metabolic_add = _metabolic['add']
@@ -4498,6 +4527,7 @@ _ketone = make_crud_views(
     list_url_name='ketone_list',
     add_url_name='ketone_add',
     edit_url_name='ketone_edit',
+    insights_value_field='value',
 )
 ketone_list = _ketone['list']
 ketone_add = _ketone['add']

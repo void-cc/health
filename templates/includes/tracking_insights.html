@@ -1,0 +1,26 @@
+{% comment %}
+  Reusable insight banners for tracking pages.
+  Expects: insights dict with 'alerts' and 'tips' lists.
+{% endcomment %}
+{% if insights and insights.has_data %}
+  {% for alert in insights.alerts %}
+    <div class="insight-banner insight-{{ alert.level }}">
+      <div class="insight-banner-icon">
+        <i data-lucide="{% if alert.level == 'error' %}alert-triangle{% elif alert.level == 'warning' %}alert-circle{% else %}info{% endif %}"></i>
+      </div>
+      <div class="insight-banner-content">
+        <div class="insight-banner-text">{{ alert.message }}</div>
+      </div>
+    </div>
+  {% endfor %}
+  {% for tip in insights.tips %}
+    <div class="insight-banner insight-success">
+      <div class="insight-banner-icon">
+        <i data-lucide="lightbulb"></i>
+      </div>
+      <div class="insight-banner-content">
+        <div class="insight-banner-text">{{ tip }}</div>
+      </div>
+    </div>
+  {% endfor %}
+{% endif %}
