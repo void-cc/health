@@ -2848,7 +2848,6 @@ def user_profile_add(request):
             messages.error(request, 'Error adding user profile. Please try again.')
             return redirect('user_profile_add')
     context = {
-        'date': datetime.now().strftime('%Y-%m-%d'),
         'editing': False,
         'page_title': 'User Profiles',
         'page_subtitle': 'Configure user account details and access level.',
@@ -2877,16 +2876,8 @@ def user_profile_edit(request, pk):
             messages.error(request, 'Error updating user profile.')
             return redirect('user_profile_edit', pk=pk)
 
-    # Build a proxy object so generic_form.html can read fields by name
-    class _Proxy:
-        def __init__(self, profile):
-            self.id = profile.id
-            self.username = profile.user.username
-            self.role = profile.role
-            self.language = profile.language
-
     context = {
-        'entry': _Proxy(entry),
+        'entry': entry,
         'editing': True,
         'page_title': 'User Profiles',
         'page_subtitle': 'Configure user account details and access level.',
