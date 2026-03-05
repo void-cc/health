@@ -31,7 +31,7 @@ meaning any unauthenticated visitor can access or mutate sensitive health data:
   `practitioner_portal`, `practitioner_request_access`, `intake_summary_*`,
   `intake_summary_generate`, `data_export_*`, `data_export_download`,
   `data_export_add`, `stakeholder_email_*`, `stakeholder_email_send`)
-- Integration views (`integration_config_activate`, `integration_config_run`,
+- Integration views (`integration_config_activate`,
   `phase11_dashboard`, `practitioner_access_edit`)
 
 ### 1.2 — RBAC roles are stored but never enforced
@@ -47,7 +47,7 @@ any view or action. Any logged-in user can reach any page regardless of role.
 **Affected files:** `tracker/views.py`, `tracker/urls.py`
 
 Pages under the **Administration** sidebar section (User Profiles, Family
-Accounts, Consent Logs, Tenant Config, etc.) have no admin-only guard. Any
+Accounts, Consent Logs, etc.) have no admin-only guard. Any
 authenticated user can view, create, edit, or delete other users' profiles and
 system-wide configurations.
 
@@ -86,13 +86,7 @@ which patient actually granted the access.
 
 ## 3. Missing or Unreachable Features
 
-### 3.1 — `ClinicalTrialMatch` model has no views, URLs, or UI at all
-
-**Affected files:** `tracker/models.py`, `tracker/views.py`, `tracker/urls.py`
-
-The `ClinicalTrialMatch` model is imported in `views.py` but has no CRUD
-views, no URL routes, and no sidebar entry. It is completely unreachable
-through the application.
+### 3.1 — ~~`ClinicalTrialMatch` model has no views, URLs, or UI at all~~ **RESOLVED — model removed**
 
 ### 3.2 — `PharmacologicalInteraction` model has no views, URLs, or UI at all
 
@@ -106,23 +100,9 @@ No drug-interaction checking is wired up to the Medications feature either.
 
 ## 4. Placeholder / Stub Implementations
 
-### 4.1 — `WearableDevice.trigger_sync()` creates empty placeholder records
+### 4.1 — ~~`WearableDevice.trigger_sync()` creates empty placeholder records~~ **RESOLVED — fake data creation removed; now returns an error until a real integration client is wired up**
 
-**Affected files:** `tracker/models.py` (line 446)
-
-The `trigger_sync` method always creates a `VitalSign` row with
-`heart_rate=None, spo2=None` and nothing else, and (for most platforms) a
-`SleepLog` row with only an auto-note. No real data from any wearable API is
-fetched or imported; this is a stub that gives false positive "Sync completed"
-messages.
-
-### 4.2 — `IntegrationConfig.run_integration()` does nothing
-
-**Affected files:** `tracker/models.py` (line 1629)
-
-The method simply sets `last_run = timezone.now()` and saves, then returns
-`(True, "Integration ran successfully")`. It performs no actual integration
-work regardless of the `category` or `feature_type` selected.
+### 4.2 — ~~`IntegrationConfig.run_integration()` does nothing~~ **RESOLVED — stub method removed**
 
 ### 4.3 — `DataExportRequest` supports CSV and PDF formats that are never generated
 
@@ -134,45 +114,15 @@ work regardless of the `category` or `feature_type` selected.
 everything else. Selecting CSV or PDF produces a JSON file with a `.json`
 extension.
 
-### 4.4 — `APIRateLimitConfig` settings are stored but rate limiting is never enforced
+### 4.4 — ~~`APIRateLimitConfig` settings are stored but rate limiting is never enforced~~ **RESOLVED — model removed**
 
-**Affected files:** `tracker/models.py`, `tracker/views.py`, `tracker/middleware.py`
+### 4.5 — ~~`EncryptionKey` stores public keys but data is never encrypted~~ **RESOLVED — model removed**
 
-Users can create and configure per-endpoint rate limit rules, but there is no
-middleware, decorator, or interceptor that reads these records and enforces
-limits. The settings have no effect on request processing.
+### 4.6 — ~~`BackupConfiguration` has no scheduler or execution logic~~ **RESOLVED — model removed**
 
-### 4.5 — `EncryptionKey` stores public keys but data is never encrypted
+### 4.7 — ~~`DatabaseScalingConfig` has no effect on the database~~ **RESOLVED — model removed**
 
-**Affected files:** `tracker/models.py`, `tracker/views.py`
-
-The Encryption Keys admin page lets users register public keys, but no health
-data is encrypted or decrypted anywhere in the application using these keys.
-
-### 4.6 — `BackupConfiguration` has no scheduler or execution logic
-
-**Affected files:** `tracker/models.py`, `tracker/views.py`
-
-Backup configurations (name, frequency, retention days, storage location) can
-be created and edited, but there is no Celery task, cron job, management
-command, or any other mechanism that actually performs backups according to
-these settings.
-
-### 4.7 — `DatabaseScalingConfig` has no effect on the database
-
-**Affected files:** `tracker/models.py`, `tracker/views.py`
-
-Read replica, sharding, and partitioning configurations can be recorded, but
-none of these settings are consumed by the Django database router or any
-infrastructure code. They are data-entry-only placeholders.
-
-### 4.8 — `AdminTelemetry` requires manual data entry
-
-**Affected files:** `tracker/models.py`, `tracker/views.py`
-
-Telemetry metrics (metric name + value) must be entered by hand via a form.
-There is no agent, collector, or signal handler that auto-populates telemetry.
-The feature is conceptually self-defeating.
+### 4.8 — ~~`AdminTelemetry` requires manual data entry~~ **RESOLVED — model removed**
 
 ---
 
