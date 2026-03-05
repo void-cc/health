@@ -465,9 +465,9 @@ class WearableDevice(models.Model):
     def trigger_sync(self):
         """Initiate a data sync from the wearable device.
 
-        Creates a WearableSyncLog, simulates data pull from the platform,
-        and imports health data (vitals, sleep) into the tracker.
-        Returns the sync log entry.
+        Creates a WearableSyncLog entry.  Real sync logic requires a
+        platform-specific integration client; this placeholder simply
+        marks the attempt so callers can inspect the resulting log.
         """
         sync_log = WearableSyncLog.objects.create(
             device=self,
@@ -481,38 +481,14 @@ class WearableDevice(models.Model):
             sync_log.save()
             return sync_log
 
-        try:
-            records_synced = 0
-
-            # Import heart rate, SpO2, and weight as a VitalSign entry
-            VitalSign.objects.create(
-                date=timezone.now().date(),
-                heart_rate=None,
-                spo2=None,
-            )
-            records_synced += 1
-
-            # Import sleep data if platform supports it
-            if self.platform in ('apple_health', 'fitbit', 'garmin', 'oura', 'google_fit', 'samsung_health', 'withings'):
-                SleepLog.objects.create(
-                    date=timezone.now().date(),
-                    notes=f"Auto-synced from {self.get_platform_display()}",
-                )
-                records_synced += 1
-
-            self.last_synced = timezone.now()
-            self.save()
-
-            sync_log.status = 'success'
-            sync_log.records_synced = records_synced
-            sync_log.completed_at = timezone.now()
-            sync_log.save()
-        except Exception as e:
-            sync_log.status = 'failed'
-            sync_log.error_message = str(e)
-            sync_log.completed_at = timezone.now()
-            sync_log.save()
-
+        # No real integration client is wired up yet; mark as failed
+        # until a platform-specific OAuth client is implemented.
+        sync_log.status = 'failed'
+        sync_log.error_message = (
+            f'No integration client configured for {self.get_platform_display()}.'
+        )
+        sync_log.completed_at = timezone.now()
+        sync_log.save()
         return sync_log
 
     def __str__(self):
@@ -1017,16 +993,6 @@ class FamilyAccount(models.Model):
         return f"{self.member_name} (under {self.primary_user.user.username})"
 
 
-class EncryptionKey(models.Model):
-    key_identifier = models.CharField(max_length=255, unique=True)
-    public_key = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return f"Key {self.key_identifier}"
-
-
 class AuditLog(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_logs')
     action = models.CharField(max_length=200)
@@ -1036,16 +1002,6 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.action} at {self.created_at}"
-
-
-class APIRateLimitConfig(models.Model):
-    endpoint = models.CharField(max_length=255, unique=True)
-    max_requests_per_minute = models.IntegerField(default=60)
-    max_requests_per_hour = models.IntegerField(default=1000)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return f"Rate Limit: {self.endpoint} ({self.max_requests_per_minute}/min)"
 
 
 class ConsentLog(models.Model):
@@ -1058,77 +1014,6 @@ class ConsentLog(models.Model):
     def __str__(self):
         return f"Consent: {self.consent_type} v{self.version}"
 
-
-class TenantConfig(models.Model):
-    tenant_name = models.CharField(max_length=200, unique=True)
-    is_active = models.BooleanField(default=True)
-    data_isolation_level = models.CharField(max_length=50, default='full')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Tenant: {self.tenant_name}"
-
-
-class AdminTelemetry(models.Model):
-    metric_name = models.CharField(max_length=200)
-    metric_value = models.FloatField()
-    recorded_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.metric_name}: {self.metric_value}"
-
-
-class AnonymizedDataReport(models.Model):
-    REPORT_TYPE_CHOICES = [
-        ('population_health', 'Population Health'),
-        ('trend_analysis', 'Trend Analysis'),
-        ('aggregate_stats', 'Aggregate Statistics'),
-    ]
-    report_title = models.CharField(max_length=200)
-    report_type = models.CharField(max_length=50, choices=REPORT_TYPE_CHOICES)
-    total_records = models.IntegerField(default=0)
-    anonymization_method = models.CharField(max_length=100, blank=True, default='')
-    generated_at = models.DateTimeField(auto_now_add=True)
-    notes = models.TextField(blank=True, default='')
-
-    def __str__(self):
-        return f"Anonymized Report: {self.report_title}"
-
-
-class DatabaseScalingConfig(models.Model):
-    SCALING_TYPE_CHOICES = [
-        ('read_replica', 'Read Replica'),
-        ('sharding', 'Data Sharding'),
-        ('partitioning', 'Table Partitioning'),
-    ]
-    config_name = models.CharField(max_length=200, unique=True)
-    scaling_type = models.CharField(max_length=50, choices=SCALING_TYPE_CHOICES)
-    is_active = models.BooleanField(default=False)
-    max_connections = models.IntegerField(default=100)
-    notes = models.TextField(blank=True, default='')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"DB Scaling: {self.config_name} ({self.get_scaling_type_display()})"
-
-
-class BackupConfiguration(models.Model):
-    FREQUENCY_CHOICES = [
-        ('hourly', 'Hourly'),
-        ('daily', 'Daily'),
-        ('weekly', 'Weekly'),
-        ('monthly', 'Monthly'),
-    ]
-    backup_name = models.CharField(max_length=200)
-    frequency = models.CharField(max_length=50, choices=FREQUENCY_CHOICES)
-    retention_days = models.IntegerField(default=30, validators=[MinValueValidator(1)])
-    is_active = models.BooleanField(default=True)
-    last_backup_at = models.DateTimeField(null=True, blank=True)
-    storage_location = models.CharField(max_length=500, blank=True, default='')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Backup: {self.backup_name} ({self.get_frequency_display()})"
 
 
 # ===== Advanced Health Analytics and AI =====
@@ -1298,18 +1183,6 @@ class HealthReport(models.Model):
     def __str__(self):
         return f"{self.title} ({self.period_start} - {self.period_end})"
 
-
-class ClinicalTrialMatch(models.Model):
-    trial_id = models.CharField(max_length=100)
-    trial_title = models.CharField(max_length=500)
-    condition = models.CharField(max_length=200)
-    match_score = models.FloatField(null=True, blank=True)
-    status = models.CharField(max_length=50, blank=True, default='')
-    url = models.URLField(blank=True, default='')
-    found_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Trial: {self.trial_title[:50]}"
 
 
 class BiologicalAgeCalculation(models.Model):
@@ -1939,14 +1812,6 @@ class IntegrationConfig(models.Model):
         self.is_enabled = True
         self.save()
         return True, 'Integration activated successfully.'
-
-    def run_integration(self):
-        """Execute the integration and record the run timestamp."""
-        if not self.is_enabled:
-            return False, 'Integration is not enabled.'
-        self.last_run = timezone.now()
-        self.save()
-        return True, f'Integration ran successfully at {self.last_run}.'
 
     def __str__(self):
         return f"{self.get_category_display()} - {self.get_feature_type_display()}"

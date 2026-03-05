@@ -32,11 +32,6 @@
             {% csrf_token %}
             <button type="submit" class="btn btn-sm btn-success"><i data-lucide="power"></i> Activate</button>
           </form>
-          {% else %}
-          <form action="{% url 'integration_config_run' pk=entry.id %}" method="post" class="d-inline">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-info"><i data-lucide="play"></i> Run</button>
-          </form>
           {% endif %}
           <a href="{% url 'integration_config_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
             <i data-lucide="pencil"></i> Edit

@@ -16,11 +16,10 @@ from .models import (
     SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
     # Multi-User Release
-    UserProfile, FamilyAccount, EncryptionKey, AuditLog,
-    APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
-    AnonymizedDataReport, DatabaseScalingConfig, BackupConfiguration,
+    UserProfile, FamilyAccount, AuditLog,
+    ConsentLog,
     # Advanced Analytics & AI
-    PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
+    PredictiveBiomarker, HealthReport,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
     MedicationLog, MedicationInventory, MedicationConcept,
     HealthGoal, CriticalAlert,
@@ -2898,6 +2897,106 @@ def user_profile_delete(request, pk):
     return redirect('user_profile_list')
 
 
+# ===== Family Account =====
+
+@admin_required
+def family_account_list(request):
+    entries = FamilyAccount.objects.all().order_by('-created_at')
+    return render(request, 'family_account_list.html', {'entries': entries})
+
+@admin_required
+def family_account_add(request):
+    if request.method == 'POST':
+        try:
+            FamilyAccount.objects.create(
+                primary_user=request.POST.get('primary_user', ''),
+                member_name=request.POST.get('member_name', ''),
+                relationship=request.POST.get('relationship', ''),
+                is_minor=request.POST.get('is_minor') == 'on',
+            )
+            messages.success(request, 'Family account added!')
+            return redirect('family_account_list')
+        except Exception:
+            messages.error(request, 'Error adding family account.')
+            return redirect('family_account_add')
+    return render(request, 'family_account_form.html', {'editing': False})
+
+@admin_required
+def family_account_edit(request, pk):
+    entry = get_object_or_404(FamilyAccount, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.primary_user = request.POST.get('primary_user', '')
+            entry.member_name = request.POST.get('member_name', '')
+            entry.relationship = request.POST.get('relationship', '')
+            entry.is_minor = request.POST.get('is_minor') == 'on'
+            entry.save()
+            messages.success(request, 'Family account updated!')
+            return redirect('family_account_list')
+        except Exception:
+            messages.error(request, 'Error updating family account.')
+            return redirect('family_account_edit', pk=pk)
+    return render(request, 'family_account_form.html', {'entry': entry, 'editing': True})
+
+@admin_required
+def family_account_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(FamilyAccount, id=pk).delete()
+        messages.success(request, 'Family account deleted!')
+    return redirect('family_account_list')
+
+
+# ===== Consent Log =====
+
+@admin_required
+def consent_log_list(request):
+    entries = ConsentLog.objects.all().order_by('-accepted_at')
+    return render(request, 'consent_log_list.html', {'entries': entries})
+
+@admin_required
+def consent_log_add(request):
+    if request.method == 'POST':
+        try:
+            ConsentLog.objects.create(
+                consent_type=request.POST.get('consent_type', ''),
+                version=request.POST.get('version', ''),
+                accepted=request.POST.get('accepted') == 'on',
+                ip_address=request.POST.get('ip_address', ''),
+            )
+            messages.success(request, 'Consent log added!')
+            return redirect('consent_log_list')
+        except Exception:
+            messages.error(request, 'Error adding consent log.')
+            return redirect('consent_log_add')
+    return render(request, 'consent_log_form.html', {'editing': False})
+
+@admin_required
+def consent_log_edit(request, pk):
+    entry = get_object_or_404(ConsentLog, id=pk)
+    if request.method == 'POST':
+        try:
+            entry.consent_type = request.POST.get('consent_type', '')
+            entry.version = request.POST.get('version', '')
+            entry.accepted = request.POST.get('accepted') == 'on'
+            entry.ip_address = request.POST.get('ip_address', '')
+            entry.save()
+            messages.success(request, 'Consent log updated!')
+            return redirect('consent_log_list')
+        except Exception:
+            messages.error(request, 'Error updating consent log.')
+            return redirect('consent_log_edit', pk=pk)
+    return render(request, 'consent_log_form.html', {'entry': entry, 'editing': True})
+
+@admin_required
+def consent_log_delete(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(ConsentLog, id=pk).delete()
+        messages.success(request, 'Consent log deleted!')
+    return redirect('consent_log_list')
+
+
+
+
 # ===== Medication Schedule =====
 
 @login_required
@@ -3782,17 +3881,6 @@ def integration_config_activate(request, pk):
             messages.error(request, msg)
     return redirect('integration_config_list')
 
-@staff_only
-def integration_config_run(request, pk):
-    entry = get_object_or_404(IntegrationConfig, id=pk)
-    if request.method == 'POST':
-        success, msg = entry.run_integration()
-        if success:
-            messages.success(request, msg)
-        else:
-            messages.error(request, msg)
-    return redirect('integration_config_list')
-
 
 # ===== Integration Sub-Task =====
 
@@ -4386,28 +4474,6 @@ predictive_biomarker_add = _predictive_biomarker['add']
 predictive_biomarker_edit = _predictive_biomarker['edit']
 predictive_biomarker_delete = _predictive_biomarker['delete']
 
-# ===== Clinical Trial Matches =====
-_clinical_trial = make_crud_views(
-    model_class=ClinicalTrialMatch,
-    display_name='Clinical Trial Match',
-    fields=[
-        {'name': 'trial_id', 'type': 'str', 'required': True, 'label': 'Trial ID'},
-        {'name': 'trial_title', 'type': 'str', 'required': True, 'label': 'Trial Title'},
-        {'name': 'condition', 'type': 'str', 'required': True, 'label': 'Condition'},
-        {'name': 'match_score', 'type': 'float', 'label': 'Match Score'},
-        {'name': 'status', 'type': 'str', 'label': 'Status'},
-        {'name': 'url', 'type': 'str', 'label': 'URL'},
-    ],
-    list_url_name='clinical_trial_list',
-    add_url_name='clinical_trial_add',
-    edit_url_name='clinical_trial_edit',
-    order_by='-found_at',
-)
-clinical_trial_list = _clinical_trial['list']
-clinical_trial_add = _clinical_trial['add']
-clinical_trial_edit = _clinical_trial['edit']
-clinical_trial_delete = _clinical_trial['delete']
-
 # ===== Secure Viewing Links =====
 _secure_viewing_link = make_crud_views(
     model_class=SecureViewingLink,
@@ -4644,90 +4710,6 @@ consent_log_add = admin_required(_consent_log['add'])
 consent_log_edit = admin_required(_consent_log['edit'])
 consent_log_delete = admin_required(_consent_log['delete'])
 
-# ===== Tenant Config =====
-_tenant_config = make_crud_views(
-    model_class=TenantConfig,
-    display_name='Tenant Configuration',
-    fields=[
-        {'name': 'tenant_name', 'type': 'str', 'required': True, 'label': 'Tenant Name'},
-        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
-        {'name': 'data_isolation_level', 'type': 'str', 'default': 'full', 'label': 'Data Isolation Level'},
-    ],
-    list_url_name='tenant_config_list',
-    add_url_name='tenant_config_add',
-    edit_url_name='tenant_config_edit',
-    order_by='-created_at',
-    extra_list_context={'page_subtitle': 'Configure multi-tenant isolation and data separation settings.'},
-    extra_form_context={'page_subtitle': 'Define tenant name, activation status, and data isolation level.'},
-)
-tenant_config_list = admin_required(_tenant_config['list'])
-tenant_config_add = admin_required(_tenant_config['add'])
-tenant_config_edit = admin_required(_tenant_config['edit'])
-tenant_config_delete = admin_required(_tenant_config['delete'])
-
-# ===== Admin Telemetry =====
-_admin_telemetry = make_crud_views(
-    model_class=AdminTelemetry,
-    display_name='Admin Telemetry',
-    fields=[
-        {'name': 'metric_name', 'type': 'str', 'required': True, 'label': 'Metric Name'},
-        {'name': 'metric_value', 'type': 'float', 'required': True, 'label': 'Metric Value', 'step': '0.01'},
-    ],
-    list_url_name='admin_telemetry_list',
-    add_url_name='admin_telemetry_add',
-    edit_url_name='admin_telemetry_edit',
-    order_by='-recorded_at',
-    extra_list_context={'page_subtitle': 'System performance metrics and operational telemetry data.'},
-    extra_form_context={'page_subtitle': 'Record a system metric with its current value.'},
-)
-admin_telemetry_list = admin_required(_admin_telemetry['list'])
-admin_telemetry_add = admin_required(_admin_telemetry['add'])
-admin_telemetry_edit = admin_required(_admin_telemetry['edit'])
-admin_telemetry_delete = admin_required(_admin_telemetry['delete'])
-
-# ===== API Rate Limits =====
-_api_rate_limit = make_crud_views(
-    model_class=APIRateLimitConfig,
-    display_name='API Rate Limits',
-    fields=[
-        {'name': 'endpoint', 'type': 'str', 'required': True, 'label': 'Endpoint'},
-        {'name': 'max_requests_per_minute', 'type': 'int', 'default': 60, 'label': 'Max Req/Min'},
-        {'name': 'max_requests_per_hour', 'type': 'int', 'default': 1000, 'label': 'Max Req/Hour'},
-        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
-    ],
-    list_url_name='api_rate_limit_list',
-    add_url_name='api_rate_limit_add',
-    edit_url_name='api_rate_limit_edit',
-    order_by='endpoint',
-    extra_list_context={'page_subtitle': 'Set per-endpoint rate limits to protect API resources.'},
-    extra_form_context={'page_subtitle': 'Define throttle thresholds for a specific API endpoint.'},
-)
-api_rate_limit_list = admin_required(_api_rate_limit['list'])
-api_rate_limit_add = admin_required(_api_rate_limit['add'])
-api_rate_limit_edit = admin_required(_api_rate_limit['edit'])
-api_rate_limit_delete = admin_required(_api_rate_limit['delete'])
-
-# ===== Encryption Keys =====
-_encryption_key = make_crud_views(
-    model_class=EncryptionKey,
-    display_name='Encryption Keys',
-    fields=[
-        {'name': 'key_identifier', 'type': 'str', 'required': True, 'label': 'Key Identifier'},
-        {'name': 'public_key', 'type': 'str', 'widget': 'textarea', 'required': True, 'label': 'Public Key'},
-        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
-    ],
-    list_url_name='encryption_key_list',
-    add_url_name='encryption_key_add',
-    edit_url_name='encryption_key_edit',
-    order_by='-created_at',
-    extra_list_context={'page_subtitle': 'Manage public encryption keys used for data protection.'},
-    extra_form_context={'page_subtitle': 'Register or update an encryption key for secure data handling.'},
-)
-encryption_key_list = admin_required(_encryption_key['list'])
-encryption_key_add = admin_required(_encryption_key['add'])
-encryption_key_edit = admin_required(_encryption_key['edit'])
-encryption_key_delete = admin_required(_encryption_key['delete'])
-
 # ===== Audit Logs =====
 _audit_log = make_crud_views(
     model_class=AuditLog,
@@ -4748,75 +4730,6 @@ audit_log_list = admin_required(_audit_log['list'])
 audit_log_add = admin_required(_audit_log['add'])
 audit_log_edit = admin_required(_audit_log['edit'])
 audit_log_delete = admin_required(_audit_log['delete'])
-
-# ===== Anonymized Data =====
-_anonymized_data = make_crud_views(
-    model_class=AnonymizedDataReport,
-    display_name='Anonymized Data Reports',
-    fields=[
-        {'name': 'report_title', 'type': 'str', 'required': True, 'label': 'Report Title'},
-        {'name': 'report_type', 'type': 'str', 'choices': AnonymizedDataReport.REPORT_TYPE_CHOICES, 'label': 'Report Type'},
-        {'name': 'total_records', 'type': 'int', 'default': 0, 'label': 'Total Records'},
-        {'name': 'anonymization_method', 'type': 'str', 'label': 'Method'},
-        {'name': 'notes', 'type': 'str', 'widget': 'textarea', 'label': 'Notes'},
-    ],
-    list_url_name='anonymized_data_list',
-    add_url_name='anonymized_data_add',
-    edit_url_name='anonymized_data_edit',
-    order_by='-generated_at',
-    extra_list_context={'page_subtitle': 'Generate and manage anonymized data reports for research compliance.'},
-    extra_form_context={'page_subtitle': 'Create an anonymized data export with method and record count.'},
-)
-anonymized_data_list = admin_required(_anonymized_data['list'])
-anonymized_data_add = admin_required(_anonymized_data['add'])
-anonymized_data_edit = admin_required(_anonymized_data['edit'])
-anonymized_data_delete = admin_required(_anonymized_data['delete'])
-
-# ===== Database Scaling =====
-_database_scaling = make_crud_views(
-    model_class=DatabaseScalingConfig,
-    display_name='Database Scaling',
-    fields=[
-        {'name': 'config_name', 'type': 'str', 'required': True, 'label': 'Config Name'},
-        {'name': 'scaling_type', 'type': 'str', 'choices': DatabaseScalingConfig.SCALING_TYPE_CHOICES, 'label': 'Scaling Type'},
-        {'name': 'is_active', 'type': 'bool', 'label': 'Active'},
-        {'name': 'max_connections', 'type': 'int', 'default': 100, 'label': 'Max Connections'},
-        {'name': 'notes', 'type': 'str', 'widget': 'textarea', 'label': 'Notes'},
-    ],
-    list_url_name='database_scaling_list',
-    add_url_name='database_scaling_add',
-    edit_url_name='database_scaling_edit',
-    order_by='-created_at',
-    extra_list_context={'page_subtitle': 'Configure database scaling strategies and connection pool limits.'},
-    extra_form_context={'page_subtitle': 'Define scaling type, connection limits, and activation status.'},
-)
-database_scaling_list = admin_required(_database_scaling['list'])
-database_scaling_add = admin_required(_database_scaling['add'])
-database_scaling_edit = admin_required(_database_scaling['edit'])
-database_scaling_delete = admin_required(_database_scaling['delete'])
-
-# ===== Backup Config =====
-_backup_config = make_crud_views(
-    model_class=BackupConfiguration,
-    display_name='Backup Configuration',
-    fields=[
-        {'name': 'backup_name', 'type': 'str', 'required': True, 'label': 'Backup Name'},
-        {'name': 'frequency', 'type': 'str', 'choices': BackupConfiguration.FREQUENCY_CHOICES, 'label': 'Frequency'},
-        {'name': 'retention_days', 'type': 'int', 'default': 30, 'label': 'Retention (days)'},
-        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
-        {'name': 'storage_location', 'type': 'str', 'label': 'Storage Location'},
-    ],
-    list_url_name='backup_config_list',
-    add_url_name='backup_config_add',
-    edit_url_name='backup_config_edit',
-    order_by='-created_at',
-    extra_list_context={'page_subtitle': 'Schedule automated backups and configure retention policies.'},
-    extra_form_context={'page_subtitle': 'Set backup frequency, retention period, and storage destination.'},
-)
-backup_config_list = admin_required(_backup_config['list'])
-backup_config_add = admin_required(_backup_config['add'])
-backup_config_edit = admin_required(_backup_config['edit'])
-backup_config_delete = admin_required(_backup_config['delete'])
 
 # ===== Integration Config =====
 _integration_config = make_crud_views(

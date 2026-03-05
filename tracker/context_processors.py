@@ -86,7 +86,6 @@ SIDEBAR_CONFIG = [
             {"label": "Health Reports", "icon": "file-text", "url_name": "health_report_list", "match": ["health_report"]},
             {"label": "Biological Age", "icon": "dna", "url_name": "biological_age_list", "match": ["biological_age"]},
             {"label": "Predictive Biomarkers", "icon": "microscope", "url_name": "predictive_biomarker_list", "match": ["predictive_biomarker"]},
-            {"label": "Clinical Trials", "icon": "flask-round", "url_name": "clinical_trial_list", "match": ["clinical_trial"]},
         ],
     },
     {
@@ -138,14 +137,7 @@ SIDEBAR_CONFIG = [
             {"label": "User Profiles", "icon": "users", "url_name": "user_profile_list", "match": ["user_profile"]},
             {"label": "Family Accounts", "icon": "home", "url_name": "family_account_list", "match": ["family_account"]},
             {"label": "Consent Logs", "icon": "handshake", "url_name": "consent_log_list", "match": ["consent_log"]},
-            {"label": "Tenant Config", "icon": "building", "url_name": "tenant_config_list", "match": ["tenant_config"]},
-            {"label": "Admin Telemetry", "icon": "pie-chart", "url_name": "admin_telemetry_list", "match": ["admin_telemetry"]},
-            {"label": "API Rate Limits", "icon": "gauge", "url_name": "api_rate_limit_list", "match": ["api_rate_limit"]},
-            {"label": "Encryption Keys", "icon": "key-round", "url_name": "encryption_key_list", "match": ["encryption_key"]},
             {"label": "Audit Logs", "icon": "scroll-text", "url_name": "audit_log_list", "match": ["audit_log"]},
-            {"label": "Anonymized Data", "icon": "user-x", "url_name": "anonymized_data_list", "match": ["anonymized_data"]},
-            {"label": "Database Scaling", "icon": "database", "url_name": "database_scaling_list", "match": ["database_scaling"]},
-            {"label": "Backup Config", "icon": "hard-drive", "url_name": "backup_config_list", "match": ["backup_config"]},
         ],
     },
 ]
