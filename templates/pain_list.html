@@ -126,19 +126,19 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  var painData = {};
+  const painData = {};
   {% for entry in entries %}
   (function() {
-    var region = "{{ entry.body_region }}";
-    var level = {{ entry.pain_level }};
+    const region = "{{ entry.body_region }}";
+    const level = {{ entry.pain_level }};
     if (!painData[region] || level > painData[region]) painData[region] = level;
   })();
   {% endfor %}
-  for (var region in painData) {
-    var el = document.getElementById("map-" + region);
+  for (const region in painData) {
+    const el = document.getElementById("map-" + region);
     if (el) {
-      var level = painData[region];
-      var color = level <= 3 ? "var(--color-success)" : level <= 6 ? "var(--color-warning)" : "var(--color-error)";
+      const level = painData[region];
+      const color = level <= 3 ? "var(--color-success)" : level <= 6 ? "var(--color-warning)" : "var(--color-error)";
       el.setAttribute("fill", color);
       el.setAttribute("opacity", "0.7");
     }
