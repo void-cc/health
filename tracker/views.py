@@ -2850,7 +2850,8 @@ def user_profile_add(request):
     context = {
         'date': datetime.now().strftime('%Y-%m-%d'),
         'editing': False,
-        'page_title': 'User Profile',
+        'page_title': 'User Profiles',
+        'page_subtitle': 'Configure user account details and access level.',
         'list_url_name': 'user_profile_list',
         'fields': [
             {'name': 'username', 'type': 'str', 'required': True, 'label': 'Username'},
@@ -2887,7 +2888,8 @@ def user_profile_edit(request, pk):
     context = {
         'entry': _Proxy(entry),
         'editing': True,
-        'page_title': 'User Profile',
+        'page_title': 'User Profiles',
+        'page_subtitle': 'Configure user account details and access level.',
         'list_url_name': 'user_profile_list',
         'fields': [
             {'name': 'username', 'type': 'str', 'required': True, 'label': 'Username'},
@@ -4592,8 +4594,9 @@ stakeholder_email_delete = _stakeholder_email['delete']
 # ===== User Profiles (RBAC) =====
 _user_profile = make_crud_views(
     model_class=UserProfile,
-    display_name='User Profile',
+    display_name='User Profiles',
     fields=[
+        {'name': 'username', 'type': 'str', 'label': 'Username'},
         {'name': 'role', 'type': 'str', 'choices': UserProfile.ROLE_CHOICES, 'default': 'user', 'label': 'Role'},
         {'name': 'language', 'type': 'str', 'choices': UserProfile.LANGUAGE_CHOICES, 'default': 'en', 'label': 'Language'},
     ],
@@ -4601,6 +4604,8 @@ _user_profile = make_crud_views(
     add_url_name='user_profile_add',
     edit_url_name='user_profile_edit',
     order_by='-created_at',
+    extra_list_context={'page_subtitle': 'Manage user accounts, roles, and language preferences.'},
+    extra_form_context={'page_subtitle': 'Configure user account details and access level.'},
 )
 user_profile_list = admin_required(_user_profile['list'])
 # user_profile_add/edit/delete are handwritten above (manage User + UserProfile)
@@ -4608,7 +4613,7 @@ user_profile_list = admin_required(_user_profile['list'])
 # ===== Family Accounts =====
 _family_account = make_crud_views(
     model_class=FamilyAccount,
-    display_name='Family Account',
+    display_name='Family Accounts',
     fields=[
         {'name': 'member_name', 'type': 'str', 'required': True, 'label': 'Member Name'},
         {'name': 'relationship', 'type': 'str', 'label': 'Relationship'},
@@ -4618,6 +4623,8 @@ _family_account = make_crud_views(
     add_url_name='family_account_add',
     edit_url_name='family_account_edit',
     order_by='-created_at',
+    extra_list_context={'page_subtitle': 'Manage linked family member accounts and relationships.'},
+    extra_form_context={'page_subtitle': 'Add or update a family member linked to a primary user.'},
 )
 family_account_list = admin_required(_family_account['list'])
 family_account_add = admin_required(_family_account['add'])
@@ -4627,7 +4634,7 @@ family_account_delete = admin_required(_family_account['delete'])
 # ===== Consent Logs =====
 _consent_log = make_crud_views(
     model_class=ConsentLog,
-    display_name='Consent Log',
+    display_name='Consent Logs',
     fields=[
         {'name': 'consent_type', 'type': 'str', 'required': True, 'label': 'Consent Type'},
         {'name': 'version', 'type': 'str', 'required': True, 'label': 'Version'},
@@ -4638,6 +4645,8 @@ _consent_log = make_crud_views(
     add_url_name='consent_log_add',
     edit_url_name='consent_log_edit',
     order_by='-accepted_at',
+    extra_list_context={'page_subtitle': 'Track user consent records for data processing and privacy compliance.'},
+    extra_form_context={'page_subtitle': 'Record a consent event with type, version, and acceptance status.'},
 )
 consent_log_list = admin_required(_consent_log['list'])
 consent_log_add = admin_required(_consent_log['add'])
@@ -4647,7 +4656,7 @@ consent_log_delete = admin_required(_consent_log['delete'])
 # ===== Tenant Config =====
 _tenant_config = make_crud_views(
     model_class=TenantConfig,
-    display_name='Tenant Config',
+    display_name='Tenant Configuration',
     fields=[
         {'name': 'tenant_name', 'type': 'str', 'required': True, 'label': 'Tenant Name'},
         {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
@@ -4657,6 +4666,8 @@ _tenant_config = make_crud_views(
     add_url_name='tenant_config_add',
     edit_url_name='tenant_config_edit',
     order_by='-created_at',
+    extra_list_context={'page_subtitle': 'Configure multi-tenant isolation and data separation settings.'},
+    extra_form_context={'page_subtitle': 'Define tenant name, activation status, and data isolation level.'},
 )
 tenant_config_list = admin_required(_tenant_config['list'])
 tenant_config_add = admin_required(_tenant_config['add'])
@@ -4669,12 +4680,14 @@ _admin_telemetry = make_crud_views(
     display_name='Admin Telemetry',
     fields=[
         {'name': 'metric_name', 'type': 'str', 'required': True, 'label': 'Metric Name'},
-        {'name': 'metric_value', 'type': 'float', 'required': True, 'label': 'Metric Value'},
+        {'name': 'metric_value', 'type': 'float', 'required': True, 'label': 'Metric Value', 'step': '0.01'},
     ],
     list_url_name='admin_telemetry_list',
     add_url_name='admin_telemetry_add',
     edit_url_name='admin_telemetry_edit',
     order_by='-recorded_at',
+    extra_list_context={'page_subtitle': 'System performance metrics and operational telemetry data.'},
+    extra_form_context={'page_subtitle': 'Record a system metric with its current value.'},
 )
 admin_telemetry_list = admin_required(_admin_telemetry['list'])
 admin_telemetry_add = admin_required(_admin_telemetry['add'])
@@ -4684,17 +4697,19 @@ admin_telemetry_delete = admin_required(_admin_telemetry['delete'])
 # ===== API Rate Limits =====
 _api_rate_limit = make_crud_views(
     model_class=APIRateLimitConfig,
-    display_name='API Rate Limit',
+    display_name='API Rate Limits',
     fields=[
         {'name': 'endpoint', 'type': 'str', 'required': True, 'label': 'Endpoint'},
-        {'name': 'max_requests_per_minute', 'type': 'int', 'default': 60, 'label': 'Max/Minute'},
-        {'name': 'max_requests_per_hour', 'type': 'int', 'default': 1000, 'label': 'Max/Hour'},
+        {'name': 'max_requests_per_minute', 'type': 'int', 'default': 60, 'label': 'Max Req/Min'},
+        {'name': 'max_requests_per_hour', 'type': 'int', 'default': 1000, 'label': 'Max Req/Hour'},
         {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
     ],
     list_url_name='api_rate_limit_list',
     add_url_name='api_rate_limit_add',
     edit_url_name='api_rate_limit_edit',
     order_by='endpoint',
+    extra_list_context={'page_subtitle': 'Set per-endpoint rate limits to protect API resources.'},
+    extra_form_context={'page_subtitle': 'Define throttle thresholds for a specific API endpoint.'},
 )
 api_rate_limit_list = admin_required(_api_rate_limit['list'])
 api_rate_limit_add = admin_required(_api_rate_limit['add'])
@@ -4704,7 +4719,7 @@ api_rate_limit_delete = admin_required(_api_rate_limit['delete'])
 # ===== Encryption Keys =====
 _encryption_key = make_crud_views(
     model_class=EncryptionKey,
-    display_name='Encryption Key',
+    display_name='Encryption Keys',
     fields=[
         {'name': 'key_identifier', 'type': 'str', 'required': True, 'label': 'Key Identifier'},
         {'name': 'public_key', 'type': 'str', 'widget': 'textarea', 'required': True, 'label': 'Public Key'},
@@ -4714,6 +4729,8 @@ _encryption_key = make_crud_views(
     add_url_name='encryption_key_add',
     edit_url_name='encryption_key_edit',
     order_by='-created_at',
+    extra_list_context={'page_subtitle': 'Manage public encryption keys used for data protection.'},
+    extra_form_context={'page_subtitle': 'Register or update an encryption key for secure data handling.'},
 )
 encryption_key_list = admin_required(_encryption_key['list'])
 encryption_key_add = admin_required(_encryption_key['add'])
@@ -4723,7 +4740,7 @@ encryption_key_delete = admin_required(_encryption_key['delete'])
 # ===== Audit Logs =====
 _audit_log = make_crud_views(
     model_class=AuditLog,
-    display_name='Audit Log',
+    display_name='Audit Logs',
     fields=[
         {'name': 'action', 'type': 'str', 'required': True, 'label': 'Action'},
         {'name': 'details', 'type': 'str', 'widget': 'textarea', 'label': 'Details'},
@@ -4733,6 +4750,8 @@ _audit_log = make_crud_views(
     add_url_name='audit_log_add',
     edit_url_name='audit_log_edit',
     order_by='-created_at',
+    extra_list_context={'page_subtitle': 'Review system-wide audit trail of administrative actions.'},
+    extra_form_context={'page_subtitle': 'Record an auditable action with context details.'},
 )
 audit_log_list = admin_required(_audit_log['list'])
 audit_log_add = admin_required(_audit_log['add'])
@@ -4742,18 +4761,20 @@ audit_log_delete = admin_required(_audit_log['delete'])
 # ===== Anonymized Data =====
 _anonymized_data = make_crud_views(
     model_class=AnonymizedDataReport,
-    display_name='Anonymized Data Report',
+    display_name='Anonymized Data Reports',
     fields=[
         {'name': 'report_title', 'type': 'str', 'required': True, 'label': 'Report Title'},
         {'name': 'report_type', 'type': 'str', 'choices': AnonymizedDataReport.REPORT_TYPE_CHOICES, 'label': 'Report Type'},
         {'name': 'total_records', 'type': 'int', 'default': 0, 'label': 'Total Records'},
-        {'name': 'anonymization_method', 'type': 'str', 'label': 'Anonymization Method'},
-        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+        {'name': 'anonymization_method', 'type': 'str', 'label': 'Method'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea', 'label': 'Notes'},
     ],
     list_url_name='anonymized_data_list',
     add_url_name='anonymized_data_add',
     edit_url_name='anonymized_data_edit',
     order_by='-generated_at',
+    extra_list_context={'page_subtitle': 'Generate and manage anonymized data reports for research compliance.'},
+    extra_form_context={'page_subtitle': 'Create an anonymized data export with method and record count.'},
 )
 anonymized_data_list = admin_required(_anonymized_data['list'])
 anonymized_data_add = admin_required(_anonymized_data['add'])
@@ -4769,12 +4790,14 @@ _database_scaling = make_crud_views(
         {'name': 'scaling_type', 'type': 'str', 'choices': DatabaseScalingConfig.SCALING_TYPE_CHOICES, 'label': 'Scaling Type'},
         {'name': 'is_active', 'type': 'bool', 'label': 'Active'},
         {'name': 'max_connections', 'type': 'int', 'default': 100, 'label': 'Max Connections'},
-        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
+        {'name': 'notes', 'type': 'str', 'widget': 'textarea', 'label': 'Notes'},
     ],
     list_url_name='database_scaling_list',
     add_url_name='database_scaling_add',
     edit_url_name='database_scaling_edit',
     order_by='-created_at',
+    extra_list_context={'page_subtitle': 'Configure database scaling strategies and connection pool limits.'},
+    extra_form_context={'page_subtitle': 'Define scaling type, connection limits, and activation status.'},
 )
 database_scaling_list = admin_required(_database_scaling['list'])
 database_scaling_add = admin_required(_database_scaling['add'])
@@ -4796,6 +4819,8 @@ _backup_config = make_crud_views(
     add_url_name='backup_config_add',
     edit_url_name='backup_config_edit',
     order_by='-created_at',
+    extra_list_context={'page_subtitle': 'Schedule automated backups and configure retention policies.'},
+    extra_form_context={'page_subtitle': 'Set backup frequency, retention period, and storage destination.'},
 )
 backup_config_list = admin_required(_backup_config['list'])
 backup_config_add = admin_required(_backup_config['add'])

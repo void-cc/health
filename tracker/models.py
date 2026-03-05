@@ -372,6 +372,11 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"Profile of {self.user.username}"
 
+    @property
+    def username(self):
+        """Expose User.username so generic list templates can display it."""
+        return self.user.username
+
 
 class SecurityLog(models.Model):
     ACTION_CHOICES = [
