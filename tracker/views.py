@@ -16,11 +16,10 @@ from .models import (
     SleepLog, CircadianRhythmLog, DreamJournal, MacronutrientLog,
     MicronutrientLog, FoodEntry, FastingLog, CaffeineAlcoholLog,
     # Multi-User Release
-    UserProfile, FamilyAccount, EncryptionKey, AuditLog,
-    APIRateLimitConfig, ConsentLog, TenantConfig, AdminTelemetry,
-    AnonymizedDataReport, DatabaseScalingConfig, BackupConfiguration,
+    UserProfile, FamilyAccount, AuditLog,
+    ConsentLog,
     # Advanced Analytics & AI
-    PredictiveBiomarker, HealthReport, ClinicalTrialMatch,
+    PredictiveBiomarker, HealthReport,
     BiologicalAgeCalculation, MedicationSchedule, PharmacologicalInteraction,
     MedicationLog, MedicationInventory, MedicationConcept,
     HealthGoal, CriticalAlert,
@@ -4254,17 +4253,6 @@ def integration_config_activate(request, pk):
             messages.error(request, msg)
     return redirect('integration_config_list')
 
-@staff_only
-def integration_config_run(request, pk):
-    entry = get_object_or_404(IntegrationConfig, id=pk)
-    if request.method == 'POST':
-        success, msg = entry.run_integration()
-        if success:
-            messages.success(request, msg)
-        else:
-            messages.error(request, msg)
-    return redirect('integration_config_list')
-
 
 # ===== Integration Sub-Task =====
 
@@ -4858,28 +4846,6 @@ predictive_biomarker_add = _predictive_biomarker['add']
 predictive_biomarker_edit = _predictive_biomarker['edit']
 predictive_biomarker_delete = _predictive_biomarker['delete']
 
-# ===== Clinical Trial Matches =====
-_clinical_trial = make_crud_views(
-    model_class=ClinicalTrialMatch,
-    display_name='Clinical Trial Match',
-    fields=[
-        {'name': 'trial_id', 'type': 'str', 'required': True, 'label': 'Trial ID'},
-        {'name': 'trial_title', 'type': 'str', 'required': True, 'label': 'Trial Title'},
-        {'name': 'condition', 'type': 'str', 'required': True, 'label': 'Condition'},
-        {'name': 'match_score', 'type': 'float', 'label': 'Match Score'},
-        {'name': 'status', 'type': 'str', 'label': 'Status'},
-        {'name': 'url', 'type': 'str', 'label': 'URL'},
-    ],
-    list_url_name='clinical_trial_list',
-    add_url_name='clinical_trial_add',
-    edit_url_name='clinical_trial_edit',
-    order_by='-found_at',
-)
-clinical_trial_list = _clinical_trial['list']
-clinical_trial_add = _clinical_trial['add']
-clinical_trial_edit = _clinical_trial['edit']
-clinical_trial_delete = _clinical_trial['delete']
-
 # ===== Secure Viewing Links =====
 _secure_viewing_link = make_crud_views(
     model_class=SecureViewingLink,
@@ -5107,82 +5073,6 @@ consent_log_add = admin_required(_consent_log['add'])
 consent_log_edit = admin_required(_consent_log['edit'])
 consent_log_delete = admin_required(_consent_log['delete'])
 
-# ===== Tenant Config =====
-_tenant_config = make_crud_views(
-    model_class=TenantConfig,
-    display_name='Tenant Config',
-    fields=[
-        {'name': 'tenant_name', 'type': 'str', 'required': True, 'label': 'Tenant Name'},
-        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
-        {'name': 'data_isolation_level', 'type': 'str', 'default': 'full', 'label': 'Data Isolation Level'},
-    ],
-    list_url_name='tenant_config_list',
-    add_url_name='tenant_config_add',
-    edit_url_name='tenant_config_edit',
-    order_by='-created_at',
-)
-tenant_config_list = admin_required(_tenant_config['list'])
-tenant_config_add = admin_required(_tenant_config['add'])
-tenant_config_edit = admin_required(_tenant_config['edit'])
-tenant_config_delete = admin_required(_tenant_config['delete'])
-
-# ===== Admin Telemetry =====
-_admin_telemetry = make_crud_views(
-    model_class=AdminTelemetry,
-    display_name='Admin Telemetry',
-    fields=[
-        {'name': 'metric_name', 'type': 'str', 'required': True, 'label': 'Metric Name'},
-        {'name': 'metric_value', 'type': 'float', 'required': True, 'label': 'Metric Value'},
-    ],
-    list_url_name='admin_telemetry_list',
-    add_url_name='admin_telemetry_add',
-    edit_url_name='admin_telemetry_edit',
-    order_by='-recorded_at',
-)
-admin_telemetry_list = admin_required(_admin_telemetry['list'])
-admin_telemetry_add = admin_required(_admin_telemetry['add'])
-admin_telemetry_edit = admin_required(_admin_telemetry['edit'])
-admin_telemetry_delete = admin_required(_admin_telemetry['delete'])
-
-# ===== API Rate Limits =====
-_api_rate_limit = make_crud_views(
-    model_class=APIRateLimitConfig,
-    display_name='API Rate Limit',
-    fields=[
-        {'name': 'endpoint', 'type': 'str', 'required': True, 'label': 'Endpoint'},
-        {'name': 'max_requests_per_minute', 'type': 'int', 'default': 60, 'label': 'Max/Minute'},
-        {'name': 'max_requests_per_hour', 'type': 'int', 'default': 1000, 'label': 'Max/Hour'},
-        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
-    ],
-    list_url_name='api_rate_limit_list',
-    add_url_name='api_rate_limit_add',
-    edit_url_name='api_rate_limit_edit',
-    order_by='endpoint',
-)
-api_rate_limit_list = admin_required(_api_rate_limit['list'])
-api_rate_limit_add = admin_required(_api_rate_limit['add'])
-api_rate_limit_edit = admin_required(_api_rate_limit['edit'])
-api_rate_limit_delete = admin_required(_api_rate_limit['delete'])
-
-# ===== Encryption Keys =====
-_encryption_key = make_crud_views(
-    model_class=EncryptionKey,
-    display_name='Encryption Key',
-    fields=[
-        {'name': 'key_identifier', 'type': 'str', 'required': True, 'label': 'Key Identifier'},
-        {'name': 'public_key', 'type': 'str', 'widget': 'textarea', 'required': True, 'label': 'Public Key'},
-        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
-    ],
-    list_url_name='encryption_key_list',
-    add_url_name='encryption_key_add',
-    edit_url_name='encryption_key_edit',
-    order_by='-created_at',
-)
-encryption_key_list = admin_required(_encryption_key['list'])
-encryption_key_add = admin_required(_encryption_key['add'])
-encryption_key_edit = admin_required(_encryption_key['edit'])
-encryption_key_delete = admin_required(_encryption_key['delete'])
-
 # ===== Audit Logs =====
 _audit_log = make_crud_views(
     model_class=AuditLog,
@@ -5201,69 +5091,6 @@ audit_log_list = admin_required(_audit_log['list'])
 audit_log_add = admin_required(_audit_log['add'])
 audit_log_edit = admin_required(_audit_log['edit'])
 audit_log_delete = admin_required(_audit_log['delete'])
-
-# ===== Anonymized Data =====
-_anonymized_data = make_crud_views(
-    model_class=AnonymizedDataReport,
-    display_name='Anonymized Data Report',
-    fields=[
-        {'name': 'report_title', 'type': 'str', 'required': True, 'label': 'Report Title'},
-        {'name': 'report_type', 'type': 'str', 'choices': AnonymizedDataReport.REPORT_TYPE_CHOICES, 'label': 'Report Type'},
-        {'name': 'total_records', 'type': 'int', 'default': 0, 'label': 'Total Records'},
-        {'name': 'anonymization_method', 'type': 'str', 'label': 'Anonymization Method'},
-        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
-    ],
-    list_url_name='anonymized_data_list',
-    add_url_name='anonymized_data_add',
-    edit_url_name='anonymized_data_edit',
-    order_by='-generated_at',
-)
-anonymized_data_list = admin_required(_anonymized_data['list'])
-anonymized_data_add = admin_required(_anonymized_data['add'])
-anonymized_data_edit = admin_required(_anonymized_data['edit'])
-anonymized_data_delete = admin_required(_anonymized_data['delete'])
-
-# ===== Database Scaling =====
-_database_scaling = make_crud_views(
-    model_class=DatabaseScalingConfig,
-    display_name='Database Scaling',
-    fields=[
-        {'name': 'config_name', 'type': 'str', 'required': True, 'label': 'Config Name'},
-        {'name': 'scaling_type', 'type': 'str', 'choices': DatabaseScalingConfig.SCALING_TYPE_CHOICES, 'label': 'Scaling Type'},
-        {'name': 'is_active', 'type': 'bool', 'label': 'Active'},
-        {'name': 'max_connections', 'type': 'int', 'default': 100, 'label': 'Max Connections'},
-        {'name': 'notes', 'type': 'str', 'widget': 'textarea'},
-    ],
-    list_url_name='database_scaling_list',
-    add_url_name='database_scaling_add',
-    edit_url_name='database_scaling_edit',
-    order_by='-created_at',
-)
-database_scaling_list = admin_required(_database_scaling['list'])
-database_scaling_add = admin_required(_database_scaling['add'])
-database_scaling_edit = admin_required(_database_scaling['edit'])
-database_scaling_delete = admin_required(_database_scaling['delete'])
-
-# ===== Backup Config =====
-_backup_config = make_crud_views(
-    model_class=BackupConfiguration,
-    display_name='Backup Configuration',
-    fields=[
-        {'name': 'backup_name', 'type': 'str', 'required': True, 'label': 'Backup Name'},
-        {'name': 'frequency', 'type': 'str', 'choices': BackupConfiguration.FREQUENCY_CHOICES, 'label': 'Frequency'},
-        {'name': 'retention_days', 'type': 'int', 'default': 30, 'label': 'Retention (days)'},
-        {'name': 'is_active', 'type': 'bool', 'default': True, 'label': 'Active'},
-        {'name': 'storage_location', 'type': 'str', 'label': 'Storage Location'},
-    ],
-    list_url_name='backup_config_list',
-    add_url_name='backup_config_add',
-    edit_url_name='backup_config_edit',
-    order_by='-created_at',
-)
-backup_config_list = admin_required(_backup_config['list'])
-backup_config_add = admin_required(_backup_config['add'])
-backup_config_edit = admin_required(_backup_config['edit'])
-backup_config_delete = admin_required(_backup_config['delete'])
 
 # ===== Integration Config =====
 _integration_config = make_crud_views(

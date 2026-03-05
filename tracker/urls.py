@@ -203,53 +203,11 @@ urlpatterns = [
     path('consent/edit/<int:pk>/', views.consent_log_edit, name='consent_log_edit'),
     path('consent/delete/<int:pk>/', views.consent_log_delete, name='consent_log_delete'),
 
-    # Tenant Config
-    path('tenants/', views.tenant_config_list, name='tenant_config_list'),
-    path('tenants/add/', views.tenant_config_add, name='tenant_config_add'),
-    path('tenants/edit/<int:pk>/', views.tenant_config_edit, name='tenant_config_edit'),
-    path('tenants/delete/<int:pk>/', views.tenant_config_delete, name='tenant_config_delete'),
-
-    # Admin Telemetry
-    path('telemetry/', views.admin_telemetry_list, name='admin_telemetry_list'),
-    path('telemetry/add/', views.admin_telemetry_add, name='admin_telemetry_add'),
-    path('telemetry/edit/<int:pk>/', views.admin_telemetry_edit, name='admin_telemetry_edit'),
-    path('telemetry/delete/<int:pk>/', views.admin_telemetry_delete, name='admin_telemetry_delete'),
-
-    # API Rate Limiting
-    path('rate-limits/', views.api_rate_limit_list, name='api_rate_limit_list'),
-    path('rate-limits/add/', views.api_rate_limit_add, name='api_rate_limit_add'),
-    path('rate-limits/edit/<int:pk>/', views.api_rate_limit_edit, name='api_rate_limit_edit'),
-    path('rate-limits/delete/<int:pk>/', views.api_rate_limit_delete, name='api_rate_limit_delete'),
-
-    # Encryption Keys
-    path('encryption-keys/', views.encryption_key_list, name='encryption_key_list'),
-    path('encryption-keys/add/', views.encryption_key_add, name='encryption_key_add'),
-    path('encryption-keys/edit/<int:pk>/', views.encryption_key_edit, name='encryption_key_edit'),
-    path('encryption-keys/delete/<int:pk>/', views.encryption_key_delete, name='encryption_key_delete'),
-
     # Audit Logs
     path('audit-logs/', views.audit_log_list, name='audit_log_list'),
     path('audit-logs/add/', views.audit_log_add, name='audit_log_add'),
     path('audit-logs/edit/<int:pk>/', views.audit_log_edit, name='audit_log_edit'),
     path('audit-logs/delete/<int:pk>/', views.audit_log_delete, name='audit_log_delete'),
-
-    # Anonymized Data Reports
-    path('anonymized-data/', views.anonymized_data_list, name='anonymized_data_list'),
-    path('anonymized-data/add/', views.anonymized_data_add, name='anonymized_data_add'),
-    path('anonymized-data/edit/<int:pk>/', views.anonymized_data_edit, name='anonymized_data_edit'),
-    path('anonymized-data/delete/<int:pk>/', views.anonymized_data_delete, name='anonymized_data_delete'),
-
-    # Database Scaling Config
-    path('database-scaling/', views.database_scaling_list, name='database_scaling_list'),
-    path('database-scaling/add/', views.database_scaling_add, name='database_scaling_add'),
-    path('database-scaling/edit/<int:pk>/', views.database_scaling_edit, name='database_scaling_edit'),
-    path('database-scaling/delete/<int:pk>/', views.database_scaling_delete, name='database_scaling_delete'),
-
-    # Backup Configuration
-    path('backup-config/', views.backup_config_list, name='backup_config_list'),
-    path('backup-config/add/', views.backup_config_add, name='backup_config_add'),
-    path('backup-config/edit/<int:pk>/', views.backup_config_edit, name='backup_config_edit'),
-    path('backup-config/delete/<int:pk>/', views.backup_config_delete, name='backup_config_delete'),
 
     # Medication Schedule
     path('medications/', views.medication_schedule_list, name='medication_schedule_list'),
@@ -312,12 +270,6 @@ urlpatterns = [
     path('biomarkers/delete/<int:pk>/', views.predictive_biomarker_delete, name='predictive_biomarker_delete'),
     path('biomarkers/generate/', views.predictive_biomarker_generate, name='predictive_biomarker_generate'),
 
-    # Clinical Trial Matches
-    path('clinical-trials/', views.clinical_trial_list, name='clinical_trial_list'),
-    path('clinical-trials/add/', views.clinical_trial_add, name='clinical_trial_add'),
-    path('clinical-trials/edit/<int:pk>/', views.clinical_trial_edit, name='clinical_trial_edit'),
-    path('clinical-trials/delete/<int:pk>/', views.clinical_trial_delete, name='clinical_trial_delete'),
-
     # Secure Viewing Links
     path('secure-links/', views.secure_viewing_link_list, name='secure_viewing_link_list'),
     path('secure-links/add/', views.secure_viewing_link_add, name='secure_viewing_link_add'),
@@ -360,7 +312,6 @@ urlpatterns = [
     path('integrations/edit/<int:pk>/', views.integration_config_edit, name='integration_config_edit'),
     path('integrations/delete/<int:pk>/', views.integration_config_delete, name='integration_config_delete'),
     path('integrations/activate/<int:pk>/', views.integration_config_activate, name='integration_config_activate'),
-    path('integrations/run/<int:pk>/', views.integration_config_run, name='integration_config_run'),
 
     # Integration Sub-tasks
     path('subtasks/', views.integration_subtask_list, name='integration_subtask_list'),
