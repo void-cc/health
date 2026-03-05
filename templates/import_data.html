@@ -16,7 +16,7 @@
   </div>
   <div class="page-header-actions">
     <a href="{% url 'index' %}" class="toolbar-btn">
-      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <i data-lucide="arrow-left" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Dashboard</span>
     </a>
   </div>
@@ -27,7 +27,7 @@
     <p class="section-heading">Supported Formats</p>
     <p class="text-muted small mb-3">Upload a CSV, JSON, PDF, or HL7 file containing your health data. The CSV file must contain a header row. JSON files should be a list of objects or a valid FHIR Bundle. HL7 files (.hl7) are parsed for OBR and OBX segments.</p>
     <p class="text-muted small mb-3">
-      <i class="fas fa-lightbulb me-1 text-warning" aria-hidden="true"></i>
+      <i data-lucide="lightbulb" class="me-1 text-warning" aria-hidden="true"></i>
       <strong>Tip:</strong> Use <a href="{% url 'export_data' %}">Export Data</a> to get a correctly formatted file, modify it, and import it back.
     </p>
     <ul class="list-unstyled small text-muted">
@@ -49,7 +49,7 @@
     </div>
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">
-        <i class="fas fa-upload me-1" aria-hidden="true"></i> Import Data
+        <i data-lucide="upload" class="me-1" aria-hidden="true"></i> Import Data
       </button>
       <a href="{% url 'index' %}" class="btn btn-secondary">Cancel</a>
     </div>

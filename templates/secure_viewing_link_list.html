@@ -38,7 +38,7 @@
         <td>
           {% if entry.is_valid %}
             <a href="{% url 'secure_link_shared_view' token=entry.token %}" target="_blank" class="btn btn-sm btn-outline-primary">
-              <i class="fas fa-external-link-alt"></i> Open
+              <i data-lucide="external-link"></i> Open
             </a>
           {% else %}
             <span class="text-muted">N/A</span>
@@ -46,10 +46,10 @@
         </td>
         <td>
           <a href="{% url 'secure_viewing_link_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
-            <i class="fas fa-edit"></i> Edit
+            <i data-lucide="pencil"></i> Edit
           </a>
           <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
-            <i class="fas fa-trash-alt"></i> Delete
+            <i data-lucide="trash-2"></i> Delete
           </button>
 
           <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">

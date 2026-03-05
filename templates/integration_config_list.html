@@ -30,19 +30,19 @@
           {% if not entry.is_enabled %}
           <form action="{% url 'integration_config_activate' pk=entry.id %}" method="post" class="d-inline">
             {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-power-off"></i> Activate</button>
+            <button type="submit" class="btn btn-sm btn-success"><i data-lucide="power"></i> Activate</button>
           </form>
           {% else %}
           <form action="{% url 'integration_config_run' pk=entry.id %}" method="post" class="d-inline">
             {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-info"><i class="fas fa-play"></i> Run</button>
+            <button type="submit" class="btn btn-sm btn-info"><i data-lucide="play"></i> Run</button>
           </form>
           {% endif %}
           <a href="{% url 'integration_config_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
-            <i class="fas fa-edit"></i> Edit
+            <i data-lucide="pencil"></i> Edit
           </a>
           <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
-            <i class="fas fa-trash-alt"></i> Delete
+            <i data-lucide="trash-2"></i> Delete
           </button>
 
           <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">

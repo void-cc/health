@@ -33,14 +33,14 @@
         <td>
           <div class="dropdown d-inline-block">
             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
-              <i class="fas fa-ellipsis-v"></i>
+              <i data-lucide="more-vertical"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a href="{% url 'fasting_edit' pk=entry.id %}" class="dropdown-item"><i class="fas fa-edit me-2"></i>Edit</a>
+                <a href="{% url 'fasting_edit' pk=entry.id %}" class="dropdown-item"><i data-lucide="pencil" class="me-2"></i>Edit</a>
               </li>
               <li>
-                <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}"><i class="fas fa-trash-alt me-2"></i>Delete</button>
+                <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}"><i data-lucide="trash-2" class="me-2"></i>Delete</button>
               </li>
             </ul>
           </div>

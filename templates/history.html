@@ -8,7 +8,7 @@
   </div>
   <div class="page-header-actions">
     <a href="{% url 'index' %}" class="toolbar-btn">
-      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <i data-lucide="arrow-left" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Dashboard</span>
     </a>
   </div>
@@ -53,11 +53,11 @@
         </div>
         <div class="col-12 col-sm-6 col-md-1 d-flex gap-2">
           <button type="submit" class="toolbar-btn toolbar-btn-primary w-100" id="applyFilter">
-            <i class="fas fa-filter" aria-hidden="true"></i>
+            <i data-lucide="filter" aria-hidden="true"></i>
             <span class="d-none d-sm-inline">Apply</span>
           </button>
           <a href="{% url 'history' %}" class="toolbar-btn w-100" id="resetFilter" title="Clear filters">
-            <i class="fas fa-times" aria-hidden="true"></i>
+            <i data-lucide="x" aria-hidden="true"></i>
           </a>
         </div>
       </div>
@@ -105,11 +105,11 @@
         <td>
           {% if item.type == 'Blood Test' %}
             <span class="status-badge badge-neutral">
-              <i class="fas fa-vial me-1" aria-hidden="true"></i>Blood Test
+              <i data-lucide="test-tube" class="me-1" aria-hidden="true"></i>Blood Test
             </span>
           {% else %}
             <span class="status-badge badge-neutral">
-              <i class="fas fa-heartbeat me-1" aria-hidden="true"></i>Vitals
+              <i data-lucide="heart-pulse" class="me-1" aria-hidden="true"></i>Vitals
             </span>
           {% endif %}
         </td>
@@ -132,18 +132,18 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <div class="empty-state-icon"><i class="fas fa-history"></i></div>
+  <div class="empty-state-icon"><i data-lucide="history"></i></div>
   {% if filters.type or filters.status or filters.date_from or filters.date_to or filters.search %}
   <div class="empty-state-title">No results match your filters</div>
   <div class="empty-state-description">Try adjusting or clearing your filters.</div>
   <a href="{% url 'history' %}" class="toolbar-btn">
-    <i class="fas fa-times me-1" aria-hidden="true"></i> Clear Filters
+    <i data-lucide="x" class="me-1" aria-hidden="true"></i> Clear Filters
   </a>
   {% else %}
   <div class="empty-state-title">No history yet</div>
   <div class="empty-state-description">Start recording blood tests and vitals to build your medical history.</div>
   <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
-    <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Blood Test
+    <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add Blood Test
   </a>
   {% endif %}
 </div>

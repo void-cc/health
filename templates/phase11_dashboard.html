@@ -13,28 +13,28 @@
   <div class="kpi-card">
     <div class="kpi-card-header">
       <span class="kpi-card-label">Total Tasks</span>
-      <span class="kpi-card-icon icon-primary"><i class="fas fa-tasks"></i></span>
+      <span class="kpi-card-icon icon-primary"><i data-lucide="list-checks"></i></span>
     </div>
     <div class="kpi-card-value">{{ total }}</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-card-header">
       <span class="kpi-card-label">Completed</span>
-      <span class="kpi-card-icon icon-success"><i class="fas fa-check-circle"></i></span>
+      <span class="kpi-card-icon icon-success"><i data-lucide="check-circle"></i></span>
     </div>
     <div class="kpi-card-value">{{ completed }}</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-card-header">
       <span class="kpi-card-label">In Progress</span>
-      <span class="kpi-card-icon icon-warning"><i class="fas fa-spinner"></i></span>
+      <span class="kpi-card-icon icon-warning"><i data-lucide="loader-circle"></i></span>
     </div>
     <div class="kpi-card-value">{{ in_progress }}</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-card-header">
       <span class="kpi-card-label">Pending</span>
-      <span class="kpi-card-icon icon-primary"><i class="fas fa-clock"></i></span>
+      <span class="kpi-card-icon icon-primary"><i data-lucide="clock"></i></span>
     </div>
     <div class="kpi-card-value">{{ pending }}</div>
   </div>
@@ -155,7 +155,7 @@
         </td>
         <td>
           <a href="{% url 'integration_subtask_edit' pk=entry.id %}" class="toolbar-btn" title="Edit">
-            <i class="fas fa-edit"></i>
+            <i data-lucide="pencil"></i>
           </a>
         </td>
       </tr>
@@ -165,7 +165,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <div class="empty-state-icon"><i class="fas fa-plug"></i></div>
+  <div class="empty-state-icon"><i data-lucide="plug"></i></div>
   <div class="empty-state-title">No sub-tasks found</div>
   <div class="empty-state-description">No interoperability sub-tasks found{% if category_filter or feature_type_filter or status_filter %} matching the selected filters{% endif %}.</div>
 </div>

@@ -9,11 +9,11 @@
   </div>
   <div class="page-header-actions">
     <button class="toolbar-btn" onclick="exportChartsPDF()">
-      <i class="fas fa-download" aria-hidden="true"></i>
+      <i data-lucide="download" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Export PDF</span>
     </button>
     <a href="{% url 'index' %}" class="toolbar-btn">
-      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <i data-lucide="arrow-left" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Dashboard</span>
     </a>
   </div>
@@ -48,17 +48,17 @@
   </div>
 {% else %}
   <div class="empty-state">
-    <div class="empty-state-icon"><i class="fas fa-chart-bar"></i></div>
+    <div class="empty-state-icon"><i data-lucide="bar-chart-2"></i></div>
     <div class="empty-state-title">No blood tests recorded</div>
     <div class="empty-state-description">Add blood test results to see distribution charts here.</div>
     <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
-      <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Blood Test
+      <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add Blood Test
     </a>
   </div>
 {% endif %}
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@3.9.0/build/index.umd.min.js"></script>
+<script src="{% static 'js/chart3.min.js' %}"></script>
+<script src="{% static 'js/chartjs-chart-boxplot.min.js' %}"></script>
 <script>
   {% for test_name, test_info in boxplots_data.items %}
   (function() {
@@ -103,8 +103,8 @@
   {% endfor %}
 </script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="{% static 'js/html2canvas.min.js' %}"></script>
+<script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportChartsPDF() {
   var element = document.getElementById('charts-container');

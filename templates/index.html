@@ -10,19 +10,19 @@
   </div>
   <div class="page-header-actions">
     <a href="{% url 'customize_dashboard' %}" class="toolbar-btn">
-      <i class="fas fa-sliders-h" aria-hidden="true"></i>
+      <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Customize</span>
     </a>
     <button class="toolbar-btn" onclick="exportDashboardPDF()">
-      <i class="fas fa-download" aria-hidden="true"></i>
+      <i data-lucide="download" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Export PDF</span>
     </button>
     <a href="{% url 'bulk_edit' %}" class="toolbar-btn">
-      <i class="fas fa-table" aria-hidden="true"></i>
+      <i data-lucide="table-2" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Bulk Edit</span>
     </a>
     <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
-      <i class="fas fa-plus" aria-hidden="true"></i>
+      <i data-lucide="plus" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Add Test</span>
     </a>
   </div>
@@ -37,7 +37,7 @@
   <div class="kpi-card">
     <div class="kpi-card-header">
       <span class="kpi-card-label">Total Tests</span>
-      <span class="kpi-card-icon icon-primary"><i class="fas fa-vial"></i></span>
+      <span class="kpi-card-icon icon-primary"><i data-lucide="test-tube"></i></span>
     </div>
     <div class="kpi-card-value">{{ total_tests }}</div>
     {% if cat_bar_data %}
@@ -58,7 +58,7 @@
     </div>
     {% endif %}
     <div class="kpi-card-footer">
-      <a href="{% url 'history' %}">View history <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+      <a href="{% url 'history' %}">View history <i data-lucide="arrow-right" aria-hidden="true"></i></a>
     </div>
   </div>
 
@@ -66,9 +66,9 @@
     <div class="kpi-card-header">
       <span class="kpi-card-label">Health Status</span>
       {% if out_of_range > 0 %}
-        <span class="kpi-card-icon icon-error"><i class="fas fa-exclamation-circle"></i></span>
+        <span class="kpi-card-icon icon-error"><i data-lucide="alert-circle"></i></span>
       {% else %}
-        <span class="kpi-card-icon icon-success"><i class="fas fa-check-circle"></i></span>
+        <span class="kpi-card-icon icon-success"><i data-lucide="check-circle"></i></span>
       {% endif %}
     </div>
     <div class="kpi-card-value-row">
@@ -92,7 +92,7 @@
       {% endif %}
     </div>
     <div class="kpi-card-footer">
-      <a href="{% url 'comparative_bar_charts' %}">Compare results <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+      <a href="{% url 'comparative_bar_charts' %}">Compare results <i data-lucide="arrow-right" aria-hidden="true"></i></a>
     </div>
   </div>
 </div>
@@ -107,11 +107,11 @@
       <h2 class="results-section-title">Recent Blood Results</h2>
       <div class="section-header-actions">
         <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn toolbar-btn-sm">
-          <i class="fas fa-chart-bar"></i>
+          <i data-lucide="bar-chart-2"></i>
           <span class="d-none d-md-inline">Compare</span>
         </a>
         <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn toolbar-btn-sm">
-          <i class="fas fa-chart-line"></i>
+          <i data-lucide="line-chart"></i>
           <span class="d-none d-md-inline">Charts</span>
         </a>
       </div>
@@ -121,7 +121,7 @@
       <!-- Filter bar -->
       <div class="results-filter-bar" id="resultsFilterBar">
         <div class="filter-group">
-          <label class="filter-label" for="filterCategory"><i class="fas fa-filter"></i> Category</label>
+          <label class="filter-label" for="filterCategory"><i data-lucide="filter"></i> Category</label>
           <select class="filter-select" id="filterCategory">
             <option value="all">All categories</option>
             {% for category in tests_by_category.keys %}
@@ -196,27 +196,27 @@
 
             <div class="result-item-actions">
               <a href="{% url 'chart' test_name=test.test_name %}" class="toolbar-btn toolbar-btn-icon" title="View chart">
-                <i class="fas fa-chart-line"></i>
+                <i data-lucide="line-chart"></i>
               </a>
               <div class="dropdown">
                 <button class="toolbar-btn toolbar-btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">
-                  <i class="fas fa-ellipsis-v"></i>
+                  <i data-lucide="more-vertical"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                   <li>
                     <a href="{% url 'edit_test' test_id=test.id %}" class="dropdown-item">
-                      <i class="fas fa-edit me-2"></i>Edit
+                      <i data-lucide="pencil" class="me-2"></i>Edit
                     </a>
                   </li>
                   <li>
                     <button type="button" class="dropdown-item" data-bs-toggle="collapse" data-bs-target="#notes{{ test.id }}">
-                      <i class="fas fa-sticky-note me-2"></i>Notes
+                      <i data-lucide="sticky-note" class="me-2"></i>Notes
                     </button>
                   </li>
                   <li><hr class="dropdown-divider"></li>
                   <li>
                     <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ test.id }}">
-                      <i class="fas fa-trash-alt me-2"></i>Delete
+                      <i data-lucide="trash-2" class="me-2"></i>Delete
                     </button>
                   </li>
                 </ul>
@@ -229,11 +229,11 @@
             <div class="notes-panel">
               {% for annotation in test.annotations.all %}
                 <div class="d-flex align-items-center justify-content-between py-1">
-                  <small class="text-muted"><i class="fas fa-sticky-note me-1"></i>{{ annotation.note }}</small>
+                  <small class="text-muted"><i data-lucide="sticky-note" class="me-1"></i>{{ annotation.note }}</small>
                   <form action="{% url 'delete_annotation' annotation_id=annotation.id %}" method="post" class="d-inline">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{% url 'index' %}">
-                    <button type="submit" class="btn btn-sm btn-link text-danger p-0" aria-label="Delete note"><i class="fas fa-times"></i></button>
+                    <button type="submit" class="btn btn-sm btn-link text-danger p-0" aria-label="Delete note"><i data-lucide="x"></i></button>
                   </form>
                 </div>
               {% endfor %}
@@ -242,7 +242,7 @@
                 <input type="hidden" name="next" value="{% url 'index' %}">
                 <div class="input-group input-group-sm">
                   <input type="text" name="note" class="form-control" placeholder="Add a note…">
-                  <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fas fa-plus"></i></button>
+                  <button type="submit" class="btn btn-outline-secondary btn-sm"><i data-lucide="plus"></i></button>
                 </div>
               </form>
             </div>
@@ -275,11 +275,11 @@
       {% endfor %}
     {% else %}
       <div class="empty-state">
-        <div class="empty-state-icon"><i class="fas fa-vial"></i></div>
+        <div class="empty-state-icon"><i data-lucide="test-tube"></i></div>
         <div class="empty-state-title">No blood tests yet</div>
         <div class="empty-state-description">Add your first blood test result to start tracking your health markers.</div>
         <a href="{% url 'add_test' %}" class="btn btn-primary">
-          <i class="fas fa-plus me-1"></i> Add Blood Test
+          <i data-lucide="plus" class="me-1"></i> Add Blood Test
         </a>
       </div>
     {% endif %}
@@ -295,11 +295,11 @@
         <span class="vitals-summary-date">{{ latest_vitals.date|date:"M j" }}</span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-weight"></i> Weight</span>
+        <span class="vital-row-label"><i data-lucide="scale"></i> Weight</span>
         <span class="vital-row-value">{% if latest_vitals.weight %}{{ latest_vitals.weight }} <span class="vital-row-unit">kg</span>{% else %}—{% endif %}</span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-heartbeat"></i> Heart Rate</span>
+        <span class="vital-row-label"><i data-lucide="heart-pulse"></i> Heart Rate</span>
         <span class="vital-row-value">
           {% if latest_vitals.heart_rate %}
             {% if hr_sparkline_points %}
@@ -314,7 +314,7 @@
         </span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-tachometer-alt"></i> Blood Pressure</span>
+        <span class="vital-row-label"><i data-lucide="gauge"></i> Blood Pressure</span>
         <span class="vital-row-value">
           {% if latest_vitals.systolic_bp and latest_vitals.diastolic_bp %}
             {{ latest_vitals.systolic_bp }}/{{ latest_vitals.diastolic_bp }} <span class="vital-row-unit">mmHg</span>
@@ -322,16 +322,16 @@
         </span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-lungs"></i> SpO2</span>
+        <span class="vital-row-label"><i data-lucide="activity"></i> SpO2</span>
         <span class="vital-row-value">{% if latest_vitals.spo2 %}{{ latest_vitals.spo2 }}<span class="vital-row-unit">%</span>{% else %}—{% endif %}</span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i class="fas fa-thermometer-half"></i> BBT</span>
+        <span class="vital-row-label"><i data-lucide="thermometer"></i> BBT</span>
         <span class="vital-row-value">{% if latest_vitals.bbt %}{{ latest_vitals.bbt }}<span class="vital-row-unit">°C</span>{% else %}—{% endif %}</span>
       </div>
       <div class="vital-row-actions">
         <a href="{% url 'vitals' %}" class="toolbar-btn toolbar-btn-full toolbar-btn-sm">
-          View all vitals <i class="fas fa-arrow-right ms-1"></i>
+          View all vitals <i data-lucide="arrow-right" class="ms-1"></i>
         </a>
       </div>
     </div>
@@ -341,27 +341,27 @@
     <div class="quick-actions-panel">
       <div class="quick-actions-panel-title">Quick Actions</div>
       <a href="{% url 'add_test' %}" class="quick-action-item">
-        <i class="fas fa-plus-circle"></i>
+        <i data-lucide="plus-circle"></i>
         <span>Add Blood Test</span>
       </a>
       <a href="{% url 'add_vitals' %}" class="quick-action-item">
-        <i class="fas fa-heartbeat"></i>
+        <i data-lucide="heart-pulse"></i>
         <span>Record Vitals</span>
       </a>
       <a href="{% url 'blood_tests_charts' %}" class="quick-action-item">
-        <i class="fas fa-chart-line"></i>
+        <i data-lucide="line-chart"></i>
         <span>View Charts</span>
       </a>
       <a href="{% url 'comparative_bar_charts' %}" class="quick-action-item">
-        <i class="fas fa-chart-bar"></i>
+        <i data-lucide="bar-chart-2"></i>
         <span>Compare to Normal</span>
       </a>
       <a href="{% url 'history' %}" class="quick-action-item">
-        <i class="fas fa-clock"></i>
+        <i data-lucide="clock"></i>
         <span>Full History</span>
       </a>
       <a href="{% url 'import_data' %}" class="quick-action-item">
-        <i class="fas fa-file-upload"></i>
+        <i data-lucide="file-up"></i>
         <span>Import Data</span>
       </a>
     </div>
@@ -370,15 +370,15 @@
     <div class="quick-actions-panel">
       <div class="quick-actions-panel-title">Analytics</div>
       <a href="{% url 'blood_tests_boxplots' %}" class="quick-action-item">
-        <i class="fas fa-chart-bar"></i>
+        <i data-lucide="bar-chart-2"></i>
         <span>Boxplots</span>
       </a>
       <a href="{% url 'scatter_plots' %}" class="quick-action-item">
-        <i class="fas fa-project-diagram"></i>
+        <i data-lucide="network"></i>
         <span>Scatter Plots</span>
       </a>
       <a href="{% url 'vitals_charts' %}" class="quick-action-item">
-        <i class="fas fa-chart-area"></i>
+        <i data-lucide="area-chart"></i>
         <span>Vitals Trends</span>
       </a>
     </div>
@@ -393,11 +393,11 @@
     <h2 class="results-section-title">Vital Signs</h2>
     <div class="section-header-actions">
       <a href="{% url 'vitals_charts' %}" class="toolbar-btn toolbar-btn-sm">
-        <i class="fas fa-chart-area"></i>
+        <i data-lucide="area-chart"></i>
         <span class="d-none d-md-inline">Charts</span>
       </a>
       <a href="{% url 'vitals' %}" class="toolbar-btn toolbar-btn-sm">
-        <i class="fas fa-list"></i>
+        <i data-lucide="list"></i>
         <span class="d-none d-md-inline">All Vitals</span>
       </a>
     </div>
@@ -431,11 +431,11 @@
   </div>
   {% else %}
   <div class="empty-state empty-state-sm">
-    <div class="empty-state-icon"><i class="fas fa-heartbeat"></i></div>
+    <div class="empty-state-icon"><i data-lucide="heart-pulse"></i></div>
     <div class="empty-state-title">No vitals recorded</div>
     <div class="empty-state-description">Start recording your daily vital signs.</div>
     <a href="{% url 'add_vitals' %}" class="toolbar-btn toolbar-btn-primary toolbar-btn-sm">
-      <i class="fas fa-plus me-1" aria-hidden="true"></i> Add Vitals
+      <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add Vitals
     </a>
   </div>
   {% endif %}
@@ -449,7 +449,7 @@
     <h2 class="results-section-title">Blood Test Trends</h2>
     <div class="section-header-actions">
       <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn toolbar-btn-sm">
-        <i class="fas fa-expand-alt"></i>
+        <i data-lucide="maximize-2"></i>
         <span class="d-none d-md-inline">Full View</span>
       </a>
     </div>
@@ -476,7 +476,7 @@
   </div>
   {% else %}
   <div class="empty-state empty-state-sm">
-    <div class="empty-state-icon"><i class="fas fa-chart-line"></i></div>
+    <div class="empty-state-icon"><i data-lucide="line-chart"></i></div>
     <div class="empty-state-title">No chart data</div>
     <div class="empty-state-description">Add blood test results to see trend charts.</div>
   </div>
@@ -491,7 +491,7 @@
     <h2 class="results-section-title">Vital Signs Trends</h2>
     <div class="section-header-actions">
       <a href="{% url 'vitals_charts' %}" class="toolbar-btn toolbar-btn-sm">
-        <i class="fas fa-expand-alt"></i>
+        <i data-lucide="maximize-2"></i>
         <span class="d-none d-md-inline">Full View</span>
       </a>
     </div>
@@ -543,7 +543,7 @@
   </div>
   {% else %}
   <div class="empty-state empty-state-sm">
-    <div class="empty-state-icon"><i class="fas fa-chart-area"></i></div>
+    <div class="empty-state-icon"><i data-lucide="area-chart"></i></div>
     <div class="empty-state-title">No vitals data</div>
     <div class="empty-state-description">Record vital signs to see trend charts.</div>
   </div>
@@ -558,7 +558,7 @@
     <h2 class="results-section-title">Compare to Normal Range</h2>
     <div class="section-header-actions">
       <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn toolbar-btn-sm">
-        <i class="fas fa-expand-alt"></i>
+        <i data-lucide="maximize-2"></i>
         <span class="d-none d-md-inline">Full View</span>
       </a>
     </div>
@@ -590,7 +590,7 @@
   </div>
   {% else %}
   <div class="empty-state empty-state-sm">
-    <div class="empty-state-icon"><i class="fas fa-chart-bar"></i></div>
+    <div class="empty-state-icon"><i data-lucide="bar-chart-2"></i></div>
     <div class="empty-state-title">No comparison data</div>
     <div class="empty-state-description">Add blood tests with reference ranges to compare.</div>
   </div>
@@ -605,7 +605,7 @@
     <h2 class="results-section-title">Distribution Analysis</h2>
     <div class="section-header-actions">
       <a href="{% url 'blood_tests_boxplots' %}" class="toolbar-btn toolbar-btn-sm">
-        <i class="fas fa-expand-alt"></i>
+        <i data-lucide="maximize-2"></i>
         <span class="d-none d-md-inline">Full View</span>
       </a>
     </div>
@@ -632,7 +632,7 @@
   </div>
   {% else %}
   <div class="empty-state empty-state-sm">
-    <div class="empty-state-icon"><i class="fas fa-chart-bar"></i></div>
+    <div class="empty-state-icon"><i data-lucide="bar-chart-2"></i></div>
     <div class="empty-state-title">No distribution data</div>
     <div class="empty-state-description">Add multiple blood test results to see distribution analysis.</div>
   </div>
@@ -645,8 +645,8 @@
 </div>
 
 <!-- html2canvas and jsPDF for PDF export -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="{% static 'js/html2canvas.min.js' %}"></script>
+<script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportDashboardPDF() {
   var element = document.getElementById('dashboard-content');

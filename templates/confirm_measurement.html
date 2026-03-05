@@ -17,7 +17,7 @@
   </div>
   <div class="page-header-actions">
     <a href="{% url 'review_measurements' %}" class="toolbar-btn">
-      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <i data-lucide="arrow-left" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Back to Review</span>
     </a>
   </div>
@@ -57,13 +57,13 @@
 
     <div class="form-actions mt-4">
       <button type="submit" name="action" value="confirm" class="btn btn-success">
-        <i class="fas fa-check-circle me-1" aria-hidden="true"></i> Confirm
+        <i data-lucide="check-circle" class="me-1" aria-hidden="true"></i> Confirm
       </button>
       <button type="submit" name="action" value="reject" class="btn btn-danger">
-        <i class="fas fa-times-circle me-1" aria-hidden="true"></i> Reject
+        <i data-lucide="x-circle" class="me-1" aria-hidden="true"></i> Reject
       </button>
       <button type="submit" name="action" value="defer" class="btn btn-secondary">
-        <i class="fas fa-clock me-1" aria-hidden="true"></i> Defer
+        <i data-lucide="clock" class="me-1" aria-hidden="true"></i> Defer
       </button>
       <a href="{% url 'review_measurements' %}" class="btn btn-outline-secondary">Cancel</a>
     </div>

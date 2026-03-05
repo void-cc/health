@@ -16,7 +16,7 @@
         <a href="?period=90" class="btn {% if period == '90' %}btn-primary{% else %}btn-outline-secondary{% endif %}">90 days</a>
       </div>
       <a href="{% url 'macro_add' %}" class="btn btn-primary btn-sm">
-        <i class="fas fa-plus me-1"></i> Log Nutrition
+        <i data-lucide="plus" class="me-1"></i> Log Nutrition
       </a>
     </div>
   </div>
@@ -28,7 +28,7 @@
         <div class="card-body p-3">
           <div class="d-flex align-items-center mb-2">
             <div class="rounded-2 p-2 me-2" style="background: var(--bs-danger-bg-subtle, #f8d7da);">
-              <i class="fas fa-fire text-danger"></i>
+              <i data-lucide="flame" class="text-danger"></i>
             </div>
             <span class="text-muted small">Avg Calories</span>
           </div>
@@ -41,7 +41,7 @@
           </div>
           {% if calorie_trend %}
           <small class="{% if calorie_trend == 'increasing' %}text-warning{% elif calorie_trend == 'decreasing' %}text-info{% else %}text-muted{% endif %}">
-            {% if calorie_trend == 'increasing' %}<i class="fas fa-arrow-up"></i>{% elif calorie_trend == 'decreasing' %}<i class="fas fa-arrow-down"></i>{% else %}<i class="fas fa-arrow-right"></i>{% endif %}
+            {% if calorie_trend == 'increasing' %}<i data-lucide="arrow-up"></i>{% elif calorie_trend == 'decreasing' %}<i data-lucide="arrow-down"></i>{% else %}<i data-lucide="arrow-right"></i>{% endif %}
             {{ calorie_trend|title }}
           </small>
           {% endif %}
@@ -53,7 +53,7 @@
         <div class="card-body p-3">
           <div class="d-flex align-items-center mb-2">
             <div class="rounded-2 p-2 me-2" style="background: var(--bs-success-bg-subtle, #d1f5e0);">
-              <i class="fas fa-drumstick-bite text-success"></i>
+              <i data-lucide="utensils" class="text-success"></i>
             </div>
             <span class="text-muted small">Avg Protein</span>
           </div>
@@ -72,7 +72,7 @@
         <div class="card-body p-3">
           <div class="d-flex align-items-center mb-2">
             <div class="rounded-2 p-2 me-2" style="background: var(--bs-primary-bg-subtle, #e8f0fe);">
-              <i class="fas fa-tint text-primary"></i>
+              <i data-lucide="droplet" class="text-primary"></i>
             </div>
             <span class="text-muted small">Avg Hydration</span>
           </div>
@@ -96,7 +96,7 @@
         <div class="card-body p-3">
           <div class="d-flex align-items-center mb-2">
             <div class="rounded-2 p-2 me-2" style="background: var(--bs-warning-bg-subtle, #fff3cd);">
-              <i class="fas fa-hourglass-half text-warning"></i>
+              <i data-lucide="hourglass" class="text-warning"></i>
             </div>
             <span class="text-muted small">Fasting</span>
           </div>
@@ -124,7 +124,7 @@
       <div class="card border-0 shadow-sm">
         <div class="card-body">
           <h6 class="card-title fw-semibold mb-3">
-            <i class="fas fa-chart-area text-muted me-1"></i> Calorie &amp; Protein Trends
+            <i data-lucide="area-chart" class="text-muted me-1"></i> Calorie &amp; Protein Trends
           </h6>
           <canvas id="nutritionTrendChart" height="200"></canvas>
         </div>
@@ -135,7 +135,7 @@
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           <h6 class="card-title fw-semibold mb-3">
-            <i class="fas fa-chart-pie text-muted me-1"></i> Avg Macro Split
+            <i data-lucide="pie-chart" class="text-muted me-1"></i> Avg Macro Split
           </h6>
           <canvas id="macroDoughnutChart" height="200"></canvas>
         </div>
@@ -150,7 +150,7 @@
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           <h6 class="card-title fw-semibold mb-3">
-            <i class="fas fa-chart-bar text-muted me-1"></i> Daily Nutrition Score
+            <i data-lucide="bar-chart-2" class="text-muted me-1"></i> Daily Nutrition Score
           </h6>
           <canvas id="nutritionScoreChart" height="180"></canvas>
           <p class="text-muted small mt-2 mb-0">Auto-scored based on calorie adequacy, protein, fiber, and macro balance.</p>
@@ -163,7 +163,7 @@
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           <h6 class="card-title fw-semibold mb-3">
-            <i class="fas fa-utensils text-muted me-1"></i> Macro Averages
+            <i data-lucide="utensils" class="text-muted me-1"></i> Macro Averages
           </h6>
           <div class="d-flex justify-content-between align-items-center mb-3">
             <span class="text-muted small">Protein</span>
@@ -197,7 +197,7 @@
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           <h6 class="card-title fw-semibold mb-3">
-            <i class="fas fa-coffee text-muted me-1"></i> Supplementary
+            <i data-lucide="coffee" class="text-muted me-1"></i> Supplementary
           </h6>
           <div class="d-flex justify-content-between align-items-center mb-3">
             <span class="text-muted small">Food Items Logged</span>
@@ -241,7 +241,7 @@
     <div class="col-6 col-md-2">
       <a href="{% url 'macro_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
         <div class="card-body text-center p-3">
-          <i class="fas fa-chart-pie text-primary mb-2 fs-5"></i>
+          <i data-lucide="pie-chart" class="text-primary mb-2 fs-5"></i>
           <div class="fw-semibold small text-body">Macros</div>
         </div>
       </a>
@@ -249,7 +249,7 @@
     <div class="col-6 col-md-2">
       <a href="{% url 'food_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
         <div class="card-body text-center p-3">
-          <i class="fas fa-apple-alt text-success mb-2 fs-5"></i>
+          <i data-lucide="apple" class="text-success mb-2 fs-5"></i>
           <div class="fw-semibold small text-body">Food Log</div>
         </div>
       </a>
@@ -257,7 +257,7 @@
     <div class="col-6 col-md-2">
       <a href="{% url 'fasting_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
         <div class="card-body text-center p-3">
-          <i class="fas fa-hourglass-half text-warning mb-2 fs-5"></i>
+          <i data-lucide="hourglass" class="text-warning mb-2 fs-5"></i>
           <div class="fw-semibold small text-body">Fasting</div>
         </div>
       </a>
@@ -265,7 +265,7 @@
     <div class="col-6 col-md-2">
       <a href="{% url 'hydration_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
         <div class="card-body text-center p-3">
-          <i class="fas fa-tint text-info mb-2 fs-5"></i>
+          <i data-lucide="droplet" class="text-info mb-2 fs-5"></i>
           <div class="fw-semibold small text-body">Hydration</div>
         </div>
       </a>
@@ -273,7 +273,7 @@
     <div class="col-6 col-md-2">
       <a href="{% url 'micro_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
         <div class="card-body text-center p-3">
-          <i class="fas fa-capsules text-secondary mb-2 fs-5"></i>
+          <i data-lucide="pill" class="text-secondary mb-2 fs-5"></i>
           <div class="fw-semibold small text-body">Micros</div>
         </div>
       </a>
@@ -281,7 +281,7 @@
     <div class="col-6 col-md-2">
       <a href="{% url 'caffeine_alcohol_list' %}" class="card border-0 shadow-sm text-decoration-none h-100">
         <div class="card-body text-center p-3">
-          <i class="fas fa-coffee text-dark mb-2 fs-5"></i>
+          <i data-lucide="coffee" class="text-dark mb-2 fs-5"></i>
           <div class="fw-semibold small text-body">Caffeine</div>
         </div>
       </a>
