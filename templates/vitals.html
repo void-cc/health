@@ -8,11 +8,11 @@
   </div>
   <div class="page-header-actions">
     <a href="{% url 'vitals_charts' %}" class="toolbar-btn">
-      <i class="fas fa-chart-line" aria-hidden="true"></i>
+      <i data-lucide="line-chart" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Charts</span>
     </a>
     <a href="{% url 'add_vitals' %}" class="toolbar-btn toolbar-btn-primary">
-      <i class="fas fa-plus" aria-hidden="true"></i>
+      <i data-lucide="plus" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Add Vitals</span>
     </a>
   </div>
@@ -52,17 +52,17 @@
         <td>
           <div class="dropdown">
             <button class="toolbar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
-              <i class="fas fa-ellipsis-v"></i>
+              <i data-lucide="more-vertical"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
                 <a href="{% url 'edit_vitals' vital_id=vital.id %}" class="dropdown-item">
-                  <i class="fas fa-edit me-2"></i>Edit
+                  <i data-lucide="pencil" class="me-2"></i>Edit
                 </a>
               </li>
               <li>
                 <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteVitalModal{{ vital.id }}">
-                  <i class="fas fa-trash-alt me-2"></i>Delete
+                  <i data-lucide="trash-2" class="me-2"></i>Delete
                 </button>
               </li>
             </ul>
@@ -96,11 +96,11 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <div class="empty-state-icon"><i class="fas fa-heartbeat"></i></div>
+  <div class="empty-state-icon"><i data-lucide="heart-pulse"></i></div>
   <div class="empty-state-title">No vital signs recorded</div>
   <div class="empty-state-description">Start tracking your daily vitals to monitor trends over time.</div>
   <a href="{% url 'add_vitals' %}" class="btn btn-primary">
-    <i class="fas fa-plus me-1"></i> Record First Vitals
+    <i data-lucide="plus" class="me-1"></i> Record First Vitals
   </a>
 </div>
 {% endif %}

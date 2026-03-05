@@ -855,6 +855,47 @@
   flex-shrink: 0;
 }
 
+/* Global inline Lucide SVG sizing — keeps icons proportional in text */
+.lucide {
+  display: inline-block;
+  vertical-align: -0.125em;
+  width: 1em;
+  height: 1em;
+}
+
+/* Sidebar toggle button icon */
+.sidebar-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* KPI card icons */
+.kpi-card-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Empty state icons */
+.empty-state-icon svg,
+.tracking-empty-icon svg {
+  width: 32px;
+  height: 32px;
+  opacity: 0.4;
+}
+
+/* Dropdown item icons */
+.dropdown-item svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Page header action icons */
+.page-header-actions svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* ── Dashboard 2-column Layout ───────────────────────────────────────────── */
 
 .dashboard-grid {

@@ -3,7 +3,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2>Predictive Biomarkers</h2>
   <div>
-    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#generatePredictionModal"><i class="fas fa-chart-line"></i> Generate Prediction</button>
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#generatePredictionModal"><i data-lucide="line-chart"></i> Generate Prediction</button>
     <a href="{% url 'predictive_biomarker_add' %}" class="btn btn-primary">Add Entry</a>
   </div>
 </div>
@@ -62,10 +62,10 @@
         <td>{% if entry.notes %}{{ entry.notes }}{% else %}-{% endif %}</td>
         <td>
           <a href="{% url 'predictive_biomarker_edit' pk=entry.id %}" class="btn btn-sm btn-secondary">
-            <i class="fas fa-edit"></i> Edit
+            <i data-lucide="pencil"></i> Edit
           </a>
           <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
-            <i class="fas fa-trash-alt"></i> Delete
+            <i data-lucide="trash-2"></i> Delete
           </button>
 
           <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1" aria-hidden="true">

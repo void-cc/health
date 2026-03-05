@@ -9,11 +9,11 @@
   </div>
   <div class="page-header-actions">
     <button class="toolbar-btn" onclick="exportChartsPDF()">
-      <i class="fas fa-download" aria-hidden="true"></i>
+      <i data-lucide="download" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Export PDF</span>
     </button>
     <a href="{% url 'vitals' %}" class="toolbar-btn">
-      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <i data-lucide="arrow-left" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Back</span>
     </a>
   </div>
@@ -315,8 +315,8 @@
   renderAllCharts();
 </script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="{% static 'js/html2canvas.min.js' %}"></script>
+<script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportChartsPDF() {
   var element = document.getElementById('charts-container');
