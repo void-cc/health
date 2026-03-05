@@ -77,10 +77,11 @@
       const icon = toggle.querySelector('i');
       if (!icon) return;
       if (theme === 'dark') {
-        icon.className = 'fas fa-sun';
+        icon.setAttribute('data-lucide', 'sun');
       } else {
-        icon.className = 'fas fa-moon';
+        icon.setAttribute('data-lucide', 'moon');
       }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
     };
 
     // Apply saved preference or respect OS setting

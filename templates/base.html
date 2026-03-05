@@ -55,11 +55,11 @@
   <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="sidebar-header">
       <a href="{% url 'index' %}" class="sidebar-brand">
-        <i class="fas fa-heartbeat"></i>
+        <i data-lucide="heart-pulse" aria-hidden="true"></i>
         <span>{% trans "Health Tracker" %}</span>
       </a>
       <button class="sidebar-close-btn d-lg-none" id="sidebar-close" aria-label="Close navigation">
-        <i class="fas fa-times"></i>
+        <i data-lucide="x" aria-hidden="true"></i>
       </button>
     </div>
 
@@ -68,7 +68,7 @@
       <div class="sidebar-search" role="search">
         <div class="global-search" style="position:relative;">
           <div class="global-search-input-wrapper">
-            <i class="fas fa-search global-search-icon" aria-hidden="true"></i>
+            <i data-lucide="search" class="global-search-icon" aria-hidden="true"></i>
             <input type="search" id="global-search-input" placeholder="{% trans 'Search...' %}" aria-label="{% trans 'Search...' %}" autocomplete="off" />
           </div>
           <div class="global-search-results" id="global-search-results" role="listbox" aria-label="Search results"></div>
@@ -81,13 +81,13 @@
         <li class="sidebar-category sidebar-category--collapsible{% if section.expanded %} sidebar-category--expanded{% endif %}" role="none">
           <button type="button" class="sidebar-collapse-toggle" aria-expanded="{{ section.expanded|yesno:'true,false' }}">
             {{ section.category }}
-            <i class="fas fa-chevron-down sidebar-collapse-icon" aria-hidden="true"></i>
+            <i data-lucide="chevron-down" class="sidebar-collapse-icon" aria-hidden="true"></i>
           </button>
           <ul class="list-unstyled sidebar-collapse-body{% if section.expanded %} sidebar-collapse-body--open{% endif %}" role="group">
             {% for item in section.items %}
             <li class="sidebar-item {% if item.active %}active{% endif %}">
               <a href="{{ item.url }}" class="sidebar-link" role="menuitem">
-                <i class="fas {{ item.icon }}" aria-hidden="true"></i>
+                <i data-lucide="{{ item.icon }}" aria-hidden="true"></i>
                 <span>{{ item.label }}</span>
               </a>
             </li>
@@ -99,7 +99,7 @@
         {% for item in section.items %}
         <li class="sidebar-item {% if item.active %}active{% endif %}">
           <a href="{{ item.url }}" class="sidebar-link" role="menuitem">
-            <i class="fas {{ item.icon }}" aria-hidden="true"></i>
+            <i data-lucide="{{ item.icon }}" aria-hidden="true"></i>
             <span>{{ item.label }}</span>
           </a>
         </li>
@@ -116,28 +116,28 @@
     <nav class="top-navbar" role="navigation" aria-label="Top bar">
       <div class="top-navbar-left">
         <button class="sidebar-toggle-btn" id="sidebar-toggle" aria-label="Toggle navigation" aria-expanded="false">
-          <i class="fas fa-bars"></i>
+          <i data-lucide="menu" aria-hidden="true"></i>
         </button>
       <span class="top-navbar-title d-none d-md-inline">{% trans "Health Tracker" %}</span>
       </div>
       <div class="top-navbar-right">
         <button class="toolbar-btn toolbar-btn-primary" id="quick-entry-btn" aria-label="{% trans 'Quick vital sign entry' %}" data-bs-toggle="modal" data-bs-target="#quickEntryModal">
-          <i class="fas fa-plus" aria-hidden="true"></i>
+          <i data-lucide="plus" aria-hidden="true"></i>
           <span class="d-none d-sm-inline">{% trans "Quick Entry" %}</span>
         </button>
         <button class="toolbar-btn" id="voice-input-btn" aria-label="{% trans 'Voice search' %}">
-          <i class="fas fa-microphone" aria-hidden="true"></i>
+          <i data-lucide="mic" aria-hidden="true"></i>
         </button>
         <button class="toolbar-btn" id="dark-mode-toggle" aria-label="{% trans 'Toggle dark mode' %}">
-          <i class="fas fa-moon" aria-hidden="true"></i>
+          <i data-lucide="moon" aria-hidden="true"></i>
         </button>
         <button class="toolbar-btn" id="start-tour-btn" aria-label="{% trans 'Start guided tour' %}">
-          <i class="fas fa-question-circle" aria-hidden="true"></i>
+          <i data-lucide="help-circle" aria-hidden="true"></i>
         </button>
         <!-- Language switcher -->
         <div class="dropdown" id="language-switcher">
           <button class="toolbar-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{% trans 'Language' %}">
-            <i class="fas fa-globe" aria-hidden="true"></i>
+            <i data-lucide="globe" aria-hidden="true"></i>
             <span class="d-none d-sm-inline ms-1">{{ LANGUAGE_CODE|upper|slice:":2" }}</span>
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
@@ -276,6 +276,7 @@
   <!-- UI/UX JavaScript -->
   <script src="{% static 'js/ui.js' %}"></script>
   <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="{% static 'js/lucide.min.js' %}"></script>
+  <script>lucide.createIcons();</script>
 </body>
 </html>

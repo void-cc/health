@@ -756,13 +756,16 @@
   outline: none;
 }
 
-.global-search-icon {
+.global-search-icon,
+.global-search-icon svg {
   position: absolute;
   left: 0.625rem;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
   font-size: 0.6875rem;
+  width: 0.875rem;
+  height: 0.875rem;
   pointer-events: none;
 }
 
@@ -842,6 +845,14 @@
 
 .toolbar-btn-icon:hover {
   background-color: var(--bg-tertiary);
+}
+
+/* Lucide SVG icon sizing within buttons and links */
+.toolbar-btn svg,
+.toolbar-btn i {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 /* ── Dashboard 2-column Layout ───────────────────────────────────────────── */
