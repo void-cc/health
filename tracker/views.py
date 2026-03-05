@@ -2818,18 +2818,22 @@ def caffeine_alcohol_delete(request, pk):
     return redirect('caffeine_alcohol_list')
 
 
-# ===== User Profile =====
+# ===== User Profile (custom CRUD – manages both User and UserProfile) =====
 
-@admin_required
-def user_profile_list(request):
-    entries = UserProfile.objects.select_related('user').all().order_by('-created_at')
-    return render(request, 'user_profile_list.html', {'entries': entries})
+_user_profile_fields = [
+    {'name': 'role', 'type': 'str', 'choices': UserProfile.ROLE_CHOICES, 'default': 'user', 'label': 'Role'},
+    {'name': 'language', 'type': 'str', 'choices': UserProfile.LANGUAGE_CHOICES, 'default': 'en', 'label': 'Language'},
+]
+
 
 @admin_required
 def user_profile_add(request):
     if request.method == 'POST':
         try:
             username = request.POST.get('username', '')
+            if not username:
+                messages.error(request, 'Username is required.')
+                return redirect('user_profile_add')
             user = User.objects.create_user(username=username)
             user.set_unusable_password()
             user.save()
@@ -2838,536 +2842,67 @@ def user_profile_add(request):
                 role=request.POST.get('role', 'user'),
                 language=request.POST.get('language', 'en'),
             )
-            messages.success(request, 'User profile added!')
+            messages.success(request, 'User Profile entry added!')
             return redirect('user_profile_list')
         except Exception:
-            messages.error(request, 'Error adding user profile.')
+            messages.error(request, 'Error adding user profile. Please try again.')
             return redirect('user_profile_add')
-    return render(request, 'user_profile_form.html', {'editing': False})
+    context = {
+        'date': datetime.now().strftime('%Y-%m-%d'),
+        'editing': False,
+        'page_title': 'User Profile',
+        'list_url_name': 'user_profile_list',
+        'fields': [
+            {'name': 'username', 'type': 'str', 'required': True, 'label': 'Username'},
+        ] + _user_profile_fields,
+        'entry': None,
+    }
+    return render(request, 'generic_form.html', context)
+
 
 @admin_required
 def user_profile_edit(request, pk):
     entry = get_object_or_404(UserProfile, id=pk)
     if request.method == 'POST':
         try:
-            entry.user.username = request.POST.get('username', '')
-            entry.user.is_active = request.POST.get('is_active') == 'on'
+            entry.user.username = request.POST.get('username', entry.user.username)
             entry.user.save()
-            entry.role = request.POST.get('role', '')
-            entry.language = request.POST.get('language', 'en')
+            entry.role = request.POST.get('role', entry.role)
+            entry.language = request.POST.get('language', entry.language)
             entry.save()
-            messages.success(request, 'User profile updated!')
+            messages.success(request, 'User Profile updated!')
             return redirect('user_profile_list')
         except Exception:
             messages.error(request, 'Error updating user profile.')
             return redirect('user_profile_edit', pk=pk)
-    return render(request, 'user_profile_form.html', {'entry': entry, 'editing': True})
+
+    # Build a proxy object so generic_form.html can read fields by name
+    class _Proxy:
+        def __init__(self, profile):
+            self.id = profile.id
+            self.username = profile.user.username
+            self.role = profile.role
+            self.language = profile.language
+
+    context = {
+        'entry': _Proxy(entry),
+        'editing': True,
+        'page_title': 'User Profile',
+        'list_url_name': 'user_profile_list',
+        'fields': [
+            {'name': 'username', 'type': 'str', 'required': True, 'label': 'Username'},
+        ] + _user_profile_fields,
+    }
+    return render(request, 'generic_form.html', context)
+
 
 @admin_required
 def user_profile_delete(request, pk):
     if request.method == 'POST':
         profile = get_object_or_404(UserProfile, id=pk)
         profile.user.delete()
-        messages.success(request, 'User profile deleted!')
+        messages.success(request, 'User Profile entry deleted!')
     return redirect('user_profile_list')
-
-
-# ===== Family Account =====
-
-@admin_required
-def family_account_list(request):
-    entries = FamilyAccount.objects.all().order_by('-created_at')
-    return render(request, 'family_account_list.html', {'entries': entries})
-
-@admin_required
-def family_account_add(request):
-    if request.method == 'POST':
-        try:
-            FamilyAccount.objects.create(
-                primary_user=request.POST.get('primary_user', ''),
-                member_name=request.POST.get('member_name', ''),
-                relationship=request.POST.get('relationship', ''),
-                is_minor=request.POST.get('is_minor') == 'on',
-            )
-            messages.success(request, 'Family account added!')
-            return redirect('family_account_list')
-        except Exception:
-            messages.error(request, 'Error adding family account.')
-            return redirect('family_account_add')
-    return render(request, 'family_account_form.html', {'editing': False})
-
-@admin_required
-def family_account_edit(request, pk):
-    entry = get_object_or_404(FamilyAccount, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.primary_user = request.POST.get('primary_user', '')
-            entry.member_name = request.POST.get('member_name', '')
-            entry.relationship = request.POST.get('relationship', '')
-            entry.is_minor = request.POST.get('is_minor') == 'on'
-            entry.save()
-            messages.success(request, 'Family account updated!')
-            return redirect('family_account_list')
-        except Exception:
-            messages.error(request, 'Error updating family account.')
-            return redirect('family_account_edit', pk=pk)
-    return render(request, 'family_account_form.html', {'entry': entry, 'editing': True})
-
-@admin_required
-def family_account_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(FamilyAccount, id=pk).delete()
-        messages.success(request, 'Family account deleted!')
-    return redirect('family_account_list')
-
-
-# ===== Consent Log =====
-
-@admin_required
-def consent_log_list(request):
-    entries = ConsentLog.objects.all().order_by('-accepted_at')
-    return render(request, 'consent_log_list.html', {'entries': entries})
-
-@admin_required
-def consent_log_add(request):
-    if request.method == 'POST':
-        try:
-            ConsentLog.objects.create(
-                consent_type=request.POST.get('consent_type', ''),
-                version=request.POST.get('version', ''),
-                accepted=request.POST.get('accepted') == 'on',
-                ip_address=request.POST.get('ip_address', ''),
-            )
-            messages.success(request, 'Consent log added!')
-            return redirect('consent_log_list')
-        except Exception:
-            messages.error(request, 'Error adding consent log.')
-            return redirect('consent_log_add')
-    return render(request, 'consent_log_form.html', {'editing': False})
-
-@admin_required
-def consent_log_edit(request, pk):
-    entry = get_object_or_404(ConsentLog, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.consent_type = request.POST.get('consent_type', '')
-            entry.version = request.POST.get('version', '')
-            entry.accepted = request.POST.get('accepted') == 'on'
-            entry.ip_address = request.POST.get('ip_address', '')
-            entry.save()
-            messages.success(request, 'Consent log updated!')
-            return redirect('consent_log_list')
-        except Exception:
-            messages.error(request, 'Error updating consent log.')
-            return redirect('consent_log_edit', pk=pk)
-    return render(request, 'consent_log_form.html', {'entry': entry, 'editing': True})
-
-@admin_required
-def consent_log_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(ConsentLog, id=pk).delete()
-        messages.success(request, 'Consent log deleted!')
-    return redirect('consent_log_list')
-
-
-# ===== Tenant Config =====
-
-@admin_required
-def tenant_config_list(request):
-    entries = TenantConfig.objects.all().order_by('-created_at')
-    return render(request, 'tenant_config_list.html', {'entries': entries})
-
-@admin_required
-def tenant_config_add(request):
-    if request.method == 'POST':
-        try:
-            TenantConfig.objects.create(
-                tenant_name=request.POST.get('tenant_name', ''),
-                is_active=request.POST.get('is_active') == 'on',
-                data_isolation_level=request.POST.get('data_isolation_level', ''),
-            )
-            messages.success(request, 'Tenant config added!')
-            return redirect('tenant_config_list')
-        except Exception:
-            messages.error(request, 'Error adding tenant config.')
-            return redirect('tenant_config_add')
-    return render(request, 'tenant_config_form.html', {'editing': False})
-
-@admin_required
-def tenant_config_edit(request, pk):
-    entry = get_object_or_404(TenantConfig, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.tenant_name = request.POST.get('tenant_name', '')
-            entry.is_active = request.POST.get('is_active') == 'on'
-            entry.data_isolation_level = request.POST.get('data_isolation_level', '')
-            entry.save()
-            messages.success(request, 'Tenant config updated!')
-            return redirect('tenant_config_list')
-        except Exception:
-            messages.error(request, 'Error updating tenant config.')
-            return redirect('tenant_config_edit', pk=pk)
-    return render(request, 'tenant_config_form.html', {'entry': entry, 'editing': True})
-
-@admin_required
-def tenant_config_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(TenantConfig, id=pk).delete()
-        messages.success(request, 'Tenant config deleted!')
-    return redirect('tenant_config_list')
-
-
-# ===== Admin Telemetry =====
-
-@admin_required
-def admin_telemetry_list(request):
-    entries = AdminTelemetry.objects.all().order_by('-recorded_at')
-    return render(request, 'admin_telemetry_list.html', {'entries': entries})
-
-@admin_required
-def admin_telemetry_add(request):
-    if request.method == 'POST':
-        try:
-            metric_value = request.POST.get('metric_value', '').strip()
-            AdminTelemetry.objects.create(
-                metric_name=request.POST.get('metric_name', ''),
-                metric_value=float(metric_value) if metric_value else None,
-            )
-            messages.success(request, 'Admin telemetry added!')
-            return redirect('admin_telemetry_list')
-        except Exception:
-            messages.error(request, 'Error adding admin telemetry.')
-            return redirect('admin_telemetry_add')
-    return render(request, 'admin_telemetry_form.html', {'editing': False})
-
-@admin_required
-def admin_telemetry_edit(request, pk):
-    entry = get_object_or_404(AdminTelemetry, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.metric_name = request.POST.get('metric_name', '')
-            metric_value = request.POST.get('metric_value', '').strip()
-            entry.metric_value = float(metric_value) if metric_value else None
-            entry.save()
-            messages.success(request, 'Admin telemetry updated!')
-            return redirect('admin_telemetry_list')
-        except Exception:
-            messages.error(request, 'Error updating admin telemetry.')
-            return redirect('admin_telemetry_edit', pk=pk)
-    return render(request, 'admin_telemetry_form.html', {'entry': entry, 'editing': True})
-
-@admin_required
-def admin_telemetry_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(AdminTelemetry, id=pk).delete()
-        messages.success(request, 'Admin telemetry deleted!')
-    return redirect('admin_telemetry_list')
-
-
-# ===== API Rate Limit Config =====
-
-@admin_required
-def api_rate_limit_list(request):
-    entries = APIRateLimitConfig.objects.all().order_by('endpoint')
-    return render(request, 'api_rate_limit_list.html', {'entries': entries})
-
-@admin_required
-def api_rate_limit_add(request):
-    if request.method == 'POST':
-        try:
-            max_min = request.POST.get('max_requests_per_minute', '').strip()
-            max_hr = request.POST.get('max_requests_per_hour', '').strip()
-            APIRateLimitConfig.objects.create(
-                endpoint=request.POST.get('endpoint', ''),
-                max_requests_per_minute=int(max_min) if max_min else None,
-                max_requests_per_hour=int(max_hr) if max_hr else None,
-                is_active=request.POST.get('is_active') == 'on',
-            )
-            messages.success(request, 'API rate limit config added!')
-            return redirect('api_rate_limit_list')
-        except Exception:
-            messages.error(request, 'Error adding API rate limit config.')
-            return redirect('api_rate_limit_add')
-    return render(request, 'api_rate_limit_form.html', {'editing': False})
-
-@admin_required
-def api_rate_limit_edit(request, pk):
-    entry = get_object_or_404(APIRateLimitConfig, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.endpoint = request.POST.get('endpoint', '')
-            max_min = request.POST.get('max_requests_per_minute', '').strip()
-            max_hr = request.POST.get('max_requests_per_hour', '').strip()
-            entry.max_requests_per_minute = int(max_min) if max_min else None
-            entry.max_requests_per_hour = int(max_hr) if max_hr else None
-            entry.is_active = request.POST.get('is_active') == 'on'
-            entry.save()
-            messages.success(request, 'API rate limit config updated!')
-            return redirect('api_rate_limit_list')
-        except Exception:
-            messages.error(request, 'Error updating API rate limit config.')
-            return redirect('api_rate_limit_edit', pk=pk)
-    return render(request, 'api_rate_limit_form.html', {'entry': entry, 'editing': True})
-
-@admin_required
-def api_rate_limit_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(APIRateLimitConfig, id=pk).delete()
-        messages.success(request, 'API rate limit config deleted!')
-    return redirect('api_rate_limit_list')
-
-
-# ===== Encryption Keys =====
-
-@admin_required
-def encryption_key_list(request):
-    entries = EncryptionKey.objects.all().order_by('-created_at')
-    return render(request, 'encryption_key_list.html', {'entries': entries})
-
-@admin_required
-def encryption_key_add(request):
-    if request.method == 'POST':
-        try:
-            EncryptionKey.objects.create(
-                key_identifier=request.POST.get('key_identifier', ''),
-                public_key=request.POST.get('public_key', ''),
-                is_active=request.POST.get('is_active') == 'on',
-            )
-            messages.success(request, 'Encryption key added!')
-            return redirect('encryption_key_list')
-        except Exception:
-            messages.error(request, 'Error adding encryption key.')
-            return redirect('encryption_key_add')
-    return render(request, 'encryption_key_form.html', {'editing': False})
-
-@admin_required
-def encryption_key_edit(request, pk):
-    entry = get_object_or_404(EncryptionKey, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.key_identifier = request.POST.get('key_identifier', '')
-            entry.public_key = request.POST.get('public_key', '')
-            entry.is_active = request.POST.get('is_active') == 'on'
-            entry.save()
-            messages.success(request, 'Encryption key updated!')
-            return redirect('encryption_key_list')
-        except Exception:
-            messages.error(request, 'Error updating encryption key.')
-            return redirect('encryption_key_edit', pk=pk)
-    return render(request, 'encryption_key_form.html', {'entry': entry, 'editing': True})
-
-@admin_required
-def encryption_key_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(EncryptionKey, id=pk).delete()
-        messages.success(request, 'Encryption key deleted!')
-    return redirect('encryption_key_list')
-
-
-# ===== Audit Logs =====
-
-@admin_required
-def audit_log_list(request):
-    entries = AuditLog.objects.all().order_by('-created_at')
-    return render(request, 'audit_log_list.html', {'entries': entries})
-
-@admin_required
-def audit_log_add(request):
-    if request.method == 'POST':
-        try:
-            AuditLog.objects.create(
-                action=request.POST.get('action', ''),
-                details=request.POST.get('details', ''),
-                ip_address=request.POST.get('ip_address', '') or None,
-            )
-            messages.success(request, 'Audit log added!')
-            return redirect('audit_log_list')
-        except Exception:
-            messages.error(request, 'Error adding audit log.')
-            return redirect('audit_log_add')
-    return render(request, 'audit_log_form.html', {'editing': False})
-
-@admin_required
-def audit_log_edit(request, pk):
-    entry = get_object_or_404(AuditLog, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.action = request.POST.get('action', '')
-            entry.details = request.POST.get('details', '')
-            entry.ip_address = request.POST.get('ip_address', '') or None
-            entry.save()
-            messages.success(request, 'Audit log updated!')
-            return redirect('audit_log_list')
-        except Exception:
-            messages.error(request, 'Error updating audit log.')
-            return redirect('audit_log_edit', pk=pk)
-    return render(request, 'audit_log_form.html', {'entry': entry, 'editing': True})
-
-@admin_required
-def audit_log_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(AuditLog, id=pk).delete()
-        messages.success(request, 'Audit log deleted!')
-    return redirect('audit_log_list')
-
-
-# ===== Anonymized Data Reports =====
-
-@admin_required
-def anonymized_data_list(request):
-    entries = AnonymizedDataReport.objects.all().order_by('-generated_at')
-    return render(request, 'anonymized_data_list.html', {'entries': entries})
-
-@admin_required
-def anonymized_data_add(request):
-    if request.method == 'POST':
-        try:
-            total = request.POST.get('total_records', '').strip()
-            AnonymizedDataReport.objects.create(
-                report_title=request.POST.get('report_title', ''),
-                report_type=request.POST.get('report_type', ''),
-                total_records=int(total) if total else 0,
-                anonymization_method=request.POST.get('anonymization_method', ''),
-                notes=request.POST.get('notes', ''),
-            )
-            messages.success(request, 'Anonymized data report added!')
-            return redirect('anonymized_data_list')
-        except Exception:
-            messages.error(request, 'Error adding anonymized data report.')
-            return redirect('anonymized_data_add')
-    return render(request, 'anonymized_data_form.html', {'editing': False})
-
-@admin_required
-def anonymized_data_edit(request, pk):
-    entry = get_object_or_404(AnonymizedDataReport, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.report_title = request.POST.get('report_title', '')
-            entry.report_type = request.POST.get('report_type', '')
-            total = request.POST.get('total_records', '').strip()
-            entry.total_records = int(total) if total else 0
-            entry.anonymization_method = request.POST.get('anonymization_method', '')
-            entry.notes = request.POST.get('notes', '')
-            entry.save()
-            messages.success(request, 'Anonymized data report updated!')
-            return redirect('anonymized_data_list')
-        except Exception:
-            messages.error(request, 'Error updating anonymized data report.')
-            return redirect('anonymized_data_edit', pk=pk)
-    return render(request, 'anonymized_data_form.html', {'entry': entry, 'editing': True})
-
-@admin_required
-def anonymized_data_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(AnonymizedDataReport, id=pk).delete()
-        messages.success(request, 'Anonymized data report deleted!')
-    return redirect('anonymized_data_list')
-
-
-# ===== Database Scaling Config =====
-
-@admin_required
-def database_scaling_list(request):
-    entries = DatabaseScalingConfig.objects.all().order_by('-created_at')
-    return render(request, 'database_scaling_list.html', {'entries': entries})
-
-@admin_required
-def database_scaling_add(request):
-    if request.method == 'POST':
-        try:
-            max_conn = request.POST.get('max_connections', '').strip()
-            DatabaseScalingConfig.objects.create(
-                config_name=request.POST.get('config_name', ''),
-                scaling_type=request.POST.get('scaling_type', ''),
-                is_active=request.POST.get('is_active') == 'on',
-                max_connections=int(max_conn) if max_conn else 100,
-                notes=request.POST.get('notes', ''),
-            )
-            messages.success(request, 'Database scaling config added!')
-            return redirect('database_scaling_list')
-        except Exception:
-            messages.error(request, 'Error adding database scaling config.')
-            return redirect('database_scaling_add')
-    return render(request, 'database_scaling_form.html', {'editing': False})
-
-@admin_required
-def database_scaling_edit(request, pk):
-    entry = get_object_or_404(DatabaseScalingConfig, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.config_name = request.POST.get('config_name', '')
-            entry.scaling_type = request.POST.get('scaling_type', '')
-            entry.is_active = request.POST.get('is_active') == 'on'
-            max_conn = request.POST.get('max_connections', '').strip()
-            entry.max_connections = int(max_conn) if max_conn else 100
-            entry.notes = request.POST.get('notes', '')
-            entry.save()
-            messages.success(request, 'Database scaling config updated!')
-            return redirect('database_scaling_list')
-        except Exception:
-            messages.error(request, 'Error updating database scaling config.')
-            return redirect('database_scaling_edit', pk=pk)
-    return render(request, 'database_scaling_form.html', {'entry': entry, 'editing': True})
-
-@admin_required
-def database_scaling_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(DatabaseScalingConfig, id=pk).delete()
-        messages.success(request, 'Database scaling config deleted!')
-    return redirect('database_scaling_list')
-
-
-# ===== Backup Configuration =====
-
-@admin_required
-def backup_config_list(request):
-    entries = BackupConfiguration.objects.all().order_by('-created_at')
-    return render(request, 'backup_config_list.html', {'entries': entries})
-
-@admin_required
-def backup_config_add(request):
-    if request.method == 'POST':
-        try:
-            ret = request.POST.get('retention_days', '').strip()
-            BackupConfiguration.objects.create(
-                backup_name=request.POST.get('backup_name', ''),
-                frequency=request.POST.get('frequency', ''),
-                retention_days=int(ret) if ret else 30,
-                is_active=request.POST.get('is_active') == 'on',
-                storage_location=request.POST.get('storage_location', ''),
-            )
-            messages.success(request, 'Backup configuration added!')
-            return redirect('backup_config_list')
-        except Exception:
-            messages.error(request, 'Error adding backup configuration.')
-            return redirect('backup_config_add')
-    return render(request, 'backup_config_form.html', {'editing': False})
-
-@admin_required
-def backup_config_edit(request, pk):
-    entry = get_object_or_404(BackupConfiguration, id=pk)
-    if request.method == 'POST':
-        try:
-            entry.backup_name = request.POST.get('backup_name', '')
-            entry.frequency = request.POST.get('frequency', '')
-            ret = request.POST.get('retention_days', '').strip()
-            entry.retention_days = int(ret) if ret else 30
-            entry.is_active = request.POST.get('is_active') == 'on'
-            entry.storage_location = request.POST.get('storage_location', '')
-            entry.save()
-            messages.success(request, 'Backup configuration updated!')
-            return redirect('backup_config_list')
-        except Exception:
-            messages.error(request, 'Error updating backup configuration.')
-            return redirect('backup_config_edit', pk=pk)
-    return render(request, 'backup_config_form.html', {'entry': entry, 'editing': True})
-
-@admin_required
-def backup_config_delete(request, pk):
-    if request.method == 'POST':
-        get_object_or_404(BackupConfiguration, id=pk).delete()
-        messages.success(request, 'Backup configuration deleted!')
-    return redirect('backup_config_list')
 
 
 # ===== Medication Schedule =====
@@ -5060,6 +4595,7 @@ _user_profile = make_crud_views(
     display_name='User Profile',
     fields=[
         {'name': 'role', 'type': 'str', 'choices': UserProfile.ROLE_CHOICES, 'default': 'user', 'label': 'Role'},
+        {'name': 'language', 'type': 'str', 'choices': UserProfile.LANGUAGE_CHOICES, 'default': 'en', 'label': 'Language'},
     ],
     list_url_name='user_profile_list',
     add_url_name='user_profile_add',
@@ -5067,6 +4603,7 @@ _user_profile = make_crud_views(
     order_by='-created_at',
 )
 user_profile_list = admin_required(_user_profile['list'])
+# user_profile_add/edit/delete are handwritten above (manage User + UserProfile)
 
 # ===== Family Accounts =====
 _family_account = make_crud_views(
