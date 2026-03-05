@@ -5,6 +5,7 @@
 <div class="page-header">
   <div>
     <h1 class="page-header-title">{{ page_title }}</h1>
+    {% if page_subtitle %}<p class="page-header-subtitle">{{ page_subtitle }}</p>{% endif %}
   </div>
   <div class="page-header-actions">
     <a href="{% url add_url_name %}" class="toolbar-btn toolbar-btn-primary">
