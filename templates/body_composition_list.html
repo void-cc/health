@@ -97,8 +97,8 @@
     </div>
   </div>
   <div class="tracking-stat-card">
-    <div class="tracking-stat-label">Last 30 Days</div>
-    <div class="tracking-stat-value">{% if insights.entries_last_30 is not None %}{{ insights.entries_last_30 }}{% else %}0{% endif %}</div>
+    <div class="tracking-stat-label">Avg Muscle Mass</div>
+    <div class="tracking-stat-value">{% if stats.avg_muscle_mass is not None %}{{ stats.avg_muscle_mass|floatformat:1 }} kg{% else %}&mdash;{% endif %}</div>
   </div>
 </div>
 {% endif %}
