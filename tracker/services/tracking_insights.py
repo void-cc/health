@@ -5,7 +5,6 @@ actionable health insights for each tracking module.
 """
 
 from datetime import timedelta
-from django.db.models import Avg, Count
 from django.utils import timezone
 
 
