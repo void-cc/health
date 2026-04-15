@@ -32,6 +32,7 @@ jobs:
 
   fast-test:
     name: Fast PR tests - ${{ matrix.group.name }}
+    needs: [lint, migration-check]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -60,11 +61,26 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Check migrations are in sync
-        run: python manage.py makemigrations --check --dry-run
-
       - name: Run ${{ matrix.group.name }} tests
         run: python manage.py test ${{ matrix.group.tests }} --verbosity 2
+
+  migration-check:
+    name: Migration graph check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check migrations are in sync
+        run: python manage.py makemigrations --check --dry-run
 
   nightly-extended:
     name: Nightly extended tests
@@ -84,6 +100,9 @@ jobs:
 
       - name: Report coverage
         run: coverage run manage.py test tracker --verbosity 1 && coverage report
+
+      - name: Run parser drift checks
+        run: python test_hl7_fhir.py && python test_parsing.py
 
   parsing:
     name: Data Parsing

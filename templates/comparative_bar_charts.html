@@ -114,36 +114,18 @@
 <script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportChartsPDF() {
-  var exportBtn = document.getElementById('comparative-export-btn');
-  var element = document.getElementById('charts-container');
-  if (!element) {
-    if (typeof window.showAppToast === 'function') window.showAppToast('No chart data to export.', 'warning');
+  if (typeof window.exportElementToPdf === 'function') {
+    window.exportElementToPdf({
+      elementId: 'charts-container',
+      buttonId: 'comparative-export-btn',
+      fileName: 'comparative_bar_charts.pdf',
+      emptyMessage: 'No chart data to export.',
+      preparingMessage: 'Preparing comparative PDF...',
+      successMessage: 'Comparative PDF exported.',
+      failureMessage: 'Comparative export failed.'
+    });
     return;
   }
-  if (exportBtn) exportBtn.disabled = true;
-  if (typeof window.showAppToast === 'function') window.showAppToast('Preparing comparative PDF...', 'info');
-  html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
-    var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-    var imgWidth = 210;
-    var imgHeight = canvas.height * imgWidth / canvas.width;
-    var pageHeight = 297;
-    var position = 0;
-    var imgData = canvas.toDataURL('image/png');
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    var heightLeft = imgHeight - pageHeight;
-    while (heightLeft > 0) {
-      position = position - pageHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-    pdf.save('comparative_bar_charts.pdf');
-    if (typeof window.showAppToast === 'function') window.showAppToast('Comparative PDF exported.', 'success');
-  }).catch(function() {
-    if (typeof window.showAppToast === 'function') window.showAppToast('Comparative export failed.', 'error');
-  }).finally(function() {
-    if (exportBtn) exportBtn.disabled = false;
-  });
 }
 </script>
 {% endblock %}

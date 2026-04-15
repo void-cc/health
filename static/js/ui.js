@@ -63,6 +63,134 @@
 
   window.showAppToast = showAppToast;
 
+  function withDisabledElements(elements, task) {
+    const safeEls = (elements || []).filter(Boolean);
+    safeEls.forEach((el) => { el.disabled = true; });
+    return Promise.resolve()
+      .then(task)
+      .finally(() => {
+        safeEls.forEach((el) => { el.disabled = false; });
+      });
+  }
+
+  function filterSeriesByDate(data, startDate, endDate) {
+    return (data || []).filter((point) => {
+      if (startDate && point.x < startDate) return false;
+      if (endDate && point.x > endDate) return false;
+      return true;
+    });
+  }
+
+  function buildSimpleMovingAverage(data, windowSize) {
+    const points = data || [];
+    if (!points.length) return [];
+    let size = windowSize || 5;
+    if (points.length < size) size = points.length;
+    const out = [];
+    for (let i = 0; i < points.length; i++) {
+      const start = Math.max(0, i - size + 1);
+      let sum = 0;
+      for (let j = start; j <= i; j++) sum += points[j].y;
+      out.push({
+        x: points[i].x,
+        y: parseFloat((sum / (i - start + 1)).toFixed(2)),
+      });
+    }
+    return out;
+  }
+
+  function detectSeriesAnomalies(data, normalMin = null, normalMax = null) {
+    const points = data || [];
+    const anomalyIndices = [];
+    if (!points.length) return anomalyIndices;
+
+    if (normalMin !== null && normalMax !== null) {
+      for (let i = 0; i < points.length; i++) {
+        if (points[i].y < normalMin || points[i].y > normalMax) anomalyIndices.push(i);
+      }
+      return anomalyIndices;
+    }
+
+    if (points.length < 3) return anomalyIndices;
+    let mean = 0;
+    for (let i = 0; i < points.length; i++) mean += points[i].y;
+    mean /= points.length;
+    let variance = 0;
+    for (let i = 0; i < points.length; i++) variance += Math.pow(points[i].y - mean, 2);
+    const stddev = Math.sqrt(variance / points.length);
+    for (let i = 0; i < points.length; i++) {
+      if (Math.abs(points[i].y - mean) > 2 * stddev) anomalyIndices.push(i);
+    }
+    return anomalyIndices;
+  }
+
+  function bindChartFilterControls(config) {
+    const applyBtn = document.getElementById(config.applyBtnId || 'applyDateFilter');
+    const resetBtn = document.getElementById(config.resetBtnId || 'resetDateFilter');
+    const startInput = document.getElementById(config.startDateId || 'startDate');
+    const endInput = document.getElementById(config.endDateId || 'endDate');
+    const movingAvgToggle = document.getElementById(config.movingAvgId || 'toggleMovingAvg');
+    const anomalyToggle = document.getElementById(config.anomalyId || 'toggleAnomaly');
+    if (!applyBtn || !resetBtn || !startInput || !endInput || !config.onRender) return;
+
+    const runRender = () => withDisabledElements([applyBtn, resetBtn], () => Promise.resolve(config.onRender()));
+
+    applyBtn.addEventListener('click', runRender);
+    resetBtn.addEventListener('click', () => {
+      startInput.value = '';
+      endInput.value = '';
+      runRender();
+    });
+    if (movingAvgToggle) movingAvgToggle.addEventListener('change', runRender);
+    if (anomalyToggle) anomalyToggle.addEventListener('change', runRender);
+    runRender();
+  }
+
+  function exportElementToPdf(config) {
+    const exportBtn = document.getElementById(config.buttonId);
+    const element = document.getElementById(config.elementId);
+    if (!element) {
+      if (config.emptyMessage) showAppToast(config.emptyMessage, 'warning');
+      return;
+    }
+
+    withDisabledElements([exportBtn], () => {
+      if (config.preparingMessage) showAppToast(config.preparingMessage, 'info');
+      return html2canvas(element, { scale: 2, useCORS: true })
+        .then((canvas) => {
+          const orientation = config.orientation || 'p';
+          const pdf = new jspdf.jsPDF(orientation, 'mm', 'a4');
+          const pageWidth = orientation === 'l' ? 297 : 210;
+          const pageHeight = orientation === 'l' ? 210 : 297;
+          const margin = config.marginMm || 0;
+          const imgWidth = pageWidth - margin * 2;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          let position = margin;
+          const imgData = canvas.toDataURL('image/png');
+          pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+          let heightLeft = imgHeight - pageHeight;
+          while (heightLeft > 0) {
+            position -= pageHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', margin, position + margin, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+          }
+          pdf.save(config.fileName || 'charts.pdf');
+          if (config.successMessage) showAppToast(config.successMessage, 'success');
+        })
+        .catch(() => {
+          if (config.failureMessage) showAppToast(config.failureMessage, 'error');
+        });
+    });
+  }
+
+  window.withDisabledElements = withDisabledElements;
+  window.filterSeriesByDate = filterSeriesByDate;
+  window.buildSimpleMovingAverage = buildSimpleMovingAverage;
+  window.detectSeriesAnomalies = detectSeriesAnomalies;
+  window.bindChartFilterControls = bindChartFilterControls;
+  window.exportElementToPdf = exportElementToPdf;
+
   /* =========================================================
    * Main initialisation on DOMContentLoaded
    * ========================================================= */

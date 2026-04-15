@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models import Avg, Count, Min, Max, Sum
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
@@ -1519,6 +1520,17 @@ class CriticalAlert(models.Model):
     acknowledged = models.BooleanField(default=False)
     triggered_at = models.DateTimeField(auto_now_add=True)
 
+    def clean(self):
+        errors = {}
+        if self.threshold_value <= 0:
+            errors['threshold_value'] = 'Threshold must be greater than zero.'
+        if self.metric_name and not self.metric_name.strip():
+            errors['metric_name'] = 'Metric name is required.'
+        if self.alert_level == 'emergency' and self.acknowledged:
+            errors['acknowledged'] = 'Emergency alerts cannot be pre-acknowledged.'
+        if errors:
+            raise ValidationError(errors)
+
     @classmethod
     def check_and_create_alerts(cls):
         """Scan recent health data and auto-generate alerts for out-of-range values.
@@ -2144,6 +2156,20 @@ class Measurement(models.Model):
 
     class Meta:
         ordering = ['-observed_at']
+
+    def clean(self):
+        errors = {}
+        if self.ref_min is not None and self.ref_max is not None and self.ref_min > self.ref_max:
+            errors['ref_min'] = 'Reference minimum cannot be higher than reference maximum.'
+            errors['ref_max'] = 'Reference maximum cannot be lower than reference minimum.'
+        if self.review_status == 'confirmed' and not self.is_confirmed:
+            errors['review_status'] = 'Confirmed review status requires is_confirmed = True.'
+        if self.review_status in ('rejected', 'deferred') and self.is_confirmed:
+            errors['is_confirmed'] = 'Rejected or deferred measurements must not be marked confirmed.'
+        if self.value is None:
+            errors['value'] = 'Measurement value is required.'
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return f"{self.measurement_type} = {self.value} {self.unit} at {self.observed_at:%Y-%m-%d}"

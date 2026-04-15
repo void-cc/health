@@ -45,6 +45,42 @@
   {% endif %}
 </div>
 
+<div class="form-card mb-4">
+  <form method="GET" class="row g-3 align-items-end">
+    <div class="col-12 col-md-4">
+      <label for="status-filter" class="form-label">Status</label>
+      <select id="status-filter" name="status" class="form-select">
+        <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All statuses</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed</option>
+        <option value="deferred" {% if status_filter == 'deferred' %}selected{% endif %}>Deferred</option>
+        <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+    </div>
+    <div class="col-12 col-md-4">
+      <label for="confidence-filter" class="form-label">Confidence</label>
+      <select id="confidence-filter" name="confidence" class="form-select">
+        <option value="all" {% if confidence_filter == 'all' %}selected{% endif %}>All confidence levels</option>
+        <option value="high" {% if confidence_filter == 'high' %}selected{% endif %}>High (>= 85%)</option>
+        <option value="medium" {% if confidence_filter == 'medium' %}selected{% endif %}>Medium (50% - 84%)</option>
+        <option value="low" {% if confidence_filter == 'low' %}selected{% endif %}>Low (&lt; 50%)</option>
+      </select>
+    </div>
+    <div class="col-12 col-md-4 d-flex gap-2">
+      <button type="submit" class="btn btn-primary flex-fill">
+        <i data-lucide="filter" class="me-1" aria-hidden="true"></i> Apply Filters
+      </button>
+      <a href="{% url 'review_import' doc.pk %}" class="btn btn-outline-secondary flex-fill">Reset</a>
+    </div>
+  </form>
+  <div class="d-flex flex-wrap gap-2 mt-3">
+    <span class="badge text-bg-warning">Pending: {{ queue_counts.pending }}</span>
+    <span class="badge text-bg-success">Confirmed: {{ queue_counts.confirmed }}</span>
+    <span class="badge text-bg-info">Deferred: {{ queue_counts.deferred }}</span>
+    <span class="badge text-bg-danger">Rejected: {{ queue_counts.rejected }}</span>
+  </div>
+</div>
+
 {% if measurements %}
 <div class="table-responsive">
   <table class="table table-hover">

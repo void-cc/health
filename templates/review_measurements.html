@@ -22,6 +22,44 @@
   </div>
 </div>
 
+<div class="chart-filters-bar mb-4">
+  <div class="d-flex flex-wrap align-items-end gap-3">
+    <div class="focus-pill">
+      <span class="focus-pill-label">Pending</span>
+      <span class="focus-pill-value">{{ queue_counts.pending }}</span>
+    </div>
+    <div class="focus-pill">
+      <span class="focus-pill-label">Deferred</span>
+      <span class="focus-pill-value">{{ queue_counts.deferred }}</span>
+    </div>
+    <div class="focus-pill">
+      <span class="focus-pill-label">Rejected</span>
+      <span class="focus-pill-value">{{ queue_counts.rejected }}</span>
+    </div>
+    <form method="get" class="d-flex flex-wrap align-items-end gap-2 ms-auto">
+      <div>
+        <label class="form-label" for="status-filter">Status</label>
+        <select id="status-filter" name="status" class="form-select form-select-sm">
+          <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+          <option value="deferred" {% if status_filter == 'deferred' %}selected{% endif %}>Deferred</option>
+          <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+          <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="confidence-filter">Confidence</label>
+        <select id="confidence-filter" name="confidence" class="form-select form-select-sm">
+          <option value="all" {% if confidence_filter == 'all' %}selected{% endif %}>All</option>
+          <option value="high" {% if confidence_filter == 'high' %}selected{% endif %}>High (>=85%)</option>
+          <option value="medium" {% if confidence_filter == 'medium' %}selected{% endif %}>Medium (50-84%)</option>
+          <option value="low" {% if confidence_filter == 'low' %}selected{% endif %}>Low (<50%)</option>
+        </select>
+      </div>
+      <button type="submit" class="toolbar-btn toolbar-btn-primary">Apply</button>
+    </form>
+  </div>
+</div>
+
 {% if measurements %}
 <div class="table-responsive">
   <table class="table table-hover">

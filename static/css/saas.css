@@ -3,6 +3,11 @@
    Professional, intentional design system. No vibe-code patterns.
    ========================================================================== */
 
+/* Ownership note:
+   - saas.css owns product-facing visual system and layout composition.
+   - ui.css owns cross-cutting utility behavior (accessibility, overlays, tooltips, PWA).
+   Prefer adding dashboard/layout selectors here to avoid split ownership. */
+
 /* ── Top Navbar ──────────────────────────────────────────────────────────── */
 
 :root {

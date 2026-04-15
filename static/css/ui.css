@@ -18,6 +18,11 @@
    14. Responsive / Mobile-First
    ========================================================================== */
 
+/* Ownership note:
+   - ui.css owns global utility behavior (accessibility, tooltips, sidebar mechanics, PWA).
+   - saas.css owns product layout primitives and dashboard composition (grid, chart cards, page sections).
+   Keep structural layout selectors out of this file to prevent drift. */
+
 /* ==========================================================================
    1. CSS Custom Properties & Color Palette
    ========================================================================== */
@@ -1586,10 +1591,6 @@
     margin-left: 0;
   }
 
-  /* Two-column grid fallback */
-  .dashboard-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 /* ------- Desktop (min-width: 769px) ------- */
@@ -1607,12 +1608,6 @@
     display: none !important;
   }
 
-  /* Multi-column dashboard grid */
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.25rem;
-  }
 }
 
 /* ------- Large desktop (min-width: 1200px) ------- */
@@ -1621,9 +1616,6 @@
     max-width: 560px;
   }
 
-  .dashboard-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
 /* ==========================================================================

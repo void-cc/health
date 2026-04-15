@@ -108,36 +108,18 @@
 <script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportChartsPDF() {
-  var exportBtn = document.getElementById('boxplots-export-btn');
-  var element = document.getElementById('charts-container');
-  if (!element) {
-    if (typeof window.showAppToast === 'function') window.showAppToast('No chart data to export.', 'warning');
+  if (typeof window.exportElementToPdf === 'function') {
+    window.exportElementToPdf({
+      elementId: 'charts-container',
+      buttonId: 'boxplots-export-btn',
+      fileName: 'boxplots.pdf',
+      emptyMessage: 'No chart data to export.',
+      preparingMessage: 'Preparing distribution PDF...',
+      successMessage: 'Distribution PDF exported.',
+      failureMessage: 'Distribution export failed.'
+    });
     return;
   }
-  if (exportBtn) exportBtn.disabled = true;
-  if (typeof window.showAppToast === 'function') window.showAppToast('Preparing distribution PDF...', 'info');
-  html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
-    var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-    var imgWidth = 210;
-    var imgHeight = canvas.height * imgWidth / canvas.width;
-    var pageHeight = 297;
-    var position = 0;
-    var imgData = canvas.toDataURL('image/png');
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    var heightLeft = imgHeight - pageHeight;
-    while (heightLeft > 0) {
-      position = position - pageHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-    pdf.save('boxplots.pdf');
-    if (typeof window.showAppToast === 'function') window.showAppToast('Distribution PDF exported.', 'success');
-  }).catch(function() {
-    if (typeof window.showAppToast === 'function') window.showAppToast('Distribution export failed.', 'error');
-  }).finally(function() {
-    if (exportBtn) exportBtn.disabled = false;
-  });
 }
 </script>
 {% endblock %}

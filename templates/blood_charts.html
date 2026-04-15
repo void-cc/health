@@ -129,37 +129,27 @@
     }
   };
 
-  function computeMovingAverage(data, window) {
-    if (data.length < window) window = data.length;
+  var computeMovingAverage = window.buildSimpleMovingAverage || function(data, windowSize) {
+    if (data.length < windowSize) windowSize = data.length;
     var result = [];
     for (var i = 0; i < data.length; i++) {
-      var start = Math.max(0, i - window + 1);
+      var start = Math.max(0, i - windowSize + 1);
       var sum = 0;
       for (var j = start; j <= i; j++) { sum += data[j].y; }
       result.push({ x: data[i].x, y: parseFloat((sum / (i - start + 1)).toFixed(2)) });
     }
     return result;
-  }
+  };
 
-  function detectAnomalies(data, normalMin, normalMax) {
+  var detectAnomalies = window.detectSeriesAnomalies || function(data, normalMin, normalMax) {
     var anomalyIndices = [];
     if (normalMin !== null && normalMax !== null) {
       for (var i = 0; i < data.length; i++) {
         if (data[i].y < normalMin || data[i].y > normalMax) anomalyIndices.push(i);
       }
-    } else if (data.length >= 3) {
-      var mean = 0;
-      for (var k = 0; k < data.length; k++) mean += data[k].y;
-      mean /= data.length;
-      var variance = 0;
-      for (var m = 0; m < data.length; m++) variance += Math.pow(data[m].y - mean, 2);
-      var stddev = Math.sqrt(variance / data.length);
-      for (var n = 0; n < data.length; n++) {
-        if (Math.abs(data[n].y - mean) > 2 * stddev) anomalyIndices.push(n);
-      }
     }
     return anomalyIndices;
-  }
+  };
 
   function buildPointStyles(data, anomalyIndices, showAnomaly) {
     var colors = [], radii = [];
@@ -173,19 +163,15 @@
     return { colors: colors, radii: radii };
   }
 
-  function filterByDate(data, startDate, endDate) {
+  var filterByDate = window.filterSeriesByDate || function(data, startDate, endDate) {
     return data.filter(function(d) {
       if (startDate && d.x < startDate) return false;
       if (endDate && d.x > endDate) return false;
       return true;
     });
-  }
+  };
 
   function renderAllCharts() {
-    var applyBtn = document.getElementById('applyDateFilter');
-    var resetBtn = document.getElementById('resetDateFilter');
-    if (applyBtn) applyBtn.disabled = true;
-    if (resetBtn) resetBtn.disabled = true;
     var startDate = document.getElementById('startDate').value;
     var endDate = document.getElementById('endDate').value;
     var showMA = document.getElementById('toggleMovingAvg').checked;
@@ -230,8 +216,6 @@
       var ctx = document.getElementById('chart-' + chartId).getContext('2d');
       chartInstances[chartId] = new Chart(ctx, { type: 'line', data: { datasets: datasets }, options: chartOptions });
     }
-    if (applyBtn) applyBtn.disabled = false;
-    if (resetBtn) resetBtn.disabled = false;
     if (typeof window.showAppToast === 'function') {
       window.showAppToast('Filters updated.', 'info');
     }
@@ -245,59 +229,37 @@
   };
   {% endfor %}
 
-  document.getElementById('applyDateFilter').addEventListener('click', renderAllCharts);
-  document.getElementById('resetDateFilter').addEventListener('click', function() {
-    document.getElementById('startDate').value = '';
-    document.getElementById('endDate').value = '';
+  if (typeof window.bindChartFilterControls === 'function') {
+    window.bindChartFilterControls({ onRender: renderAllCharts });
+  } else {
+    document.getElementById('applyDateFilter').addEventListener('click', renderAllCharts);
+    document.getElementById('resetDateFilter').addEventListener('click', function() {
+      document.getElementById('startDate').value = '';
+      document.getElementById('endDate').value = '';
+      renderAllCharts();
+    });
+    document.getElementById('toggleMovingAvg').addEventListener('change', renderAllCharts);
+    document.getElementById('toggleAnomaly').addEventListener('change', renderAllCharts);
     renderAllCharts();
-  });
-  document.getElementById('toggleMovingAvg').addEventListener('change', renderAllCharts);
-  document.getElementById('toggleAnomaly').addEventListener('change', renderAllCharts);
-  renderAllCharts();
+  }
 </script>
 
 <script src="{% static 'js/html2canvas.min.js' %}"></script>
 <script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportChartsPDF() {
-  var exportBtn = document.getElementById('blood-charts-export-btn');
-  var element = document.getElementById('charts-container');
-  if (!element) {
-    if (typeof window.showAppToast === 'function') {
-      window.showAppToast('No chart data to export.', 'warning');
-    }
+  if (typeof window.exportElementToPdf === 'function') {
+    window.exportElementToPdf({
+      elementId: 'charts-container',
+      buttonId: 'blood-charts-export-btn',
+      fileName: 'blood_test_charts.pdf',
+      emptyMessage: 'No chart data to export.',
+      preparingMessage: 'Preparing blood chart PDF...',
+      successMessage: 'Blood chart PDF exported.',
+      failureMessage: 'Blood chart export failed.'
+    });
     return;
   }
-  if (exportBtn) exportBtn.disabled = true;
-  if (typeof window.showAppToast === 'function') {
-    window.showAppToast('Preparing blood chart PDF...', 'info');
-  }
-  html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
-    var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-    var imgWidth = 210;
-    var imgHeight = canvas.height * imgWidth / canvas.width;
-    var pageHeight = 297;
-    var position = 0;
-    var imgData = canvas.toDataURL('image/png');
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    var heightLeft = imgHeight - pageHeight;
-    while (heightLeft > 0) {
-      position = position - pageHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-    pdf.save('blood_test_charts.pdf');
-    if (typeof window.showAppToast === 'function') {
-      window.showAppToast('Blood chart PDF exported.', 'success');
-    }
-  }).catch(function() {
-    if (typeof window.showAppToast === 'function') {
-      window.showAppToast('Blood chart export failed.', 'error');
-    }
-  }).finally(function() {
-    if (exportBtn) exportBtn.disabled = false;
-  });
 }
 </script>
 {% endblock %}

@@ -54,6 +54,11 @@ from django.db.models import Q as models_Q, Avg, Count, Case, When, Value, Integ
 from django.core.paginator import Paginator
 from datetime import timedelta
 import functools
+import logging
+from .services.clinical_ops import run_critical_alert_check, build_export_payload_for_user
+
+
+logger = logging.getLogger(__name__)
 
 
 def admin_required(view_func):
@@ -67,14 +72,23 @@ def admin_required(view_func):
     return wrapped
 
 
+def _scope_to_user(qs, request, user_field='user'):
+    """Return a user-scoped queryset for non-staff requests when supported by model."""
+    if request.user.is_staff:
+        return qs
+    if any(f.name == user_field for f in qs.model._meta.get_fields()):
+        return qs.filter(**{user_field: request.user})
+    return qs
+
+
 @login_required
 def index(request):
-    tests = BloodTest.objects.all().order_by('-date')
+    tests = _scope_to_user(BloodTest.objects.all(), request).order_by('-date')
     test_types = set(test.test_name for test in tests)
 
     total_tests = len(tests)
     out_of_range = sum(1 for test in tests if test.normal_min is not None and test.normal_max is not None and not (test.normal_min <= test.value <= test.normal_max))
-    latest_vitals = VitalSign.objects.all().order_by('-date').first()
+    latest_vitals = _scope_to_user(VitalSign.objects.all(), request).order_by('-date').first()
 
     bars = {}
     tests_by_category = {}
@@ -128,7 +142,7 @@ def index(request):
     categories_tracked = len(tests_by_category)
 
     # Recent vitals for sparkline data (last 7 entries)
-    recent_vitals_qs = VitalSign.objects.all().order_by('-date')[:7]
+    recent_vitals_qs = _scope_to_user(VitalSign.objects.all(), request).order_by('-date')[:7]
     recent_hr_data = [v.heart_rate for v in reversed(recent_vitals_qs) if v.heart_rate]
 
     # Build SVG polyline points for heart rate sparkline
@@ -261,7 +275,7 @@ def history(request):
 
     # Build blood test items unless filtered to Vitals only
     if type_filter != 'Vitals':
-        tests = BloodTest.objects.all().order_by('-date')
+        tests = _scope_to_user(BloodTest.objects.all(), request).order_by('-date')
         if date_from:
             try:
                 tests = tests.filter(date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
@@ -277,7 +291,7 @@ def history(request):
         for test in tests:
             item_status = (
                 'Normal' if test.normal_min is not None and test.normal_max is not None and test.normal_min <= test.value <= test.normal_max
-                else ('Out of Range' if test.normal_min is not None and test.normal_max is not None else 'N/A')
+                else ('Needs review' if test.normal_min is not None and test.normal_max is not None else 'N/A')
             )
             if status_filter and item_status != status_filter:
                 continue
@@ -286,13 +300,13 @@ def history(request):
                 'date': test.date,
                 'name': test.test_name,
                 'value': f"{test.value} {test.unit}",
-                'notes': f"Range: {test.normal_min} - {test.normal_max} {test.unit}" if test.normal_min is not None and test.normal_max is not None else "",
+                'notes': f"Expected range: {test.normal_min} - {test.normal_max} {test.unit}" if test.normal_min is not None and test.normal_max is not None else "",
                 'status': item_status,
             })
 
     # Build vitals items unless filtered to Blood Test only
     if type_filter != 'Blood Test':
-        vitals = VitalSign.objects.all().order_by('-date')
+        vitals = _scope_to_user(VitalSign.objects.all(), request).order_by('-date')
         if date_from:
             try:
                 vitals = vitals.filter(date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
@@ -339,7 +353,7 @@ def history(request):
 
 @login_required
 def vitals(request):
-    all_vitals = VitalSign.objects.all().order_by('-date')
+    all_vitals = _scope_to_user(VitalSign.objects.all(), request).order_by('-date')
     return render(request, 'vitals.html', {'vitals': all_vitals})
 
 @admin_required
@@ -1045,7 +1059,7 @@ def import_data(request):
                 return redirect('index')
 
         except Exception as e:
-            print(f"File processing error: {e}")
+            logger.exception("Import processing failed for user %s", request.user.id)
             if source_doc is not None:
                 source_doc.status = 'error'
                 source_doc.error_message = str(e)
@@ -1059,12 +1073,51 @@ def import_data(request):
 @login_required
 def review_measurements(request):
     """List all pending measurements for the current user to review."""
-    measurements = Measurement.objects.filter(
-        user=request.user, review_status='pending',
-    ).select_related('measurement_type', 'source_document')
+    status_filter = request.GET.get('status', 'pending')
+    confidence_filter = request.GET.get('confidence', 'all')
+
+    measurements = Measurement.objects.filter(user=request.user).select_related(
+        'measurement_type', 'source_document'
+    )
+    if status_filter in {'pending', 'deferred', 'rejected'}:
+        measurements = measurements.filter(review_status=status_filter)
+    elif status_filter != 'all':
+        status_filter = 'pending'
+        measurements = measurements.filter(review_status='pending')
+
+    if confidence_filter == 'high':
+        measurements = measurements.filter(confidence__gte=0.85)
+    elif confidence_filter == 'medium':
+        measurements = measurements.filter(confidence__gte=0.5, confidence__lt=0.85)
+    elif confidence_filter == 'low':
+        measurements = measurements.filter(confidence__lt=0.5)
+    else:
+        confidence_filter = 'all'
+
+    measurements = measurements.order_by('-confidence', '-observed_at')
+
+    queue_counts = {
+        'pending': Measurement.objects.filter(user=request.user, review_status='pending').count(),
+        'deferred': Measurement.objects.filter(user=request.user, review_status='deferred').count(),
+        'rejected': Measurement.objects.filter(user=request.user, review_status='rejected').count(),
+    }
+
     return render(request, 'review_measurements.html', {
         'measurements': measurements,
+        'status_filter': status_filter,
+        'confidence_filter': confidence_filter,
+        'queue_counts': queue_counts,
     })
+
+
+def _can_transition_measurement_status(current_status, target_status):
+    allowed = {
+        'pending': {'confirmed', 'rejected', 'deferred'},
+        'deferred': {'confirmed', 'rejected'},
+        'confirmed': set(),
+        'rejected': set(),
+    }
+    return target_status in allowed.get(current_status, set())
 
 
 @login_required
@@ -1077,6 +1130,9 @@ def confirm_measurement(request, pk):
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'confirm':
+            if not _can_transition_measurement_status(measurement.review_status, 'confirmed'):
+                messages.error(request, 'This measurement cannot be confirmed from its current state.')
+                return redirect('review_measurements')
             form = MeasurementReviewForm(request.POST, instance=measurement)
             if form.is_valid():
                 m = form.save(commit=False)
@@ -1086,6 +1142,9 @@ def confirm_measurement(request, pk):
                 messages.success(request, 'Measurement confirmed.')
                 return redirect('review_measurements')
         elif action == 'reject':
+            if not _can_transition_measurement_status(measurement.review_status, 'rejected'):
+                messages.error(request, 'This measurement cannot be rejected from its current state.')
+                return redirect('review_measurements')
             measurement.is_confirmed = False
             measurement.review_status = 'rejected'
             measurement.confirmation_notes = request.POST.get('confirmation_notes', '')
@@ -1093,6 +1152,9 @@ def confirm_measurement(request, pk):
             messages.success(request, 'Measurement rejected.')
             return redirect('review_measurements')
         elif action == 'defer':
+            if not _can_transition_measurement_status(measurement.review_status, 'deferred'):
+                messages.error(request, 'This measurement cannot be deferred from its current state.')
+                return redirect('review_measurements')
             measurement.review_status = 'deferred'
             measurement.confirmation_notes = request.POST.get('confirmation_notes', '')
             measurement.save()
@@ -1112,23 +1174,50 @@ def review_import(request, doc_id):
     doc = get_object_or_404(SourceDocument, pk=doc_id)
     if doc.user != request.user and not request.user.is_staff:
         raise PermissionDenied
-    measurements = Measurement.objects.filter(
-        source_document=doc,
-    ).select_related('measurement_type')
+    status_filter = request.GET.get('status', 'all')
+    confidence_filter = request.GET.get('confidence', 'all')
+    measurements = Measurement.objects.filter(source_document=doc).select_related('measurement_type')
+
+    if status_filter in {'pending', 'confirmed', 'rejected', 'deferred'}:
+        measurements = measurements.filter(review_status=status_filter)
+    else:
+        status_filter = 'all'
+
+    if confidence_filter == 'high':
+        measurements = measurements.filter(confidence__gte=0.85)
+    elif confidence_filter == 'medium':
+        measurements = measurements.filter(confidence__gte=0.5, confidence__lt=0.85)
+    elif confidence_filter == 'low':
+        measurements = measurements.filter(confidence__lt=0.5)
+    else:
+        confidence_filter = 'all'
+
+    measurements = measurements.order_by('-confidence', '-observed_at')
+    all_doc_measurements = Measurement.objects.filter(source_document=doc)
     if request.method == 'POST':
         action = request.POST.get('action')
-        pending = measurements.filter(review_status='pending')
+        pending = all_doc_measurements.filter(review_status='pending')
         if action == 'confirm_all':
             count = pending.update(is_confirmed=True, review_status='confirmed')
             messages.success(request, f'Confirmed {count} measurements.')
         elif action == 'reject_all':
             count = pending.update(is_confirmed=False, review_status='rejected')
             messages.success(request, f'Rejected {count} measurements.')
+        else:
+            messages.error(request, 'Unknown bulk review action.')
         return redirect('review_measurements')
     return render(request, 'review_import.html', {
         'doc': doc,
         'measurements': measurements,
-        'has_pending': measurements.filter(review_status='pending').exists(),
+        'has_pending': all_doc_measurements.filter(review_status='pending').exists(),
+        'status_filter': status_filter,
+        'confidence_filter': confidence_filter,
+        'queue_counts': {
+            'pending': all_doc_measurements.filter(review_status='pending').count(),
+            'confirmed': all_doc_measurements.filter(review_status='confirmed').count(),
+            'deferred': all_doc_measurements.filter(review_status='deferred').count(),
+            'rejected': all_doc_measurements.filter(review_status='rejected').count(),
+        },
     })
 
 
@@ -1170,8 +1259,8 @@ def export_data(request):
 
     writer.writerow(['Date', 'Type', 'Name', 'Value', 'Unit', 'Normal Min', 'Normal Max', 'Status', 'Notes'])
 
-    tests = BloodTest.objects.all().order_by('-date')
-    vitals = VitalSign.objects.all().order_by('-date')
+    tests = _scope_to_user(BloodTest.objects.all(), request).order_by('-date')
+    vitals = _scope_to_user(VitalSign.objects.all(), request).order_by('-date')
 
     history_items = []
 
@@ -1184,8 +1273,8 @@ def export_data(request):
             'unit': test.unit,
             'normal_min': test.normal_min,
             'normal_max': test.normal_max,
-            'status': 'Normal' if test.normal_min is not None and test.normal_max is not None and test.normal_min <= test.value <= test.normal_max else ('Out of Range' if test.normal_min is not None and test.normal_max is not None else 'N/A'),
-            'notes': f"Range: {test.normal_min} - {test.normal_max}" if test.normal_min is not None and test.normal_max is not None else ""
+            'status': 'Normal' if test.normal_min is not None and test.normal_max is not None and test.normal_min <= test.value <= test.normal_max else ('Needs review' if test.normal_min is not None and test.normal_max is not None else 'N/A'),
+            'notes': f"Expected range: {test.normal_min} - {test.normal_max}" if test.normal_min is not None and test.normal_max is not None else ""
         })
 
     for vital in vitals:
@@ -3541,11 +3630,15 @@ def health_goal_delete(request, pk):
 @login_required
 def critical_alert_auto_check(request):
     if request.method == 'POST':
-        new_alerts = CriticalAlert.check_and_create_alerts()
-        if new_alerts:
-            messages.success(request, f'{len(new_alerts)} new alert(s) generated from health data.')
-        else:
-            messages.info(request, 'No new alerts — all health metrics are within normal range.')
+        try:
+            new_alerts = run_critical_alert_check()
+            if new_alerts:
+                messages.success(request, f'{len(new_alerts)} new alert(s) generated from health data.')
+            else:
+                messages.info(request, 'No new alerts — all health metrics are within expected range.')
+        except Exception:
+            logger.exception("Alert auto-check failed for user %s", request.user.id)
+            messages.error(request, 'Alert check failed. Please try again.')
     return redirect('critical_alert_list')
 
 
@@ -3564,6 +3657,7 @@ def health_report_generate(request):
             report = HealthReport.generate_from_data(report_type, period_start, period_end)
             messages.success(request, f'Health report generated: {report.title}')
         except Exception:
+            logger.exception("Health report generation failed for user %s", request.user.id)
             messages.error(request, 'Error generating report. Please provide valid dates.')
     return redirect('health_report_list')
 
@@ -3695,9 +3789,9 @@ def practitioner_request_access(request):
 @login_required
 def intake_summary_generate(request):
     """Auto-generate an intake summary from existing health data."""
-    blood_tests = BloodTest.objects.all().order_by('-date')[:10]
-    vitals = VitalSign.objects.all().order_by('-date').first()
-    medications = MedicationSchedule.objects.all().order_by('-start_date')
+    blood_tests = _scope_to_user(BloodTest.objects.all(), request).order_by('-date')[:10]
+    vitals = _scope_to_user(VitalSign.objects.all(), request).order_by('-date').first()
+    medications = _scope_to_user(MedicationSchedule.objects.all(), request).order_by('-start_date')
 
     summary_lines = []
     if vitals:
@@ -3742,23 +3836,9 @@ def intake_summary_generate(request):
 
 # ===== Data Export Request =====
 
-def _collect_export_data():
+def _collect_export_data(request):
     """Collect all health data for export."""
-    data = {
-        'blood_tests': list(BloodTest.objects.all().order_by('-date').values(
-            'test_name', 'value', 'unit', 'date', 'normal_min', 'normal_max', 'category')),
-        'vitals': list(VitalSign.objects.all().order_by('-date').values(
-            'date', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'bbt',
-            'respiratory_rate', 'spo2')),
-        'medications': list(MedicationSchedule.objects.all().order_by('-start_date').values(
-            'medication_name', 'dosage', 'frequency', 'start_date', 'end_date')),
-        'body_composition': list(BodyComposition.objects.all().order_by('-date').values(
-            'date', 'body_fat_percentage', 'skeletal_muscle_mass', 'waist_circumference',
-            'hip_circumference', 'waist_to_hip_ratio')),
-        'sleep_logs': list(SleepLog.objects.all().order_by('-date').values(
-            'date', 'total_sleep_minutes', 'deep_sleep_minutes', 'rem_minutes',
-            'sleep_quality_score')),
-    }
+    data = build_export_payload_for_user(request.user, include_global=request.user.is_staff)
     # Convert date objects to strings for JSON serialization
     for key in data:
         for record in data[key]:
@@ -3786,7 +3866,10 @@ def _data_to_xml(data):
 def data_export_download(request, pk):
     """Download exported health data in the requested format (JSON or XML)."""
     export_req = get_object_or_404(DataExportRequest, id=pk)
-    data = _collect_export_data()
+    allowed_ids = request.session.get('owned_export_request_ids', [])
+    if not request.user.is_staff and export_req.id not in allowed_ids:
+        raise PermissionDenied
+    data = _collect_export_data(request)
 
     if export_req.export_format == 'xml':
         xml_content = _data_to_xml(data)
@@ -3803,11 +3886,11 @@ def data_export_download(request, pk):
 # ===== Stakeholder Email =====
 
 
-def _build_health_summary_text():
+def _build_health_summary_text(request):
     """Build a plain-text health summary for stakeholder emails."""
     lines = ["Health Summary Report", "=" * 40, ""]
 
-    vitals = VitalSign.objects.all().order_by('-date').first()
+    vitals = _scope_to_user(VitalSign.objects.all(), request).order_by('-date').first()
     if vitals:
         lines.append("Latest Vitals:")
         if vitals.systolic_bp and vitals.diastolic_bp:
@@ -3820,7 +3903,7 @@ def _build_health_summary_text():
             lines.append(f"  Oxygen Saturation: {vitals.spo2}%")
         lines.append("")
 
-    blood_tests = BloodTest.objects.all().order_by('-date')[:5]
+    blood_tests = _scope_to_user(BloodTest.objects.all(), request).order_by('-date')[:5]
     if blood_tests:
         lines.append("Recent Lab Results:")
         for t in blood_tests:
@@ -3831,7 +3914,7 @@ def _build_health_summary_text():
             lines.append(f"  {t.test_name}: {t.value} {t.unit}{status}")
         lines.append("")
 
-    medications = MedicationSchedule.objects.all().order_by('-start_date')
+    medications = _scope_to_user(MedicationSchedule.objects.all(), request).order_by('-start_date')
     if medications:
         lines.append("Current Medications:")
         for m in medications:
@@ -3850,7 +3933,7 @@ def stakeholder_email_send(request, pk):
         messages.error(request, 'This stakeholder email is not active.')
         return redirect('stakeholder_email_list')
 
-    summary_text = _build_health_summary_text()
+    summary_text = _build_health_summary_text(request)
     try:
         send_mail(
             subject=f'Health Summary for {entry.recipient_name}',
@@ -3863,6 +3946,7 @@ def stakeholder_email_send(request, pk):
         entry.save(update_fields=['last_sent'])
         messages.success(request, f'Health summary sent to {entry.recipient_email}!')
     except Exception as e:
+        logger.exception("Stakeholder email send failed for %s", entry.recipient_email)
         messages.error(request, f'Error sending email: {e}')
     return redirect('stakeholder_email_list')
 
@@ -4616,14 +4700,19 @@ def data_export_add(request):
     if request.method == 'POST':
         try:
             export_format = request.POST.get('export_format', 'json')
-            DataExportRequest.objects.create(
+            req = DataExportRequest.objects.create(
                 export_format=export_format,
                 status='completed',
                 completed_at=timezone.now(),
             )
+            owned_ids = request.session.get('owned_export_request_ids', [])
+            if req.id not in owned_ids:
+                owned_ids.append(req.id)
+                request.session['owned_export_request_ids'] = owned_ids
             messages.success(request, 'Data export created!')
             return redirect('data_export_list')
         except Exception:
+            logger.exception("Data export creation failed for user %s", request.user.id)
             messages.error(request, 'Error creating data export.')
             return redirect('data_export_add')
     return render(request, 'data_export_form.html', {'editing': False})
@@ -4950,7 +5039,7 @@ def timeline(request):
             label = 'above' if ins['flag'] == 'high' else 'below'
             card = {
                 'title': ins['test_name'],
-                'message': f"{ins['latest_value']} {ins['unit']} — {label} normal range",
+                'message': f"{ins['latest_value']} {ins['unit']} — {label} expected range",
                 'severity': 'warning',
                 'icon': 'fa-exclamation-triangle',
             }

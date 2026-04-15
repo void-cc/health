@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from datetime import datetime
 
 from .decorators import staff_only
@@ -36,6 +37,19 @@ def _resolve_extra_context(extra, request):
     if callable(extra):
         return extra(request)
     return dict(extra)
+
+
+def _has_user_field(model_class):
+    return any(f.name == 'user' for f in model_class._meta.get_fields())
+
+
+def _scope_queryset(request, model_class):
+    qs = model_class.objects.all()
+    if request.user.is_staff:
+        return qs
+    if _has_user_field(model_class):
+        return qs.filter(user=request.user)
+    return qs
 
 
 def make_crud_views(
@@ -83,7 +97,7 @@ def make_crud_views(
     # -- list view --
     @_guard
     def list_view(request):
-        entries = model_class.objects.all().order_by(order_by)
+        entries = _scope_queryset(request, model_class).order_by(order_by)
         context = {
             'entries': entries,
             'page_title': display_name,
@@ -118,10 +132,17 @@ def make_crud_views(
                 for f in fields:
                     name = f['name']
                     kwargs[name] = _parse_field_value(f, request.POST.get(name))
-
-                model_class.objects.create(**kwargs)
+                if _has_user_field(model_class) and 'user' not in kwargs:
+                    kwargs['user'] = request.user
+                obj = model_class(**kwargs)
+                obj.full_clean()
+                obj.save()
                 messages.success(request, f'{display_name} entry added!')
                 return redirect(list_url_name)
+            except ValidationError as exc:
+                detail = '; '.join(exc.messages)
+                messages.error(request, f'Validation error: {detail}')
+                return redirect(add_url_name)
             except Exception:
                 messages.error(request, f'Error adding {display_name.lower()}. Please try again.')
                 return redirect(add_url_name)
@@ -140,15 +161,20 @@ def make_crud_views(
     # -- edit view --
     @_guard
     def edit_view(request, pk):
-        entry = get_object_or_404(model_class, id=pk)
+        entry = get_object_or_404(_scope_queryset(request, model_class), id=pk)
         if request.method == 'POST':
             try:
                 for f in fields:
                     name = f['name']
                     setattr(entry, name, _parse_field_value(f, request.POST.get(name)))
+                entry.full_clean()
                 entry.save()
                 messages.success(request, f'{display_name} updated!')
                 return redirect(list_url_name)
+            except ValidationError as exc:
+                detail = '; '.join(exc.messages)
+                messages.error(request, f'Validation error: {detail}')
+                return redirect(edit_url_name, pk=pk)
             except Exception:
                 messages.error(request, f'Error updating {display_name.lower()}.')
                 return redirect(edit_url_name, pk=pk)
@@ -167,7 +193,7 @@ def make_crud_views(
     @_guard
     def delete_view(request, pk):
         if request.method == 'POST':
-            entry = get_object_or_404(model_class, id=pk)
+            entry = get_object_or_404(_scope_queryset(request, model_class), id=pk)
             entry.delete()
             messages.success(request, f'{display_name} entry deleted!')
         return redirect(list_url_name)
