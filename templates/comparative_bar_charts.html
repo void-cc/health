@@ -9,7 +9,7 @@
     <p class="page-header-subtitle">Latest value vs. reference range for each marker</p>
   </div>
   <div class="page-header-actions">
-    <button class="toolbar-btn" onclick="exportChartsPDF()">
+    <button class="toolbar-btn" id="comparative-export-btn" onclick="exportChartsPDF()">
       <i data-lucide="download" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Export PDF</span>
     </button>
@@ -114,8 +114,14 @@
 <script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportChartsPDF() {
+  var exportBtn = document.getElementById('comparative-export-btn');
   var element = document.getElementById('charts-container');
-  if (!element) return;
+  if (!element) {
+    if (typeof window.showAppToast === 'function') window.showAppToast('No chart data to export.', 'warning');
+    return;
+  }
+  if (exportBtn) exportBtn.disabled = true;
+  if (typeof window.showAppToast === 'function') window.showAppToast('Preparing comparative PDF...', 'info');
   html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
     var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
     var imgWidth = 210;
@@ -132,6 +138,11 @@ function exportChartsPDF() {
       heightLeft -= pageHeight;
     }
     pdf.save('comparative_bar_charts.pdf');
+    if (typeof window.showAppToast === 'function') window.showAppToast('Comparative PDF exported.', 'success');
+  }).catch(function() {
+    if (typeof window.showAppToast === 'function') window.showAppToast('Comparative export failed.', 'error');
+  }).finally(function() {
+    if (exportBtn) exportBtn.disabled = false;
   });
 }
 </script>

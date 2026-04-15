@@ -37,6 +37,32 @@
     };
   }
 
+  function showAppToast(message, variant = 'info') {
+    const container = document.getElementById('app-toast-container');
+    if (!container) return;
+    const tone = variant === 'error' ? 'danger' : variant;
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast align-items-center text-bg-${tone} border-0`;
+    toastEl.setAttribute('role', 'status');
+    toastEl.setAttribute('aria-live', 'polite');
+    toastEl.setAttribute('aria-atomic', 'true');
+    toastEl.innerHTML =
+      '<div class="d-flex">' +
+      `<div class="toast-body">${message}</div>` +
+      '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+      '</div>';
+    container.appendChild(toastEl);
+    if (window.bootstrap && window.bootstrap.Toast) {
+      const toast = new window.bootstrap.Toast(toastEl, { delay: 3000 });
+      toast.show();
+      toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove(), { once: true });
+    } else {
+      setTimeout(() => toastEl.remove(), 3000);
+    }
+  }
+
+  window.showAppToast = showAppToast;
+
   /* =========================================================
    * Main initialisation on DOMContentLoaded
    * ========================================================= */
@@ -216,13 +242,11 @@
     if (!btn || !modal) return;
 
     const form = modal.querySelector('form');
-    const closeBtn = modal.querySelector('.modal-close, [data-dismiss="modal"]');
+    const closeBtn = modal.querySelector('.btn-close, [data-bs-dismiss="modal"]');
     const msgContainer = modal.querySelector('.quick-entry-message') || createMsgContainer(modal);
-
-    btn.addEventListener('click', () => {
-      modal.style.display = 'flex';
-      modal.classList.add('show');
-    });
+    const modalInstance = window.bootstrap && window.bootstrap.Modal
+      ? window.bootstrap.Modal.getOrCreateInstance(modal)
+      : null;
 
     if (closeBtn) {
       closeBtn.addEventListener('click', () => closeModal());
@@ -233,8 +257,9 @@
     });
 
     function closeModal() {
-      modal.style.display = 'none';
-      modal.classList.remove('show');
+      if (modalInstance) {
+        modalInstance.hide();
+      }
     }
 
     function createMsgContainer(parent) {
@@ -259,16 +284,19 @@
           if (res.ok) {
             msgContainer.textContent = 'Vitals saved successfully!';
             msgContainer.classList.add('text-success');
+            showAppToast('Vitals saved successfully.', 'success');
             form.reset();
             setTimeout(closeModal, 1500);
           } else {
             const data = await res.json().catch(() => ({}));
             msgContainer.textContent = data.error || 'Failed to save vitals.';
             msgContainer.classList.add('text-danger');
+            showAppToast(msgContainer.textContent, 'error');
           }
         } catch (err) {
           msgContainer.textContent = 'Network error. Please try again.';
           msgContainer.classList.add('text-danger');
+          showAppToast('Network error while saving vitals.', 'error');
         }
       });
     }
@@ -279,15 +307,20 @@
    * ========================================================= */
   function initVoiceToText() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const voiceButtons = Array.from(document.querySelectorAll('.voice-input-btn'));
+    const topBarVoiceBtn = document.getElementById('voice-input-btn');
+    if (topBarVoiceBtn) voiceButtons.push(topBarVoiceBtn);
 
-    document.querySelectorAll('.voice-input-btn').forEach((btn) => {
+    voiceButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
         if (!SpeechRecognition) {
-          alert('Voice input is not supported in this browser.');
+          showAppToast('Voice input is not supported in this browser.', 'warning');
           return;
         }
 
-        const input = btn.closest('.input-group')?.querySelector('input')
+        const input = btn.id === 'voice-input-btn'
+          ? document.getElementById('global-search-input')
+          : btn.closest('.input-group')?.querySelector('input')
           || btn.parentElement?.querySelector('input')
           || btn.previousElementSibling;
 
@@ -313,7 +346,7 @@
         recognition.addEventListener('error', (e) => {
           btn.classList.remove('listening');
           if (e.error !== 'aborted') {
-            alert('Voice recognition error: ' + e.error);
+            showAppToast('Voice recognition error: ' + e.error, 'error');
           }
         });
 
@@ -889,6 +922,14 @@
   window.startTour = startTour;
 
   function initOnboardingTour() {
+    const startTourBtn = document.getElementById('start-tour-btn');
+    if (startTourBtn) {
+      startTourBtn.addEventListener('click', () => {
+        localStorage.removeItem('tourCompleted');
+        startTour();
+      });
+    }
+
     if (localStorage.getItem('tourCompleted') !== 'true') {
       // Wait for full page load before starting tour
       if (document.readyState === 'complete') {

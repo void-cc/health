@@ -5,6 +5,8 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  schedule:
+    - cron: "0 2 * * *"
 
 permissions:
   contents: read
@@ -28,44 +30,23 @@ jobs:
       - name: Run flake8
         run: flake8 tracker health_tracker
 
-  test:
-    name: ${{ matrix.group.name }}
+  fast-test:
+    name: Fast PR tests - ${{ matrix.group.name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         group:
-          - name: "Templates & Views"
-            tests: "tracker.tests.TemplateFilterTests tracker.tests.ViewStatusCodeTests tracker.tests.ViewWithDataTests"
-          - name: "Phase 2 - Health Tracking"
-            tests: "tracker.tests.Phase2ModelTests tracker.tests.Phase2StatusCodeTests tracker.tests.Phase2CRUDTests tracker.tests.Phase2VitalsExtensionTests tracker.tests.IngestionServiceTests"
-          - name: "Annotations & Dashboard"
-            tests: "tracker.tests.AnnotationTests tracker.tests.BulkEditTests tracker.tests.DashboardWidgetTests tracker.tests.PDFExportTests"
-          - name: "Phase 3 - UI & UX"
-            tests: "tracker.tests.Phase3DarkModeTests tracker.tests.Phase3NavigationTests tracker.tests.Phase3AccessibilityTests tracker.tests.Phase3QuickEntryTests tracker.tests.Phase3PWATests tracker.tests.Phase3GlobalSearchTests tracker.tests.Phase3MedicalTooltipTests tracker.tests.Phase3VoiceInputTests tracker.tests.Phase3OnboardingTests"
-          - name: "Phase 4 - Authentication"
-            tests: "tracker.tests.Phase4RegistrationTests tracker.tests.Phase4LoginTests tracker.tests.Phase4LogoutTests tracker.tests.Phase4ProfileTests tracker.tests.Phase4PasswordChangeTests tracker.tests.Phase4SecurityLogTests tracker.tests.Phase4SessionManagementTests tracker.tests.Phase4PrivacyPreferencesTests tracker.tests.Phase4AccountDeletionTests tracker.tests.Phase4MFATests tracker.tests.Phase4ModelTests tracker.tests.Phase4ProtectedViewTests tracker.tests.Phase4SidebarTests tracker.tests.DynamicSidebarTests"
-          - name: "Phases 5-12 - Advanced Features"
+          - name: "Clinical Core Logic"
             tests: >-
-              tracker.tests.Phase5ModelTests tracker.tests.Phase5IntegrationRegistryTests
-              tracker.tests.Phase5OAuthClientTests tracker.tests.Phase5IntegrationViewTests
-              tracker.tests.Phase5SyncDataTests tracker.tests.Phase6ModelTests
-              tracker.tests.Phase7ModelTests tracker.tests.Phase8ModelTests
-              tracker.tests.Phase9ModelTests tracker.tests.Phase10_12ModelTests
-              tracker.tests.Phase5To12StatusCodeTests tracker.tests.Phase5To12CRUDTests
-              tracker.tests.Phase11DashboardTests tracker.tests.Phase11SubTaskModelTests
-              tracker.tests.Phase9SecureViewingLinkTests tracker.tests.Phase9PractitionerPortalTests
-              tracker.tests.Phase9IntakeSummaryGenerateTests tracker.tests.Phase9DataExportTests
-              tracker.tests.Phase9StakeholderEmailTests tracker.tests.SleepLogAutoScoreTests
-              tracker.tests.MacronutrientLogAutoCalcTests tracker.tests.FastingLogAutoCalcTests
-              tracker.tests.MetabolicLogHomaIRTests tracker.tests.HealthGoalAutoCompleteTests
-              tracker.tests.MedicationScheduleOverdueTests tracker.tests.CriticalAlertAutoCheckTests
-              tracker.tests.WearableSyncTests tracker.tests.HealthReportGenerateTests
+              tracker.tests.IngestionServiceTests tracker.tests.CriticalAlertAutoCheckTests
+              tracker.tests.MedicationScheduleOverdueTests tracker.tests.HealthReportGenerateTests
               tracker.tests.PredictiveBiomarkerGenerateTests tracker.tests.BiologicalAgeEstimateTests
-              tracker.tests.IntegrationConfigActivateTests tracker.tests.SleepListEnhancedTests
-              tracker.tests.HydrationListEnhancedTests tracker.tests.BodyCompositionListEnhancedTests
-              tracker.tests.MedicationScheduleListEnhancedTests tracker.tests.HealthGoalListEnhancedTests
-              tracker.tests.MacroListEnhancedTests
+          - name: "Clinical Workflow Integration"
+            tests: >-
+              tracker.tests.ViewWithDataTests tracker.tests.Phase2VitalsExtensionTests
+              tracker.tests.BulkEditTests tracker.tests.PDFExportTests
+              tracker.tests.Phase9DataExportTests tracker.tests.Phase4ProtectedViewTests
 
     steps:
       - uses: actions/checkout@v4
@@ -79,11 +60,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check migrations are in sync
+        run: python manage.py makemigrations --check --dry-run
+
       - name: Run ${{ matrix.group.name }} tests
         run: python manage.py test ${{ matrix.group.tests }} --verbosity 2
 
-  coverage:
-    name: Test Coverage
+  nightly-extended:
+    name: Nightly extended tests
+    if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,11 +82,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run tests with coverage
-        run: coverage run manage.py test tracker --verbosity 1
-
       - name: Report coverage
-        run: coverage report
+        run: coverage run manage.py test tracker --verbosity 1 && coverage report
 
   parsing:
     name: Data Parsing

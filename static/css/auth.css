@@ -1219,3 +1219,31 @@
   transform: none;
   box-shadow: none;
 }
+
+/* Clinical-calm enforcement layer */
+.auth-page,
+.auth-page::before,
+.auth-card,
+.auth-card:hover,
+.auth-brand-icon,
+.auth-btn,
+.auth-btn:hover,
+.auth-btn:focus,
+.auth-social-btn,
+.auth-social-btn:hover {
+  animation: none !important;
+}
+
+.auth-page {
+  background: radial-gradient(circle at top, #eff6ff 0%, #f9fafb 38%, #f3f4f6 100%) !important;
+}
+
+.auth-page::before {
+  display: none !important;
+}
+
+.auth-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 4px 10px rgba(17, 24, 39, 0.06) !important;
+}

@@ -10,13 +10,13 @@
     <p class="page-header-subtitle">A calm, up-to-date view of your recent health data.</p>
   </div>
   <div class="page-header-actions">
-    <a href="{% url 'bulk_edit' %}" class="toolbar-btn toolbar-btn-subtle" id="dashboard-bulk-edit-link" aria-keyshortcuts="Alt+Shift+B">
+    <a href="{% url 'bulk_edit' %}" class="toolbar-btn toolbar-btn-subtle d-none d-md-inline-flex" id="dashboard-bulk-edit-link" aria-keyshortcuts="Alt+Shift+B">
       <i data-lucide="table-2" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Bulk Edit</span>
     </a>
     <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary" id="dashboard-add-test-link" aria-keyshortcuts="Alt+Shift+A">
       <i data-lucide="plus" aria-hidden="true"></i>
-      <span>Add Test</span>
+      <span>Add blood test</span>
     </a>
     <div class="dropdown">
       <button class="toolbar-btn toolbar-btn-subtle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More dashboard actions">
@@ -30,7 +30,7 @@
           </a>
         </li>
         <li>
-          <button class="dropdown-item" type="button" onclick="exportDashboardPDF()">
+          <button class="dropdown-item" type="button" id="dashboard-export-pdf-button" onclick="exportDashboardPDF()">
             <i data-lucide="download" class="me-2"></i>Export PDF
           </button>
         </li>
@@ -68,7 +68,7 @@
   </div>
   <a href="{% url 'add_vitals' %}" class="focus-band-action" id="dashboard-add-vitals-link" aria-keyshortcuts="Alt+Shift+V">
     <i data-lucide="heart-pulse" aria-hidden="true"></i>
-    <span>Record Today's Vitals</span>
+    <span>Record today's vitals</span>
   </a>
 </section>
 
@@ -338,11 +338,11 @@
         </span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i data-lucide="activity"></i> SpO2</span>
+        <span class="vital-row-label" data-medical-tooltip="Peripheral oxygen saturation"><i data-lucide="activity"></i> SpO2</span>
         <span class="vital-row-value">{% if latest_vitals.spo2 %}{{ latest_vitals.spo2 }}<span class="vital-row-unit">%</span>{% else %}—{% endif %}</span>
       </div>
       <div class="vital-row">
-        <span class="vital-row-label"><i data-lucide="thermometer"></i> BBT</span>
+        <span class="vital-row-label" data-medical-tooltip="Basal body temperature"><i data-lucide="thermometer"></i> BBT</span>
         <span class="vital-row-value">{% if latest_vitals.bbt %}{{ latest_vitals.bbt }}<span class="vital-row-unit">°C</span>{% else %}—{% endif %}</span>
       </div>
       <div class="vital-row-actions">
@@ -422,7 +422,7 @@
       </a>
       <a href="{% url 'vitals' %}" class="toolbar-btn toolbar-btn-sm">
         <i data-lucide="list"></i>
-        <span class="d-none d-md-inline">All Vitals</span>
+        <span class="d-none d-md-inline">All vitals</span>
       </a>
     </div>
   </div>
@@ -486,7 +486,7 @@
         <div class="chart-card-header-text">
           <h3 class="chart-card-title">{{ test_name }} <span class="chart-card-unit">({{ test_info.unit }})</span></h3>
           {% if test_info.normal_min is not None and test_info.normal_max is not None %}
-          <p class="chart-card-subtitle">Range: {{ test_info.normal_min }}–{{ test_info.normal_max }}</p>
+          <p class="chart-card-subtitle">Expected range: {{ test_info.normal_min }}–{{ test_info.normal_max }}</p>
           {% endif %}
         </div>
       </div>
@@ -699,12 +699,20 @@ var dashboardExportInProgress = false;
 
 function exportDashboardPDF() {
   if (dashboardExportInProgress) return;
+  var exportBtn = document.getElementById('dashboard-export-pdf-button');
   var element = document.getElementById('dashboard-content');
   if (!element || typeof html2canvas === 'undefined' || typeof jspdf === 'undefined') {
+    if (typeof window.showAppToast === 'function') {
+      window.showAppToast('Export is unavailable right now.', 'warning');
+    }
     return;
   }
 
   dashboardExportInProgress = true;
+  if (exportBtn) exportBtn.disabled = true;
+  if (typeof window.showAppToast === 'function') {
+    window.showAppToast('Preparing dashboard PDF...', 'info');
+  }
 
   html2canvas(element, { scale: 2, useCORS: true })
     .then(function(canvas) {
@@ -723,12 +731,18 @@ function exportDashboardPDF() {
         heightLeft -= pageHeight;
       }
       pdf.save('dashboard.pdf');
+      if (typeof window.showAppToast === 'function') {
+        window.showAppToast('Dashboard PDF exported.', 'success');
+      }
     })
     .catch(function() {
-      // Intentionally silent: keep dashboard usable if export fails.
+      if (typeof window.showAppToast === 'function') {
+        window.showAppToast('Dashboard export failed. Please try again.', 'error');
+      }
     })
     .finally(function() {
       dashboardExportInProgress = false;
+      if (exportBtn) exportBtn.disabled = false;
     });
 }
 
@@ -1050,7 +1064,7 @@ function exportDashboardPDF() {
     new Chart(el.getContext('2d'), {
       type: 'bar',
       data: {
-        labels: ['Min Normal', 'Your Value', 'Max Normal'],
+        labels: ['Min expected', 'Your value', 'Max expected'],
         datasets: [{
           label: {{ test_name|tojson|safe }},
           data: [{{ test.normal_min }}, {{ test.value }}, {{ test.normal_max }}],

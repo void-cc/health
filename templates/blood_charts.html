@@ -9,7 +9,7 @@
     <p class="page-header-subtitle">Trend analysis for your blood markers</p>
   </div>
   <div class="page-header-actions">
-    <button class="toolbar-btn" onclick="exportChartsPDF()">
+    <button class="toolbar-btn" id="blood-charts-export-btn" onclick="exportChartsPDF()">
       <i data-lucide="download" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Export PDF</span>
     </button>
@@ -182,6 +182,10 @@
   }
 
   function renderAllCharts() {
+    var applyBtn = document.getElementById('applyDateFilter');
+    var resetBtn = document.getElementById('resetDateFilter');
+    if (applyBtn) applyBtn.disabled = true;
+    if (resetBtn) resetBtn.disabled = true;
     var startDate = document.getElementById('startDate').value;
     var endDate = document.getElementById('endDate').value;
     var showMA = document.getElementById('toggleMovingAvg').checked;
@@ -226,6 +230,11 @@
       var ctx = document.getElementById('chart-' + chartId).getContext('2d');
       chartInstances[chartId] = new Chart(ctx, { type: 'line', data: { datasets: datasets }, options: chartOptions });
     }
+    if (applyBtn) applyBtn.disabled = false;
+    if (resetBtn) resetBtn.disabled = false;
+    if (typeof window.showAppToast === 'function') {
+      window.showAppToast('Filters updated.', 'info');
+    }
   }
 
   {% for test_name, test_info in charts_data.items %}
@@ -251,8 +260,18 @@
 <script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportChartsPDF() {
+  var exportBtn = document.getElementById('blood-charts-export-btn');
   var element = document.getElementById('charts-container');
-  if (!element) return;
+  if (!element) {
+    if (typeof window.showAppToast === 'function') {
+      window.showAppToast('No chart data to export.', 'warning');
+    }
+    return;
+  }
+  if (exportBtn) exportBtn.disabled = true;
+  if (typeof window.showAppToast === 'function') {
+    window.showAppToast('Preparing blood chart PDF...', 'info');
+  }
   html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
     var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
     var imgWidth = 210;
@@ -269,6 +288,15 @@ function exportChartsPDF() {
       heightLeft -= pageHeight;
     }
     pdf.save('blood_test_charts.pdf');
+    if (typeof window.showAppToast === 'function') {
+      window.showAppToast('Blood chart PDF exported.', 'success');
+    }
+  }).catch(function() {
+    if (typeof window.showAppToast === 'function') {
+      window.showAppToast('Blood chart export failed.', 'error');
+    }
+  }).finally(function() {
+    if (exportBtn) exportBtn.disabled = false;
   });
 }
 </script>

@@ -9,7 +9,7 @@
     <p class="page-header-subtitle">Statistical spread of your measurements over time</p>
   </div>
   <div class="page-header-actions">
-    <button class="toolbar-btn" onclick="exportChartsPDF()">
+    <button class="toolbar-btn" id="boxplots-export-btn" onclick="exportChartsPDF()">
       <i data-lucide="download" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Export PDF</span>
     </button>
@@ -108,8 +108,14 @@
 <script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportChartsPDF() {
+  var exportBtn = document.getElementById('boxplots-export-btn');
   var element = document.getElementById('charts-container');
-  if (!element) return;
+  if (!element) {
+    if (typeof window.showAppToast === 'function') window.showAppToast('No chart data to export.', 'warning');
+    return;
+  }
+  if (exportBtn) exportBtn.disabled = true;
+  if (typeof window.showAppToast === 'function') window.showAppToast('Preparing distribution PDF...', 'info');
   html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
     var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
     var imgWidth = 210;
@@ -126,6 +132,11 @@ function exportChartsPDF() {
       heightLeft -= pageHeight;
     }
     pdf.save('boxplots.pdf');
+    if (typeof window.showAppToast === 'function') window.showAppToast('Distribution PDF exported.', 'success');
+  }).catch(function() {
+    if (typeof window.showAppToast === 'function') window.showAppToast('Distribution export failed.', 'error');
+  }).finally(function() {
+    if (exportBtn) exportBtn.disabled = false;
   });
 }
 </script>

@@ -9,7 +9,7 @@
     <p class="page-header-subtitle">Trend analysis for your recorded vital measurements</p>
   </div>
   <div class="page-header-actions">
-    <button class="toolbar-btn" onclick="exportChartsPDF()">
+    <button class="toolbar-btn" id="vitals-charts-export-btn" onclick="exportChartsPDF()">
       <i data-lucide="download" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Export PDF</span>
     </button>
@@ -109,7 +109,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h2 class="chart-card-title">Basal Body Temperature <span class="chart-card-unit">(°C)</span></h2>
+          <h2 class="chart-card-title" data-medical-tooltip="Basal body temperature measured at rest on waking">Basal Body Temperature <span class="chart-card-unit">(°C)</span></h2>
           <p class="chart-card-subtitle">Trend over time</p>
         </div>
       </div>
@@ -122,7 +122,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h2 class="chart-card-title">SpO2 — Blood Oxygen Saturation <span class="chart-card-unit">(%)</span></h2>
+          <h2 class="chart-card-title" data-medical-tooltip="Peripheral oxygen saturation">SpO2 — Blood Oxygen Saturation <span class="chart-card-unit">(%)</span></h2>
           <p class="chart-card-subtitle">Trend over time</p>
         </div>
       </div>
@@ -263,6 +263,10 @@
   }
 
   function renderAllCharts() {
+    var applyBtn = document.getElementById('applyDateFilter');
+    var resetBtn = document.getElementById('resetDateFilter');
+    if (applyBtn) applyBtn.disabled = true;
+    if (resetBtn) resetBtn.disabled = true;
     var startDate = document.getElementById('startDate').value;
     var endDate = document.getElementById('endDate').value;
     var showMA = document.getElementById('toggleMovingAvg').checked;
@@ -303,6 +307,11 @@
     var rrDs = [makeLineDataset('Respiratory Rate (/min)', rrData, 'rgba(5, 150, 105, 1)', showAnomaly)];
     if (showMA && rrData.length >= 2) rrDs.push({ label: 'Moving Avg', data: computeMovingAverage(rrData, Math.min(maWindow, rrData.length)), borderColor: 'rgba(5,150,105,0.4)', borderWidth: 2, borderDash: [5,5], fill: false, pointRadius: 0, pointHoverRadius: 0 });
     renderChart('rrChart', 'rr', rrDs);
+    if (applyBtn) applyBtn.disabled = false;
+    if (resetBtn) resetBtn.disabled = false;
+    if (typeof window.showAppToast === 'function') {
+      window.showAppToast('Filters updated.', 'info');
+    }
   }
 
   document.getElementById('applyDateFilter').addEventListener('click', renderAllCharts);
@@ -320,8 +329,18 @@
 <script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportChartsPDF() {
+  var exportBtn = document.getElementById('vitals-charts-export-btn');
   var element = document.getElementById('charts-container');
-  if (!element) return;
+  if (!element) {
+    if (typeof window.showAppToast === 'function') {
+      window.showAppToast('No chart data to export.', 'warning');
+    }
+    return;
+  }
+  if (exportBtn) exportBtn.disabled = true;
+  if (typeof window.showAppToast === 'function') {
+    window.showAppToast('Preparing vitals chart PDF...', 'info');
+  }
   html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
     var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
     var imgWidth = 210;
@@ -338,6 +357,15 @@ function exportChartsPDF() {
       heightLeft -= pageHeight;
     }
     pdf.save('vitals_charts.pdf');
+    if (typeof window.showAppToast === 'function') {
+      window.showAppToast('Vitals chart PDF exported.', 'success');
+    }
+  }).catch(function() {
+    if (typeof window.showAppToast === 'function') {
+      window.showAppToast('Vitals chart export failed.', 'error');
+    }
+  }).finally(function() {
+    if (exportBtn) exportBtn.disabled = false;
   });
 }
 </script>

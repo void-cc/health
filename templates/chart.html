@@ -9,7 +9,7 @@
     <p class="page-header-subtitle">Blood test trend chart</p>
   </div>
   <div class="page-header-actions">
-    <button class="toolbar-btn" onclick="exportChartPDF()">
+    <button class="toolbar-btn" id="single-chart-export-btn" onclick="exportChartPDF()">
       <i data-lucide="download" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Export PDF</span>
     </button>
@@ -152,13 +152,25 @@
 <script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
 function exportChartPDF() {
+  var exportBtn = document.getElementById('single-chart-export-btn');
   var element = document.getElementById('chart-container');
+  if (!element) {
+    if (typeof window.showAppToast === 'function') window.showAppToast('No chart data to export.', 'warning');
+    return;
+  }
+  if (exportBtn) exportBtn.disabled = true;
+  if (typeof window.showAppToast === 'function') window.showAppToast('Preparing chart PDF...', 'info');
   html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
     var pdf = new jspdf.jsPDF('l', 'mm', 'a4');
     var imgWidth = 287;
     var imgHeight = canvas.height * imgWidth / canvas.width;
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 5, 5, imgWidth, imgHeight);
     pdf.save('{{ test_name }}_chart.pdf');
+    if (typeof window.showAppToast === 'function') window.showAppToast('Chart PDF exported.', 'success');
+  }).catch(function() {
+    if (typeof window.showAppToast === 'function') window.showAppToast('Chart export failed.', 'error');
+  }).finally(function() {
+    if (exportBtn) exportBtn.disabled = false;
   });
 }
 </script>
