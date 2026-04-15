@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load json_filters %}
 {% block content %}
 
 <div class="page-header">
   <div>
-    <h1 class="page-header-title">Compare to Normal Range</h1>
+    <h1 class="page-header-title">Compare with expected range</h1>
     <p class="page-header-subtitle">Latest value vs. reference range for each marker</p>
   </div>
   <div class="page-header-actions">
@@ -28,10 +29,10 @@
           <div class="chart-card-header-text">
             <h2 class="chart-card-title">
               {{ test_name }}
-              <span class="fw-normal text-muted" style="font-size:0.8125rem;">({{ test.unit }})</span>
+              <span class="chart-card-unit">({{ test.unit }})</span>
             </h2>
             <p class="chart-card-subtitle">
-              Range: {{ test.normal_min }}–{{ test.normal_max }} {{ test.unit }}
+              Expected range: {{ test.normal_min }}–{{ test.normal_max }} {{ test.unit }}
               &nbsp;·&nbsp; {{ test.date|date:"M j, Y" }}
             </p>
           </div>
@@ -39,7 +40,7 @@
             {% if test.normal_min <= test.value and test.value <= test.normal_max %}
               <span class="status-badge badge-success">Normal</span>
             {% else %}
-              <span class="status-badge badge-danger">Out of Range</span>
+              <span class="status-badge badge-danger">Needs review</span>
             {% endif %}
           </div>
         </div>
@@ -58,7 +59,7 @@
     <div class="empty-state-title">No data to compare</div>
     <div class="empty-state-description">Add blood test results with reference ranges to compare them here.</div>
     <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
-      <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add Blood Test
+      <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add blood test
     </a>
   </div>
 {% endif %}
@@ -73,7 +74,7 @@
     new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: ['Min Normal', 'Your Value', 'Max Normal'],
+        labels: ['Min expected', 'Your value', 'Max expected'],
         datasets: [{
           label: {{ test_name|tojson|safe }},
           data: [{{ test.normal_min }}, {{ test.value }}, {{ test.normal_max }}],
@@ -88,8 +89,8 @@
         maintainAspectRatio: false,
         layout: { padding: { top: 8 } },
         scales: {
-          xAxes: [{ gridLines: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, ticks: { fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, fontColor: '#6b7280' } }],
-          yAxes: [{ ticks: { beginAtZero: true, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, fontColor: '#6b7280' }, gridLines: { color: 'rgba(0,0,0,0.04)', drawBorder: false } }]
+          xAxes: [{ gridLines: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, ticks: { fontFamily: "'Inter', system-ui, sans-serif", fontSize: 12, fontColor: '#6b7280' } }],
+          yAxes: [{ ticks: { beginAtZero: true, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 12, fontColor: '#6b7280' }, gridLines: { color: 'rgba(0,0,0,0.04)', drawBorder: false } }]
         },
         legend: { display: false },
         tooltips: {

@@ -92,3 +92,21 @@ The CI test matrix (`.github/workflows/tests.yml`) groups tests by feature phase
 4. When adding new pip dependencies, add them to `requirements.txt`.
 5. Templates live in `templates/`; extend `base.html` for consistent layout.
 6. Authentication and access control: all health-data views must require login (`@login_required` or `LoginRequiredMixin`).
+
+## Design Context
+
+### Users
+Primary users are patients who use the app to monitor personal health trends over time and make informed day-to-day decisions. Secondary users are caregivers and practitioners who need quick, trustworthy interpretation of patient data in shared review contexts. The core job to be done is to turn complex health inputs into clear, low-friction understanding through dashboards, trend views, and comparison tools.
+
+### Brand Personality
+The product voice is clinical, data-driven, and clean. It should feel calm and informative rather than alarmist, with emphasis on clarity, reliability, and evidence-oriented presentation. The interface should support trust in medical-style workflows while remaining approachable for regular daily use.
+
+### Aesthetic Direction
+Preferred visual direction is elegant and technical. The UI should prioritize light mode with clean surfaces, strong typographic hierarchy, restrained color usage, and information-dense but breathable layouts. Existing design signals in the codebase (structured cards, semantic status colors, accessibility-minded patterns, and chart-centric views) should be reinforced and made more cohesive over time.
+
+### Design Principles
+1. Calm clarity over visual noise: reduce cognitive load and help users understand status quickly.
+2. Data legibility first: optimize hierarchy, spacing, and contrast for scanability in dashboards and tables.
+3. Clinical trustworthiness: use precise language, consistent patterns, and predictable interactions.
+4. Elegant technical execution: keep visuals modern and polished without becoming decorative.
+5. Inclusive by default: maintain accessibility-conscious patterns as a baseline, improving iteratively on a best-effort basis.

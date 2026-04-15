@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load json_filters %}
 {% block content %}
 
@@ -6,27 +7,70 @@
 <div class="page-header">
   <div>
     <h1 class="page-header-title">Dashboard</h1>
-    <p class="page-header-subtitle">Your health overview at a glance</p>
+    <p class="page-header-subtitle">A calm, up-to-date view of your recent health data.</p>
   </div>
   <div class="page-header-actions">
-    <a href="{% url 'customize_dashboard' %}" class="toolbar-btn">
-      <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
-      <span class="d-none d-sm-inline">Customize</span>
-    </a>
-    <button class="toolbar-btn" onclick="exportDashboardPDF()">
-      <i data-lucide="download" aria-hidden="true"></i>
-      <span class="d-none d-sm-inline">Export PDF</span>
-    </button>
-    <a href="{% url 'bulk_edit' %}" class="toolbar-btn">
+    <a href="{% url 'bulk_edit' %}" class="toolbar-btn toolbar-btn-subtle" id="dashboard-bulk-edit-link" aria-keyshortcuts="Alt+Shift+B">
       <i data-lucide="table-2" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Bulk Edit</span>
     </a>
-    <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
+    <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary" id="dashboard-add-test-link" aria-keyshortcuts="Alt+Shift+A">
       <i data-lucide="plus" aria-hidden="true"></i>
-      <span class="d-none d-sm-inline">Add Test</span>
+      <span>Add Test</span>
     </a>
+    <div class="dropdown">
+      <button class="toolbar-btn toolbar-btn-subtle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More dashboard actions">
+        <i data-lucide="more-horizontal" aria-hidden="true"></i>
+        <span class="d-none d-sm-inline">More</span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li>
+          <a href="{% url 'customize_dashboard' %}" class="dropdown-item">
+            <i data-lucide="sliders-horizontal" class="me-2"></i>Customize
+          </a>
+        </li>
+        <li>
+          <button class="dropdown-item" type="button" onclick="exportDashboardPDF()">
+            <i data-lucide="download" class="me-2"></i>Export PDF
+          </button>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <button class="dropdown-item" type="button" id="open-shortcuts-modal">
+            <i data-lucide="keyboard" class="me-2"></i>Keyboard shortcuts
+          </button>
+        </li>
+      </ul>
+    </div>
   </div>
 </div>
+
+<section class="dashboard-focus-band" aria-label="Dashboard status and next action">
+  <div class="focus-pill">
+    <span class="focus-pill-label">Status</span>
+    {% if out_of_range > 0 %}
+      <span class="focus-pill-value focus-pill-value-warning">{{ out_of_range }} marker{{ out_of_range|pluralize }} needs review</span>
+    {% else %}
+      <span class="focus-pill-value focus-pill-value-good">All tracked markers are in range</span>
+    {% endif %}
+  </div>
+  <div class="focus-pill">
+    <span class="focus-pill-label">Coverage</span>
+    {% if total_tests > 0 %}
+      <span class="focus-pill-value">{{ in_range_pct }}% in range across {{ total_tests }} test{{ total_tests|pluralize }}</span>
+    {% else %}
+      <span class="focus-pill-value">No blood tests available yet</span>
+    {% endif %}
+  </div>
+  <div class="focus-pill">
+    <span class="focus-pill-label">Last vitals</span>
+    <span class="focus-pill-value">{% if latest_vitals %}{{ latest_vitals.date|date:"M j, Y" }}{% else %}No vitals recorded yet{% endif %}</span>
+  </div>
+  <a href="{% url 'add_vitals' %}" class="focus-band-action" id="dashboard-add-vitals-link" aria-keyshortcuts="Alt+Shift+V">
+    <i data-lucide="heart-pulse" aria-hidden="true"></i>
+    <span>Record Today's Vitals</span>
+  </a>
+</section>
 
 <div id="dashboard-content">
 {% for widget in widgets %}{% if widget.visible %}
@@ -40,23 +84,9 @@
       <span class="kpi-card-icon icon-primary"><i data-lucide="test-tube"></i></span>
     </div>
     <div class="kpi-card-value">{{ total_tests }}</div>
-    {% if cat_bar_data %}
-    <div class="kpi-mini-bars" aria-hidden="true">
-      {% for cat in cat_bar_data %}
-      <div class="kpi-mini-bar-row">
-        <span class="kpi-mini-bar-label">{{ cat.name }}</span>
-        <div class="kpi-mini-bar-track">
-          <div class="kpi-mini-bar-fill" style="width:{{ cat.pct }}%;"></div>
-        </div>
-        <span class="kpi-mini-bar-count">{{ cat.count }}</span>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
     <div class="kpi-card-trend">
       <span class="kpi-card-trend-text">{{ categories_tracked }} categor{{ categories_tracked|pluralize:"y,ies" }} tracked</span>
     </div>
-    {% endif %}
     <div class="kpi-card-footer">
       <a href="{% url 'history' %}">View history <i data-lucide="arrow-right" aria-hidden="true"></i></a>
     </div>
@@ -64,7 +94,7 @@
 
   <div class="kpi-card">
     <div class="kpi-card-header">
-      <span class="kpi-card-label">Health Status</span>
+      <span class="kpi-card-label">Review Status</span>
       {% if out_of_range > 0 %}
         <span class="kpi-card-icon icon-error"><i data-lucide="alert-circle"></i></span>
       {% else %}
@@ -73,26 +103,18 @@
     </div>
     <div class="kpi-card-value-row">
       <div class="kpi-card-value">{{ in_range_pct }}<span class="kpi-card-value-unit">%</span></div>
-      {% if total_tests > 0 %}
-      <div class="kpi-mini-doughnut" aria-hidden="true">
-        <svg viewBox="0 0 36 36" class="kpi-doughnut-svg">
-          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--gray-200)" stroke-width="3"/>
-          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--color-success)" stroke-width="3" stroke-dasharray="{{ in_range_pct }} {{ out_of_range_pct }}" stroke-dashoffset="25" stroke-linecap="round"/>
-        </svg>
-      </div>
-      {% endif %}
     </div>
     <div class="kpi-card-trend">
       {% if out_of_range > 0 %}
         <span class="kpi-status-dot kpi-status-dot-error"></span>
-        <span class="kpi-card-trend-text text-requires-attention">{{ out_of_range }} out of range — {{ in_range }} of {{ total_tests }} normal</span>
+        <span class="kpi-card-trend-text text-requires-attention">{{ out_of_range }} value{{ out_of_range|pluralize }} to review — {{ in_range }} of {{ total_tests }} currently in range</span>
       {% else %}
         <span class="kpi-status-dot kpi-status-dot-success"></span>
-        <span class="kpi-card-trend-text">All {{ total_tests }} values in range</span>
+        <span class="kpi-card-trend-text">All {{ total_tests }} value{{ total_tests|pluralize }} currently in range</span>
       {% endif %}
     </div>
     <div class="kpi-card-footer">
-      <a href="{% url 'comparative_bar_charts' %}">Compare results <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+      <a href="{% url 'comparative_bar_charts' %}">Review ranges <i data-lucide="arrow-right" aria-hidden="true"></i></a>
     </div>
   </div>
 </div>
@@ -102,18 +124,26 @@
 <!-- Main dashboard grid -->
 <div class="dashboard-grid">
   <!-- Left column: blood test results -->
-  <div>
+  <div class="dashboard-primary-lane">
     <div class="section-header-bar">
       <h2 class="results-section-title">Recent Blood Results</h2>
       <div class="section-header-actions">
-        <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn toolbar-btn-sm">
-          <i data-lucide="bar-chart-2"></i>
-          <span class="d-none d-md-inline">Compare</span>
-        </a>
-        <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn toolbar-btn-sm">
+        <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn toolbar-btn-sm" id="dashboard-blood-charts-link" aria-keyshortcuts="Alt+Shift+C">
           <i data-lucide="line-chart"></i>
           <span class="d-none d-md-inline">Charts</span>
         </a>
+        <div class="dropdown">
+          <button class="toolbar-btn toolbar-btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More blood result actions">
+            <i data-lucide="more-horizontal"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <a href="{% url 'comparative_bar_charts' %}" class="dropdown-item">
+                <i data-lucide="bar-chart-2" class="me-2"></i>Compare
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
 
@@ -122,7 +152,7 @@
       <div class="results-filter-bar" id="resultsFilterBar">
         <div class="filter-group">
           <label class="filter-label" for="filterCategory"><i data-lucide="filter"></i> Category</label>
-          <select class="filter-select" id="filterCategory">
+          <select class="filter-select" id="filterCategory" aria-keyshortcuts="Alt+Shift+F">
             <option value="all">All categories</option>
             {% for category in tests_by_category.keys %}
             <option value="{{ category }}">{{ category }}</option>
@@ -132,9 +162,9 @@
         <div class="filter-pills" id="filterStatus">
           <button type="button" class="filter-pill active" data-filter="all">All</button>
           <button type="button" class="filter-pill" data-filter="normal">Normal</button>
-          <button type="button" class="filter-pill" data-filter="out-of-range">Out of range</button>
+          <button type="button" class="filter-pill" data-filter="out-of-range">Needs review</button>
         </div>
-        <span class="filter-count" id="filterCount"></span>
+        <span class="filter-count" id="filterCount" aria-live="polite"></span>
       </div>
 
       {% for category, cat_tests in tests_by_category.items %}
@@ -153,7 +183,7 @@
                 <span class="result-item-meta-date"><i class="far fa-calendar-alt"></i> {{ test.date|date:"M j, Y" }}</span>
                 {% if test.normal_min is not None and test.normal_max is not None %}
                   <span class="result-item-meta-sep">&middot;</span>
-                  <span>Range: {{ test.normal_min }}–{{ test.normal_max }} {{ test.unit }}</span>
+                  <span>Expected range: {{ test.normal_min }}–{{ test.normal_max }} {{ test.unit }}</span>
                 {% endif %}
               </div>
 
@@ -171,15 +201,6 @@
             </div>
 
             <div class="result-item-value-wrapper">
-              {% with sparkline=test_sparklines|lookup:test.id %}
-              {% if sparkline %}
-              <div class="result-sparkline" aria-hidden="true" title="Recent trend">
-                <svg viewBox="0 0 60 20" preserveAspectRatio="none" class="result-sparkline-svg">
-                  <polyline fill="none" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="{{ sparkline }}"/>
-                </svg>
-              </div>
-              {% endif %}
-              {% endwith %}
               <div>
                 <div class="result-item-value">
                   {{ test.value }}<span class="result-item-unit">{{ test.unit }}</span>
@@ -187,10 +208,12 @@
                 {% if test.normal_min is not None and test.normal_max is not None %}
                   {% if test.normal_min <= test.value and test.value <= test.normal_max %}
                     <span class="status-badge badge-success mt-1">Normal</span>
+                  {% else %}
+                    <span class="status-badge badge-danger mt-1">Review range</span>
+                  {% endif %}
                 {% else %}
-                  <span class="status-badge badge-danger mt-1">Out of range</span>
+                  <span class="status-badge badge-neutral mt-1">No reference range</span>
                 {% endif %}
-              {% endif %}
               </div>
             </div>
 
@@ -216,7 +239,7 @@
                   <li><hr class="dropdown-divider"></li>
                   <li>
                     <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ test.id }}">
-                      <i data-lucide="trash-2" class="me-2"></i>Delete
+                      <i data-lucide="trash-2" class="me-2"></i>Delete result
                     </button>
                   </li>
                 </ul>
@@ -241,7 +264,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'index' %}">
                 <div class="input-group input-group-sm">
-                  <input type="text" name="note" class="form-control" placeholder="Add a note…">
+                  <input type="text" name="note" class="form-control" placeholder="Add context for this result">
                   <button type="submit" class="btn btn-outline-secondary btn-sm"><i data-lucide="plus"></i></button>
                 </div>
               </form>
@@ -253,17 +276,17 @@
             <div class="modal-dialog modal-dialog-centered">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h5 class="modal-title" id="deleteModalLabel{{ test.id }}">Delete Test Result</h5>
+                  <h5 class="modal-title" id="deleteModalLabel{{ test.id }}">Delete test result</h5>
                   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                  <p>Are you sure you want to delete <strong>{{ test.test_name }}</strong> from {{ test.date|date:"M j, Y" }}? This action cannot be undone.</p>
+                  <p>Delete <strong>{{ test.test_name }}</strong> from {{ test.date|date:"M j, Y" }}? This cannot be undone.</p>
                 </div>
                 <div class="modal-footer">
                   <form action="{% url 'delete_test' test_id=test.id %}" method="post">
                     {% csrf_token %}
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete</button>
+                    <button type="submit" class="btn btn-danger">Delete result</button>
                   </form>
                 </div>
               </div>
@@ -276,17 +299,17 @@
     {% else %}
       <div class="empty-state">
         <div class="empty-state-icon"><i data-lucide="test-tube"></i></div>
-        <div class="empty-state-title">No blood tests yet</div>
-        <div class="empty-state-description">Add your first blood test result to start tracking your health markers.</div>
+        <div class="empty-state-title">No blood results yet</div>
+        <div class="empty-state-description">Add your first blood result to start tracking trends and reviewing expected ranges.</div>
         <a href="{% url 'add_test' %}" class="btn btn-primary">
-          <i data-lucide="plus" class="me-1"></i> Add Blood Test
+          <i data-lucide="plus" class="me-1"></i> Add first result
         </a>
       </div>
     {% endif %}
   </div>
 
   <!-- Right column: quick info panel -->
-  <div class="dashboard-sidebar">
+  <div class="dashboard-sidebar dashboard-utility-lane">
     <!-- Latest Vitals Panel -->
     {% if latest_vitals %}
     <div class="vitals-summary">
@@ -302,13 +325,6 @@
         <span class="vital-row-label"><i data-lucide="heart-pulse"></i> Heart Rate</span>
         <span class="vital-row-value">
           {% if latest_vitals.heart_rate %}
-            {% if hr_sparkline_points %}
-            <span class="vital-sparkline" aria-hidden="true">
-              <svg viewBox="0 0 80 24" preserveAspectRatio="none" class="vital-sparkline-svg">
-                <polyline fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="{{ hr_sparkline_points }}"/>
-              </svg>
-            </span>
-            {% endif %}
             {{ latest_vitals.heart_rate }} <span class="vital-row-unit">bpm</span>
           {% else %}—{% endif %}
         </span>
@@ -342,45 +358,53 @@
       <div class="quick-actions-panel-title">Quick Actions</div>
       <a href="{% url 'add_test' %}" class="quick-action-item">
         <i data-lucide="plus-circle"></i>
-        <span>Add Blood Test</span>
+        <span>Add blood test</span>
       </a>
       <a href="{% url 'add_vitals' %}" class="quick-action-item">
         <i data-lucide="heart-pulse"></i>
-        <span>Record Vitals</span>
+        <span>Record vitals</span>
       </a>
       <a href="{% url 'blood_tests_charts' %}" class="quick-action-item">
         <i data-lucide="line-chart"></i>
-        <span>View Charts</span>
+        <span>View trend charts</span>
       </a>
-      <a href="{% url 'comparative_bar_charts' %}" class="quick-action-item">
-        <i data-lucide="bar-chart-2"></i>
-        <span>Compare to Normal</span>
-      </a>
-      <a href="{% url 'history' %}" class="quick-action-item">
-        <i data-lucide="clock"></i>
-        <span>Full History</span>
-      </a>
-      <a href="{% url 'import_data' %}" class="quick-action-item">
-        <i data-lucide="file-up"></i>
-        <span>Import Data</span>
-      </a>
-    </div>
-
-    <!-- Analytics shortcuts -->
-    <div class="quick-actions-panel">
-      <div class="quick-actions-panel-title">Analytics</div>
-      <a href="{% url 'blood_tests_boxplots' %}" class="quick-action-item">
-        <i data-lucide="bar-chart-2"></i>
-        <span>Boxplots</span>
-      </a>
-      <a href="{% url 'scatter_plots' %}" class="quick-action-item">
-        <i data-lucide="network"></i>
-        <span>Scatter Plots</span>
-      </a>
-      <a href="{% url 'vitals_charts' %}" class="quick-action-item">
-        <i data-lucide="area-chart"></i>
-        <span>Vitals Trends</span>
-      </a>
+      <div class="discovery-tip" id="analytics-discovery-tip" hidden>
+        <div class="discovery-tip-title">New to analytics?</div>
+        <p class="discovery-tip-text">Use advanced analysis tools to compare ranges and explore patterns between markers.</p>
+        <div class="discovery-tip-actions">
+          <button type="button" class="toolbar-btn toolbar-btn-sm" id="analytics-discovery-open">Show tools</button>
+          <button type="button" class="toolbar-btn toolbar-btn-sm toolbar-btn-subtle" id="analytics-discovery-dismiss">Dismiss</button>
+        </div>
+      </div>
+      <details class="quick-actions-more">
+        <summary>More options</summary>
+        <div class="quick-actions-more-list">
+          <a href="{% url 'comparative_bar_charts' %}" class="quick-action-item">
+            <i data-lucide="bar-chart-2"></i>
+            <span>Compare with expected range</span>
+          </a>
+          <a href="{% url 'history' %}" class="quick-action-item">
+            <i data-lucide="clock"></i>
+            <span>View full history</span>
+          </a>
+          <a href="{% url 'import_data' %}" class="quick-action-item">
+            <i data-lucide="file-up"></i>
+            <span>Import data</span>
+          </a>
+          <a href="{% url 'blood_tests_boxplots' %}" class="quick-action-item">
+            <i data-lucide="box-select"></i>
+            <span>Boxplots</span>
+          </a>
+          <a href="{% url 'scatter_plots' %}" class="quick-action-item">
+            <i data-lucide="network"></i>
+            <span>Scatter plots</span>
+          </a>
+          <a href="{% url 'vitals_charts' %}" class="quick-action-item">
+            <i data-lucide="area-chart"></i>
+            <span>Vitals trends</span>
+          </a>
+        </div>
+      </details>
     </div>
   </div>
 </div>
@@ -388,7 +412,7 @@
 
 {% if widget.widget_type == 'vital_signs' %}
 <!-- Vital Signs Overview -->
-<div class="widget-section">
+<div class="widget-section widget-section-secondary">
   <div class="section-header-bar">
     <h2 class="results-section-title">Vital Signs</h2>
     <div class="section-header-actions">
@@ -432,10 +456,10 @@
   {% else %}
   <div class="empty-state empty-state-sm">
     <div class="empty-state-icon"><i data-lucide="heart-pulse"></i></div>
-    <div class="empty-state-title">No vitals recorded</div>
-    <div class="empty-state-description">Start recording your daily vital signs.</div>
+    <div class="empty-state-title">No vitals recorded yet</div>
+    <div class="empty-state-description">Log today's vitals to establish your baseline and trend view.</div>
     <a href="{% url 'add_vitals' %}" class="toolbar-btn toolbar-btn-primary toolbar-btn-sm">
-      <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add Vitals
+      <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Record vitals
     </a>
   </div>
   {% endif %}
@@ -444,13 +468,13 @@
 
 {% if widget.widget_type == 'blood_charts' %}
 <!-- Blood Test Trend Charts -->
-<div class="widget-section">
+<div class="widget-section widget-section-tertiary">
   <div class="section-header-bar">
     <h2 class="results-section-title">Blood Test Trends</h2>
     <div class="section-header-actions">
       <a href="{% url 'blood_tests_charts' %}" class="toolbar-btn toolbar-btn-sm">
         <i data-lucide="maximize-2"></i>
-        <span class="d-none d-md-inline">Full View</span>
+        <span class="d-none d-md-inline">Full view</span>
       </a>
     </div>
   </div>
@@ -460,7 +484,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h3 class="chart-card-title">{{ test_name }} <span class="fw-normal text-muted" style="font-size:0.75rem;">({{ test_info.unit }})</span></h3>
+          <h3 class="chart-card-title">{{ test_name }} <span class="chart-card-unit">({{ test_info.unit }})</span></h3>
           {% if test_info.normal_min is not None and test_info.normal_max is not None %}
           <p class="chart-card-subtitle">Range: {{ test_info.normal_min }}–{{ test_info.normal_max }}</p>
           {% endif %}
@@ -477,8 +501,8 @@
   {% else %}
   <div class="empty-state empty-state-sm">
     <div class="empty-state-icon"><i data-lucide="line-chart"></i></div>
-    <div class="empty-state-title">No chart data</div>
-    <div class="empty-state-description">Add blood test results to see trend charts.</div>
+    <div class="empty-state-title">No trend data yet</div>
+    <div class="empty-state-description">Add blood results to generate trend charts.</div>
   </div>
   {% endif %}
 </div>
@@ -486,13 +510,13 @@
 
 {% if widget.widget_type == 'vitals_charts' %}
 <!-- Vital Signs Trend Charts -->
-<div class="widget-section">
+<div class="widget-section widget-section-tertiary">
   <div class="section-header-bar">
     <h2 class="results-section-title">Vital Signs Trends</h2>
     <div class="section-header-actions">
       <a href="{% url 'vitals_charts' %}" class="toolbar-btn toolbar-btn-sm">
         <i data-lucide="maximize-2"></i>
-        <span class="d-none d-md-inline">Full View</span>
+        <span class="d-none d-md-inline">Full view</span>
       </a>
     </div>
   </div>
@@ -502,7 +526,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h3 class="chart-card-title">Weight <span class="fw-normal text-muted" style="font-size:0.75rem;">(kg)</span></h3>
+          <h3 class="chart-card-title">Weight <span class="chart-card-unit">(kg)</span></h3>
         </div>
       </div>
       <div class="chart-card-body">
@@ -516,7 +540,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h3 class="chart-card-title">Heart Rate <span class="fw-normal text-muted" style="font-size:0.75rem;">(bpm)</span></h3>
+          <h3 class="chart-card-title">Heart Rate <span class="chart-card-unit">(bpm)</span></h3>
         </div>
       </div>
       <div class="chart-card-body">
@@ -530,7 +554,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h3 class="chart-card-title">Blood Pressure <span class="fw-normal text-muted" style="font-size:0.75rem;">(mmHg)</span></h3>
+          <h3 class="chart-card-title">Blood Pressure <span class="chart-card-unit">(mmHg)</span></h3>
         </div>
       </div>
       <div class="chart-card-body">
@@ -544,8 +568,8 @@
   {% else %}
   <div class="empty-state empty-state-sm">
     <div class="empty-state-icon"><i data-lucide="area-chart"></i></div>
-    <div class="empty-state-title">No vitals data</div>
-    <div class="empty-state-description">Record vital signs to see trend charts.</div>
+    <div class="empty-state-title">No vitals trend data yet</div>
+    <div class="empty-state-description">Record vitals to generate trend charts.</div>
   </div>
   {% endif %}
 </div>
@@ -553,13 +577,13 @@
 
 {% if widget.widget_type == 'comparative_bars' %}
 <!-- Comparative Bar Charts -->
-<div class="widget-section">
+<div class="widget-section widget-section-tertiary">
   <div class="section-header-bar">
-    <h2 class="results-section-title">Compare to Normal Range</h2>
+    <h2 class="results-section-title">Compare with expected range</h2>
     <div class="section-header-actions">
       <a href="{% url 'comparative_bar_charts' %}" class="toolbar-btn toolbar-btn-sm">
         <i data-lucide="maximize-2"></i>
-        <span class="d-none d-md-inline">Full View</span>
+        <span class="d-none d-md-inline">Full view</span>
       </a>
     </div>
   </div>
@@ -569,14 +593,14 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h3 class="chart-card-title">{{ test_name }} <span class="fw-normal text-muted" style="font-size:0.75rem;">({{ test.unit }})</span></h3>
+          <h3 class="chart-card-title">{{ test_name }} <span class="chart-card-unit">({{ test.unit }})</span></h3>
           <p class="chart-card-subtitle">{{ test.date|date:"M j, Y" }}</p>
         </div>
         <div>
           {% if test.normal_min <= test.value and test.value <= test.normal_max %}
             <span class="status-badge badge-success">Normal</span>
           {% else %}
-            <span class="status-badge badge-danger">Out of Range</span>
+            <span class="status-badge badge-danger">Needs review</span>
           {% endif %}
         </div>
       </div>
@@ -591,8 +615,8 @@
   {% else %}
   <div class="empty-state empty-state-sm">
     <div class="empty-state-icon"><i data-lucide="bar-chart-2"></i></div>
-    <div class="empty-state-title">No comparison data</div>
-    <div class="empty-state-description">Add blood tests with reference ranges to compare.</div>
+    <div class="empty-state-title">No comparison data yet</div>
+    <div class="empty-state-description">Add blood results with reference ranges to compare values clearly.</div>
   </div>
   {% endif %}
 </div>
@@ -600,13 +624,13 @@
 
 {% if widget.widget_type == 'boxplots' %}
 <!-- Box Plots -->
-<div class="widget-section">
+<div class="widget-section widget-section-tertiary">
   <div class="section-header-bar">
     <h2 class="results-section-title">Distribution Analysis</h2>
     <div class="section-header-actions">
       <a href="{% url 'blood_tests_boxplots' %}" class="toolbar-btn toolbar-btn-sm">
         <i data-lucide="maximize-2"></i>
-        <span class="d-none d-md-inline">Full View</span>
+        <span class="d-none d-md-inline">Full view</span>
       </a>
     </div>
   </div>
@@ -616,9 +640,9 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h3 class="chart-card-title">{{ test_name }} <span class="fw-normal text-muted" style="font-size:0.75rem;">({{ info.unit }})</span></h3>
+          <h3 class="chart-card-title">{{ test_name }} <span class="chart-card-unit">({{ info.unit }})</span></h3>
           {% if info.normal_min is not None and info.normal_max is not None %}
-          <p class="chart-card-subtitle">Range: {{ info.normal_min }}–{{ info.normal_max }}</p>
+          <p class="chart-card-subtitle">Expected range: {{ info.normal_min }}–{{ info.normal_max }}</p>
           {% endif %}
         </div>
       </div>
@@ -633,8 +657,8 @@
   {% else %}
   <div class="empty-state empty-state-sm">
     <div class="empty-state-icon"><i data-lucide="bar-chart-2"></i></div>
-    <div class="empty-state-title">No distribution data</div>
-    <div class="empty-state-description">Add multiple blood test results to see distribution analysis.</div>
+    <div class="empty-state-title">No distribution data yet</div>
+    <div class="empty-state-description">Add multiple results for the same test to see distribution insights.</div>
   </div>
   {% endif %}
 </div>
@@ -644,29 +668,68 @@
 {% endfor %}
 </div>
 
+<!-- Keyboard Shortcuts Modal -->
+<div class="modal fade" id="shortcutsModal" tabindex="-1" aria-labelledby="shortcutsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="shortcutsModalLabel">Keyboard shortcuts</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="list-unstyled mb-0">
+          <li class="d-flex justify-content-between py-1"><span>Add blood test</span><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd></li>
+          <li class="d-flex justify-content-between py-1"><span>Record vitals</span><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd></li>
+          <li class="d-flex justify-content-between py-1"><span>Open blood charts</span><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd></li>
+          <li class="d-flex justify-content-between py-1"><span>Open bulk edit</span><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd></li>
+          <li class="d-flex justify-content-between py-1"><span>Focus result filter</span><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd></li>
+          <li class="d-flex justify-content-between py-1"><span>Focus global search</span><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd></li>
+          <li class="d-flex justify-content-between py-1"><span>Show shortcuts</span><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- html2canvas and jsPDF for PDF export -->
 <script src="{% static 'js/html2canvas.min.js' %}"></script>
 <script src="{% static 'js/jspdf.umd.min.js' %}"></script>
 <script>
+var dashboardExportInProgress = false;
+
 function exportDashboardPDF() {
+  if (dashboardExportInProgress) return;
   var element = document.getElementById('dashboard-content');
-  html2canvas(element, { scale: 2, useCORS: true }).then(function(canvas) {
-    var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-    var imgWidth = 210;
-    var imgHeight = canvas.height * imgWidth / canvas.width;
-    var pageHeight = 297;
-    var position = 0;
-    var imgData = canvas.toDataURL('image/png');
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    var heightLeft = imgHeight - pageHeight;
-    while (heightLeft > 0) {
-      position = position - pageHeight;
-      pdf.addPage();
+  if (!element || typeof html2canvas === 'undefined' || typeof jspdf === 'undefined') {
+    return;
+  }
+
+  dashboardExportInProgress = true;
+
+  html2canvas(element, { scale: 2, useCORS: true })
+    .then(function(canvas) {
+      var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+      var imgWidth = 210;
+      var imgHeight = canvas.height * imgWidth / canvas.width;
+      var pageHeight = 297;
+      var position = 0;
+      var imgData = canvas.toDataURL('image/png');
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-    pdf.save('dashboard.pdf');
-  });
+      var heightLeft = imgHeight - pageHeight;
+      while (heightLeft > 0) {
+        position = position - pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      pdf.save('dashboard.pdf');
+    })
+    .catch(function() {
+      // Intentionally silent: keep dashboard usable if export fails.
+    })
+    .finally(function() {
+      dashboardExportInProgress = false;
+    });
 }
 
 /* ── Result filtering ──────────────────────────────────────────────────── */
@@ -708,7 +771,11 @@ function exportDashboardPDF() {
     });
 
     if (cat !== 'all' || activeStatus !== 'all') {
-      countEl.textContent = visible + ' of ' + total;
+      if (visible === 0) {
+        countEl.textContent = 'No matching results. Try a different filter.';
+      } else {
+        countEl.textContent = visible + ' of ' + total;
+      }
     } else {
       countEl.textContent = '';
     }
@@ -723,6 +790,148 @@ function exportDashboardPDF() {
       activeStatus = pill.getAttribute('data-filter');
       applyFilters();
     });
+  });
+})();
+
+/* ── Keyboard Accelerators ─────────────────────────────────────────────── */
+(function() {
+  var storageKey = 'onboarding.analytics-discovery.v1';
+  var tipEl = document.getElementById('analytics-discovery-tip');
+  var openBtn = document.getElementById('analytics-discovery-open');
+  var dismissBtn = document.getElementById('analytics-discovery-dismiss');
+  var advancedDetails = document.querySelector('.quick-actions-more');
+  var firstAdvancedLink = document.querySelector('.quick-actions-more-list .quick-action-item');
+  if (!tipEl || !advancedDetails) return;
+
+  function getSeenState() {
+    try {
+      return localStorage.getItem(storageKey) === '1';
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function setSeenState() {
+    try {
+      localStorage.setItem(storageKey, '1');
+    } catch (e) {
+      // Ignore storage failures; keep the UI usable.
+    }
+  }
+
+  function hideTip() {
+    tipEl.hidden = true;
+    advancedDetails.classList.remove('quick-actions-attention');
+  }
+
+  function revealTip() {
+    tipEl.hidden = false;
+    advancedDetails.classList.add('quick-actions-attention');
+  }
+
+  function completeDiscovery() {
+    setSeenState();
+    hideTip();
+  }
+
+  if (!getSeenState()) {
+    revealTip();
+  } else {
+    hideTip();
+  }
+
+  if (openBtn) {
+    openBtn.addEventListener('click', function() {
+      advancedDetails.open = true;
+      completeDiscovery();
+      if (firstAdvancedLink) firstAdvancedLink.focus();
+    });
+  }
+
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', function() {
+      completeDiscovery();
+    });
+  }
+
+  advancedDetails.addEventListener('toggle', function() {
+    if (advancedDetails.open) {
+      completeDiscovery();
+    }
+  });
+})();
+
+/* ── Keyboard Accelerators ─────────────────────────────────────────────── */
+(function() {
+  var shortcutsModalEl = document.getElementById('shortcutsModal');
+  var openShortcutsBtn = document.getElementById('open-shortcuts-modal');
+
+  function openShortcutsModal() {
+    if (!shortcutsModalEl || typeof bootstrap === 'undefined') return;
+    var modal = bootstrap.Modal.getOrCreateInstance(shortcutsModalEl);
+    modal.show();
+  }
+
+  if (openShortcutsBtn) {
+    openShortcutsBtn.addEventListener('click', openShortcutsModal);
+  }
+
+  function isEditableTarget(target) {
+    if (!target) return false;
+    var tag = target.tagName;
+    return target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  }
+
+  function triggerShortcutAction(selector, focusOnly) {
+    var el = document.querySelector(selector);
+    if (!el) return;
+    if (focusOnly) {
+      el.focus();
+      return;
+    }
+    el.click();
+  }
+
+  document.addEventListener('keydown', function(event) {
+    if (!(event.altKey && event.shiftKey)) return;
+    if (event.ctrlKey || event.metaKey) return;
+    if (isEditableTarget(event.target)) return;
+
+    var key = (event.key || '').toLowerCase();
+    if (!key) return;
+
+    switch (key) {
+      case 'a':
+        event.preventDefault();
+        triggerShortcutAction('#dashboard-add-test-link');
+        break;
+      case 'v':
+        event.preventDefault();
+        triggerShortcutAction('#dashboard-add-vitals-link');
+        break;
+      case 'c':
+        event.preventDefault();
+        triggerShortcutAction('#dashboard-blood-charts-link');
+        break;
+      case 'b':
+        event.preventDefault();
+        triggerShortcutAction('#dashboard-bulk-edit-link');
+        break;
+      case 'f':
+        event.preventDefault();
+        triggerShortcutAction('#filterCategory', true);
+        break;
+      case 'k':
+        event.preventDefault();
+        triggerShortcutAction('#global-search-input', true);
+        break;
+      case 'h':
+        event.preventDefault();
+        openShortcutsModal();
+        break;
+      default:
+        break;
+    }
   });
 })();
 
@@ -819,7 +1028,7 @@ function exportDashboardPDF() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        legend: { display: true, position: 'top', labels: { boxWidth: 12, fontSize: 11 } },
+        legend: { display: true, position: 'top', labels: { boxWidth: 12, fontSize: 12 } },
         scales: {
           xAxes: [{ type: 'time', time: { unit: 'day', tooltipFormat: 'MMM D, YYYY' }, gridLines: { display: false } }],
           yAxes: [{ gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { beginAtZero: false } }]

@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load json_filters %}
 {% block content %}
 
 <div class="page-header">
   <div>
-    <h1 class="page-header-title">Blood Test Distribution</h1>
+    <h1 class="page-header-title">Blood test distribution</h1>
     <p class="page-header-subtitle">Statistical spread of your measurements over time</p>
   </div>
   <div class="page-header-actions">
@@ -28,10 +29,10 @@
           <div class="chart-card-header-text">
             <h2 class="chart-card-title">
               {{ test_name }}
-              <span class="fw-normal text-muted" style="font-size:0.8125rem;">({{ test_info.unit }})</span>
+              <span class="chart-card-unit">({{ test_info.unit }})</span>
             </h2>
             {% if test_info.normal_min is not None and test_info.normal_max is not None %}
-              <p class="chart-card-subtitle">Normal range: {{ test_info.normal_min }}–{{ test_info.normal_max }} {{ test_info.unit }}</p>
+              <p class="chart-card-subtitle">Expected range: {{ test_info.normal_min }}–{{ test_info.normal_max }} {{ test_info.unit }}</p>
             {% else %}
               <p class="chart-card-subtitle">Value distribution</p>
             {% endif %}
@@ -52,7 +53,7 @@
     <div class="empty-state-title">No blood tests recorded</div>
     <div class="empty-state-description">Add blood test results to see distribution charts here.</div>
     <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
-      <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add Blood Test
+      <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add blood test
     </a>
   </div>
 {% endif %}
@@ -94,8 +95,8 @@
           }
         },
         scales: {
-          x: { grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { color: '#6b7280', font: { family: "'Inter', system-ui, sans-serif", size: 11 } } },
-          y: { grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { color: '#6b7280', font: { family: "'Inter', system-ui, sans-serif", size: 11 } } }
+          x: { grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { color: '#6b7280', font: { family: "'Inter', system-ui, sans-serif", size: 12 } } },
+          y: { grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { color: '#6b7280', font: { family: "'Inter', system-ui, sans-serif", size: 12 } } }
         }
       }
     });

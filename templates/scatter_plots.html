@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load json_filters %}
 {% block content %}
 
 <div class="page-header">
   <div>
-    <h1 class="page-header-title">Correlative Scatter Plots</h1>
+    <h1 class="page-header-title">Scatter plots</h1>
     <p class="page-header-subtitle">Explore correlations between health metrics</p>
   </div>
   <div class="page-header-actions">
@@ -19,7 +20,7 @@
 <div class="chart-filters-bar">
   <div class="row g-3 align-items-end">
     <div class="col-md-5">
-      <label for="xMetric" class="form-label">X-Axis Metric</label>
+      <label for="xMetric" class="form-label">X-axis metric</label>
       <select id="xMetric" class="form-select">
         {% for name in metric_names %}
           <option value="{{ name }}" {% if forloop.first %}selected{% endif %}>{{ name }}</option>
@@ -27,7 +28,7 @@
       </select>
     </div>
     <div class="col-md-5">
-      <label for="yMetric" class="form-label">Y-Axis Metric</label>
+      <label for="yMetric" class="form-label">Y-axis metric</label>
       <select id="yMetric" class="form-select">
         {% for name in metric_names %}
           <option value="{{ name }}" {% if forloop.counter == 2 %}selected{% endif %}>{{ name }}</option>
@@ -35,7 +36,7 @@
       </select>
     </div>
     <div class="col-md-2">
-      <button id="plotBtn" class="toolbar-btn toolbar-btn-primary w-100">Plot</button>
+      <button id="plotBtn" class="toolbar-btn toolbar-btn-primary w-100">Show plot</button>
     </div>
   </div>
 </div>
@@ -43,7 +44,7 @@
 <div class="chart-card">
   <div class="chart-card-header">
     <div class="chart-card-header-text">
-      <h2 class="chart-card-title" id="scatterTitle">Scatter Plot</h2>
+      <h2 class="chart-card-title" id="scatterTitle">Scatter plot</h2>
       <p class="chart-card-subtitle">Correlation between selected metrics</p>
     </div>
   </div>
@@ -59,7 +60,7 @@
   <div class="empty-state-title">Not enough data</div>
   <div class="empty-state-description">At least two different metrics are needed for scatter plots. Add more blood tests or vital signs.</div>
   <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
-    <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add Blood Test
+    <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add blood test
   </a>
 </div>
 {% endif %}
@@ -94,7 +95,7 @@
     var points = buildScatterData(xName, yName);
     if (scatterChart) { scatterChart.destroy(); }
     var ctx = document.getElementById('scatterChart').getContext('2d');
-    var axisFont = { fontFamily: "'Inter', system-ui, sans-serif", fontSize: 11, fontColor: '#6b7280' };
+    var axisFont = { fontFamily: "'Inter', system-ui, sans-serif", fontSize: 12, fontColor: '#6b7280' };
     var gridCfg = { color: 'rgba(0,0,0,0.05)', drawBorder: false };
     scatterChart = new Chart(ctx, {
       type: 'scatter',

@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load json_filters %}
 {% block content %}
 
 <div class="page-header">
   <div>
-    <h1 class="page-header-title">Vital Signs Charts</h1>
+    <h1 class="page-header-title">Vital signs charts</h1>
     <p class="page-header-subtitle">Trend analysis for your recorded vital measurements</p>
   </div>
   <div class="page-header-actions">
@@ -14,7 +15,7 @@
     </button>
     <a href="{% url 'vitals' %}" class="toolbar-btn">
       <i data-lucide="arrow-left" aria-hidden="true"></i>
-      <span class="d-none d-sm-inline">Back</span>
+      <span class="d-none d-sm-inline">Vitals</span>
     </a>
   </div>
 </div>
@@ -31,17 +32,17 @@
       <input type="date" id="endDate" class="form-control form-control-sm" style="width:160px;">
     </div>
     <div class="d-flex gap-2">
-      <button id="applyDateFilter" class="toolbar-btn toolbar-btn-primary">Apply Filter</button>
-      <button id="resetDateFilter" class="toolbar-btn">Reset</button>
+      <button id="applyDateFilter" class="toolbar-btn toolbar-btn-primary">Apply filter</button>
+      <button id="resetDateFilter" class="toolbar-btn">Reset filters</button>
     </div>
     <div class="d-flex gap-3 ms-auto">
       <div class="form-check form-check-inline mb-0">
         <input class="form-check-input" type="checkbox" id="toggleMovingAvg">
-        <label class="form-check-label small" for="toggleMovingAvg">Moving Average</label>
+        <label class="form-check-label small" for="toggleMovingAvg">Moving average</label>
       </div>
       <div class="form-check form-check-inline mb-0">
         <input class="form-check-input" type="checkbox" id="toggleAnomaly" checked>
-        <label class="form-check-label small" for="toggleAnomaly">Anomaly Detection</label>
+        <label class="form-check-label small" for="toggleAnomaly">Anomaly detection</label>
       </div>
     </div>
   </div>
@@ -69,7 +70,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h2 class="chart-card-title">Weight <span class="fw-normal text-muted" style="font-size:0.8125rem;">(kg)</span></h2>
+          <h2 class="chart-card-title">Weight <span class="chart-card-unit">(kg)</span></h2>
           <p class="chart-card-subtitle">Trend over time</p>
         </div>
       </div>
@@ -82,7 +83,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h2 class="chart-card-title">Heart Rate <span class="fw-normal text-muted" style="font-size:0.8125rem;">(bpm)</span></h2>
+          <h2 class="chart-card-title">Heart Rate <span class="chart-card-unit">(bpm)</span></h2>
           <p class="chart-card-subtitle">Trend over time</p>
         </div>
       </div>
@@ -95,7 +96,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h2 class="chart-card-title">Blood Pressure <span class="fw-normal text-muted" style="font-size:0.8125rem;">(mmHg)</span></h2>
+          <h2 class="chart-card-title">Blood Pressure <span class="chart-card-unit">(mmHg)</span></h2>
           <p class="chart-card-subtitle">Systolic and diastolic trend</p>
         </div>
       </div>
@@ -108,7 +109,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h2 class="chart-card-title">Basal Body Temperature <span class="fw-normal text-muted" style="font-size:0.8125rem;">(°C)</span></h2>
+          <h2 class="chart-card-title">Basal Body Temperature <span class="chart-card-unit">(°C)</span></h2>
           <p class="chart-card-subtitle">Trend over time</p>
         </div>
       </div>
@@ -121,7 +122,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h2 class="chart-card-title">SpO2 — Blood Oxygen Saturation <span class="fw-normal text-muted" style="font-size:0.8125rem;">(%)</span></h2>
+          <h2 class="chart-card-title">SpO2 — Blood Oxygen Saturation <span class="chart-card-unit">(%)</span></h2>
           <p class="chart-card-subtitle">Trend over time</p>
         </div>
       </div>
@@ -134,7 +135,7 @@
     <div class="chart-card">
       <div class="chart-card-header">
         <div class="chart-card-header-text">
-          <h2 class="chart-card-title">Respiratory Rate <span class="fw-normal text-muted" style="font-size:0.8125rem;">(breaths/min)</span></h2>
+          <h2 class="chart-card-title">Respiratory Rate <span class="chart-card-unit">(breaths/min)</span></h2>
           <p class="chart-card-subtitle">Trend over time</p>
         </div>
       </div>
@@ -152,7 +153,7 @@
   var fontColor = _themeColors.fontColor || '#6b7280';
 
   Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
-  Chart.defaults.global.defaultFontSize = 11;
+  Chart.defaults.global.defaultFontSize = 12;
   Chart.defaults.global.defaultFontColor = fontColor;
 
   var chartOptions = {

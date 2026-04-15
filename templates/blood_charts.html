@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load json_filters %}
 {% block content %}
 
 <div class="page-header">
   <div>
-    <h1 class="page-header-title">Blood Test Charts</h1>
+    <h1 class="page-header-title">Blood test charts</h1>
     <p class="page-header-subtitle">Trend analysis for your blood markers</p>
   </div>
   <div class="page-header-actions">
@@ -32,17 +33,17 @@
         <input type="date" id="endDate" class="form-control form-control-sm" style="width:160px;">
       </div>
       <div class="d-flex gap-2">
-        <button id="applyDateFilter" class="toolbar-btn toolbar-btn-primary">Apply Filter</button>
-        <button id="resetDateFilter" class="toolbar-btn">Reset</button>
+        <button id="applyDateFilter" class="toolbar-btn toolbar-btn-primary">Apply filter</button>
+        <button id="resetDateFilter" class="toolbar-btn">Reset filters</button>
       </div>
       <div class="d-flex gap-3 ms-auto">
         <div class="form-check form-check-inline mb-0">
           <input class="form-check-input" type="checkbox" id="toggleMovingAvg">
-          <label class="form-check-label small" for="toggleMovingAvg">Moving Average</label>
+          <label class="form-check-label small" for="toggleMovingAvg">Moving average</label>
         </div>
         <div class="form-check form-check-inline mb-0">
           <input class="form-check-input" type="checkbox" id="toggleAnomaly" checked>
-          <label class="form-check-label small" for="toggleAnomaly">Anomaly Detection</label>
+          <label class="form-check-label small" for="toggleAnomaly">Anomaly detection</label>
         </div>
       </div>
     </div>
@@ -54,9 +55,9 @@
       <div class="chart-card">
         <div class="chart-card-header">
           <div class="chart-card-header-text">
-            <h2 class="chart-card-title">{{ test_name }} <span class="fw-normal text-muted" style="font-size:0.8125rem;">({{ test_info.unit }})</span></h2>
+            <h2 class="chart-card-title">{{ test_name }} <span class="chart-card-unit">({{ test_info.unit }})</span></h2>
             {% if test_info.normal_min is not None and test_info.normal_max is not None %}
-              <p class="chart-card-subtitle">Normal range: {{ test_info.normal_min }}–{{ test_info.normal_max }} {{ test_info.unit }}</p>
+              <p class="chart-card-subtitle">Expected range: {{ test_info.normal_min }}–{{ test_info.normal_max }} {{ test_info.unit }}</p>
             {% else %}
               <p class="chart-card-subtitle">Trend over time</p>
             {% endif %}
@@ -77,7 +78,7 @@
     <div class="empty-state-title">No data to chart</div>
     <div class="empty-state-description">Add blood test results to see trend charts here.</div>
     <a href="{% url 'add_test' %}" class="toolbar-btn toolbar-btn-primary">
-      <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add Blood Test
+      <i data-lucide="plus" class="me-1" aria-hidden="true"></i> Add blood test
     </a>
   </div>
 {% endif %}
@@ -91,7 +92,7 @@
   var fontColor = _themeColors.fontColor || '#6b7280';
 
   Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
-  Chart.defaults.global.defaultFontSize = 11;
+  Chart.defaults.global.defaultFontSize = 12;
   Chart.defaults.global.defaultFontColor = fontColor;
 
   var chartOptions = {

@@ -1052,3 +1052,170 @@
   .account-btn-row { flex-direction: column; }
   .account-btn-row .account-btn { width: 100%; }
 }
+
+/* ==========================================================================
+   Normalization Layer — Clinical Calm System
+   Align auth/account surfaces with dashboard design language
+   ========================================================================== */
+
+:root {
+  --auth-gradient-1: #f9fafb;
+  --auth-gradient-2: #eef2ff;
+  --auth-gradient-3: #2563eb;
+  --auth-accent: #2563eb;
+  --auth-accent-hover: #1d4ed8;
+  --auth-accent-glow: rgba(37, 99, 235, 0.16);
+  --auth-card-bg: #ffffff;
+  --auth-card-border: #e5e7eb;
+  --auth-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --auth-text: #111827;
+  --auth-text-secondary: #4b5563;
+  --auth-text-muted: #6b7280;
+  --auth-input-bg: #ffffff;
+  --auth-input-border: #d1d5db;
+  --auth-input-focus: #2563eb;
+  --auth-radius: 12px;
+  --auth-radius-sm: 8px;
+  --auth-radius-xs: 6px;
+  --auth-transition: all 0.18s ease;
+}
+
+.auth-page {
+  background: radial-gradient(circle at top, #eff6ff 0%, #f9fafb 38%, #f3f4f6 100%);
+  animation: none;
+}
+
+.auth-page::before {
+  display: none;
+}
+
+.auth-card {
+  background: var(--auth-card-bg);
+  border: 1px solid var(--auth-card-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: var(--auth-card-shadow);
+  animation: none;
+}
+
+.auth-card:hover {
+  transform: none;
+  box-shadow: 0 4px 10px rgba(17, 24, 39, 0.06);
+}
+
+.auth-brand-icon {
+  background: var(--auth-gradient-3);
+  border-radius: 10px;
+  width: 52px;
+  height: 52px;
+  box-shadow: none;
+  animation: none;
+}
+
+.auth-brand h1 {
+  color: var(--auth-text);
+}
+
+.auth-brand p {
+  color: var(--auth-text-secondary);
+}
+
+.auth-btn {
+  background: var(--auth-accent);
+  box-shadow: none;
+}
+
+.auth-btn::before {
+  display: none;
+}
+
+.auth-btn:hover {
+  background: var(--auth-accent-hover);
+  transform: none;
+  box-shadow: none;
+}
+
+.auth-btn-danger {
+  background: #dc2626;
+}
+
+.auth-btn-danger:hover {
+  background: #b91c1c;
+  box-shadow: none;
+}
+
+.auth-social-btn {
+  border-color: var(--auth-input-border);
+  background: #fff;
+  box-shadow: none;
+}
+
+.auth-social-btn:hover {
+  transform: none;
+  box-shadow: none;
+  background: #f9fafb;
+}
+
+.auth-footer a,
+.auth-links a {
+  color: var(--auth-accent);
+}
+
+.auth-footer a:hover,
+.auth-links a:hover {
+  color: var(--auth-accent-hover);
+}
+
+/* Account pages inside the main app layout */
+.account-profile-hero {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-bottom: none;
+}
+
+.account-profile-hero::before,
+.account-profile-hero::after {
+  display: none;
+}
+
+.account-profile-hero h2 {
+  color: #111827;
+}
+
+.account-profile-hero p {
+  color: #6b7280;
+}
+
+.account-avatar,
+.account-avatar-placeholder {
+  border-color: #dbe3f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.account-avatar-placeholder {
+  background: #ffffff;
+}
+
+.account-avatar-placeholder svg {
+  fill: #6b7280;
+}
+
+.account-btn-primary {
+  background: var(--auth-accent);
+}
+
+.account-btn-primary:hover {
+  background: var(--auth-accent-hover);
+  transform: none;
+  box-shadow: none;
+}
+
+.account-btn-danger {
+  background: #dc2626;
+}
+
+.account-btn-danger:hover {
+  background: #b91c1c;
+  transform: none;
+  box-shadow: none;
+}
