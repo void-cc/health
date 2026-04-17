@@ -1737,6 +1737,8 @@ class Phase4ProfileTests(TestCase):
         self.assertContains(response, 'name="chronic_conditions"')
 
 
+
+class Phase4PasswordChangeTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
