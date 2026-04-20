@@ -369,6 +369,10 @@ def add_test(request):
         date = datetime.strptime(date_str, '%Y-%m-%d').date()
         tests_added = 0
 
+        # Bolt optimization: Pre-fetch all required test info to avoid N+1 queries in the loop
+        test_info_qs = BloodTestInfo.objects.filter(test_name__in=test_names)
+        test_info_dict = {ti.test_name: ti for ti in test_info_qs}
+
         for test_name in test_names:
             value = request.POST.get(f'values[{test_name}]')
             if not value:
@@ -381,7 +385,7 @@ def add_test(request):
                 messages.error(request, f'Invalid value for {test_name}. Please enter a numeric value.')
                 continue
 
-            test_info = BloodTestInfo.objects.filter(test_name=test_name).first()
+            test_info = test_info_dict.get(test_name)
             if not test_info:
                 messages.error(request, f'Test "{test_name}" not found in system.')
                 continue
